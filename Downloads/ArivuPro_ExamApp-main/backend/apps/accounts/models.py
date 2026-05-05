@@ -1,5 +1,6 @@
 """User models for ExamReview platform."""
 
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
@@ -69,3 +70,26 @@ class SystemConfig(models.Model):
     def set(cls, key, value):
         obj, _ = cls.objects.update_or_create(key=key, defaults={'value': value})
         return obj
+
+
+class Notification(models.Model):
+    TYPE_CHOICES = [
+        ('success', 'Success'),
+        ('error', 'Error'),
+        ('info', 'Info'),
+    ]
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='notifications',
+    )
+    message = models.CharField(max_length=500)
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='info')
+    read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user} — {self.message[:50]}"

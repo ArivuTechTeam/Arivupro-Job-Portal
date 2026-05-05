@@ -30,10 +30,9 @@ import {
   ChevronLeft,
   UserCheck,
 } from 'lucide-react';
-import { subscribeToNotifications, markNotificationRead } from '../../services/firestoreService';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { FIREBASE_CONFIGURED } from '../../firebase';
+import api from '../../services/api';
 
 // ─── Nav definitions ──────────────────────────────────────────────────────────
 const studentNav = [
@@ -89,11 +88,18 @@ export default function Layout({ children }) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Real-time notifications from Firestore
+  // Poll notifications from Django REST API every 30s
   useEffect(() => {
-    if (!FIREBASE_CONFIGURED || !user?.id) return;
-    const unsub = subscribeToNotifications(user.id, setNotifications);
-    return unsub;
+    if (!user?.id) return;
+    const fetchNotifications = async () => {
+      try {
+        const { data } = await api.get('/auth/notifications/');
+        setNotifications(Array.isArray(data) ? data : (data.results || []));
+      } catch {}
+    };
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
   }, [user?.id]);
 
   const initials = (
@@ -415,7 +421,7 @@ export default function Layout({ children }) {
           </button>
 
           {/* Notification Bell */}
-          {FIREBASE_CONFIGURED && (
+          {true && (
             <div ref={notifRef} style={{ position: 'relative' }}>
               <button onClick={() => setNotifOpen(o => !o)} style={{
                 width: 36, height: 36, borderRadius: 10, border: '1px solid #e2e8f0',
@@ -477,7 +483,7 @@ export default function Layout({ children }) {
                         }}
                           onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
                           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                          onClick={() => { markNotificationRead(n.id); setNotifications(prev => prev.filter(x => x.id !== n.id)); }}
+                          onClick={async () => { try { await api.patch(`/auth/notifications/${n.id}/read/`); } catch {} setNotifications(prev => prev.filter(x => x.id !== n.id)); }}
                         >
                           <div style={{
                             width: 32, height: 32, borderRadius: 8, flexShrink: 0,
@@ -492,9 +498,9 @@ export default function Layout({ children }) {
                             <p style={{ margin: 0, fontSize: '0.82rem', fontWeight: 600, color: '#1e293b', lineHeight: 1.4 }}>
                               {n.message}
                             </p>
-                            {n.createdAt && (
+                            {n.created_at && (
                               <p style={{ margin: '2px 0 0', fontSize: '0.68rem', color: '#94a3b8' }}>
-                                {new Date(n.createdAt.seconds * 1000).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                                {new Date(n.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                               </p>
                             )}
                           </div>

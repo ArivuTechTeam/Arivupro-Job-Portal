@@ -16,4 +16,6 @@ urlpatterns = [
     path('register-admin/', views.AdminRegisterView.as_view(), name='register-admin'),
     path('admin-code/', views.AdminCodeView.as_view(), name='admin-code'),
     path('promote-me/', views.PromoteMeView.as_view(), name='promote-me'),
+    path('notifications/', views.NotificationListView.as_view(), name='notifications'),
+    path('notifications/<int:pk>/read/', views.NotificationReadView.as_view(), name='notification-read'),
 ]

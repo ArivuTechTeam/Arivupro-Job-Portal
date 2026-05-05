@@ -1,8 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { FIREBASE_CONFIGURED } from '../../firebase';
-import { testFirebaseConnection, writeTestDocument } from '../../services/firebaseTest';
 import './AdminPanel.css';
 
 /* ── small helpers ── */
@@ -89,35 +87,13 @@ function SettingRow({ icon, label, description, children }) {
   );
 }
 
-// ─── Firebase Status Card ──────────────────────────────────────────────────────
-function FirebaseStatus() {
-  const [status, setStatus]   = useState('idle'); // idle | testing | ok | error
-  const [result, setResult]   = useState(null);
-  const [writing, setWriting] = useState(false);
-  const [writeRes, setWriteRes] = useState(null);
-
-  const runTest = async () => {
-    setStatus('testing'); setResult(null); setWriteRes(null);
-    const r = await testFirebaseConnection();
-    setStatus(r.ok ? 'ok' : 'error');
-    setResult(r);
-  };
-
-  const runWrite = async () => {
-    setWriting(true); setWriteRes(null);
-    const r = await writeTestDocument();
-    setWriteRes(r);
-    setWriting(false);
-  };
-
-  const configured = FIREBASE_CONFIGURED;
-
+// ─── Railway DB Status Card ────────────────────────────────────────────────────
+function DatabaseStatus() {
   return (
     <div style={{
       background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0',
       boxShadow: '0 2px 8px rgba(0,0,0,0.05)', overflow: 'hidden', marginBottom: '1.5rem',
     }}>
-      {/* Header */}
       <div style={{
         padding: '1rem 1.25rem', borderBottom: '1px solid #f1f5f9',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -125,148 +101,50 @@ function FirebaseStatus() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
           <div style={{
-            width: 32, height: 32, borderRadius: 8, background: '#fff8e1',
+            width: 32, height: 32, borderRadius: 8, background: '#ede9fe',
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem',
-          }}>🔥</div>
+          }}>🐘</div>
           <div>
             <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#0f172a' }}>
-              Firebase Database
+              Railway PostgreSQL
             </h3>
             <p style={{ margin: '1px 0 0', fontSize: '0.7rem', color: '#94a3b8' }}>
-              Project: {process.env.REACT_APP_FIREBASE_PROJECT_ID || 'not set'}
+              Managed via DATABASE_URL on Railway
             </p>
           </div>
         </div>
         <span style={{
           display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
           padding: '4px 12px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 700,
-          background: configured ? (status === 'ok' ? '#dcfce7' : '#fef3c7') : '#fee2e2',
-          color: configured ? (status === 'ok' ? '#166534' : '#92400e') : '#991b1b',
-          border: `1px solid ${configured ? (status === 'ok' ? '#bbf7d0' : '#fde68a') : '#fecaca'}`,
+          background: '#dcfce7', color: '#166534', border: '1px solid #bbf7d0',
         }}>
-          <span style={{
-            width: 7, height: 7, borderRadius: '50%',
-            background: configured ? (status === 'ok' ? '#16a34a' : '#d97706') : '#dc2626',
-            display: 'inline-block',
-          }} />
-          {!configured ? 'Not Configured'
-            : status === 'testing' ? 'Testing…'
-            : status === 'ok'      ? 'Connected ✓'
-            : status === 'error'   ? 'Connection Error'
-            : 'Credentials Set'}
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} />
+          Active
         </span>
       </div>
-
       <div style={{ padding: '1.25rem' }}>
-        {/* Config values */}
         <div style={{
           background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12,
-          padding: '0.875rem 1rem', marginBottom: '1rem', fontSize: '0.78rem',
+          padding: '0.875rem 1rem', fontSize: '0.78rem',
+          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem',
         }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-            {[
-              { label: 'Project ID',   val: process.env.REACT_APP_FIREBASE_PROJECT_ID },
-              { label: 'Auth Domain',  val: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN },
-              { label: 'Storage',      val: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET },
-              { label: 'Sender ID',    val: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID },
-              { label: 'API Key',      val: process.env.REACT_APP_FIREBASE_API_KEY?.slice(0, 12) + '…' },
-              { label: 'App ID',       val: process.env.REACT_APP_FIREBASE_APP_ID?.slice(0, 20) + '…' },
-            ].map(row => (
-              <div key={row.label} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 600,
-                  textTransform: 'uppercase', letterSpacing: '0.06em' }}>{row.label}</span>
-                <span style={{
-                  fontFamily: 'monospace', fontSize: '0.75rem',
-                  color: row.val && !row.val.startsWith('your-') ? '#1e293b' : '#dc2626',
-                  fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>
-                  {row.val || '—'}
-                </span>
-              </div>
-            ))}
-          </div>
+          {[
+            { label: 'Provider',    val: 'Railway' },
+            { label: 'Engine',      val: 'PostgreSQL 15' },
+            { label: 'Connection',  val: 'DATABASE_URL (env var)' },
+            { label: 'Migrations',  val: 'Auto on deploy' },
+            { label: 'Notifications', val: 'Django REST API' },
+            { label: 'Auth',        val: 'JWT (SimpleJWT)' },
+          ].map(row => (
+            <div key={row.label} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 600,
+                textTransform: 'uppercase', letterSpacing: '0.06em' }}>{row.label}</span>
+              <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#1e293b', fontWeight: 600 }}>
+                {row.val}
+              </span>
+            </div>
+          ))}
         </div>
-
-        {/* Test result */}
-        {result && (
-          <div style={{
-            padding: '0.75rem 1rem', borderRadius: 10, marginBottom: '1rem',
-            background: result.ok ? '#f0fdf4' : '#fef2f2',
-            border: `1px solid ${result.ok ? '#bbf7d0' : '#fecaca'}`,
-            fontSize: '0.8rem', color: result.ok ? '#166534' : '#991b1b',
-            fontWeight: 600,
-          }}>
-            {result.ok
-              ? `✅ Connected to Firestore — Project: ${result.projectId}`
-              : `❌ ${result.error}`}
-          </div>
-        )}
-
-        {writeRes && (
-          <div style={{
-            padding: '0.75rem 1rem', borderRadius: 10, marginBottom: '1rem',
-            background: writeRes.ok ? '#f0fdf4' : '#fef2f2',
-            border: `1px solid ${writeRes.ok ? '#bbf7d0' : '#fecaca'}`,
-            fontSize: '0.8rem', color: writeRes.ok ? '#166534' : '#991b1b', fontWeight: 600,
-          }}>
-            {writeRes.ok
-              ? `✅ Write successful — Document ID: ${writeRes.docId}`
-              : `❌ Write failed: ${writeRes.error}`}
-          </div>
-        )}
-
-        {/* Action buttons */}
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <button onClick={runTest} disabled={status === 'testing' || !configured} style={{
-            padding: '0.55rem 1.25rem', borderRadius: 10, border: 'none', cursor: configured ? 'pointer' : 'not-allowed',
-            background: configured ? 'linear-gradient(135deg,#f97316,#ea580c)' : '#e2e8f0',
-            color: configured ? '#fff' : '#94a3b8',
-            fontWeight: 700, fontSize: '0.82rem',
-            boxShadow: configured ? '0 4px 12px rgba(249,115,22,0.35)' : 'none',
-            opacity: status === 'testing' ? 0.7 : 1,
-            display: 'flex', alignItems: 'center', gap: '0.4rem',
-          }}>
-            {status === 'testing' ? '⏳ Testing…' : '🔌 Test Connection'}
-          </button>
-
-          {status === 'ok' && (
-            <button onClick={runWrite} disabled={writing} style={{
-              padding: '0.55rem 1.25rem', borderRadius: 10, border: 'none', cursor: 'pointer',
-              background: 'linear-gradient(135deg,#16a34a,#22c55e)',
-              color: '#fff', fontWeight: 700, fontSize: '0.82rem',
-              boxShadow: '0 4px 12px rgba(34,197,94,0.35)',
-              display: 'flex', alignItems: 'center', gap: '0.4rem',
-            }}>
-              {writing ? '⏳ Writing…' : '📝 Write Test Document'}
-            </button>
-          )}
-
-          <a href="https://console.firebase.google.com/project/arivupro-examapp-86f56/firestore"
-            target="_blank" rel="noopener noreferrer" style={{
-              padding: '0.55rem 1.25rem', borderRadius: 10,
-              border: '1px solid #e2e8f0', background: '#f8fafc',
-              color: '#475569', fontWeight: 700, fontSize: '0.82rem',
-              textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem',
-            }}>
-            🔥 Open Firestore Console ↗
-          </a>
-        </div>
-
-        {/* Setup instructions if not configured */}
-        {!configured && (
-          <div style={{
-            marginTop: '1rem', background: '#fffbeb', border: '1px solid #fde68a',
-            borderRadius: 10, padding: '0.875rem 1rem', fontSize: '0.78rem', color: '#92400e',
-          }}>
-            <p style={{ margin: '0 0 0.5rem', fontWeight: 700 }}>⚙️ Setup required:</p>
-            <ol style={{ margin: 0, paddingLeft: '1.25rem', lineHeight: 2 }}>
-              <li>Go to <strong>console.firebase.google.com</strong></li>
-              <li>Open project → Project Settings → Your apps → Web app</li>
-              <li>Copy the config values into <code style={{ background: '#fef3c7', padding: '1px 5px', borderRadius: 4 }}>frontend/.env</code></li>
-              <li>Restart the React dev server (<code style={{ background: '#fef3c7', padding: '1px 5px', borderRadius: 4 }}>npm start</code>)</li>
-            </ol>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -629,14 +507,14 @@ export default function Settings() {
       {/* ── System Info Tab ── */}
       {activeTab === 'system' && (
         <>
-          <FirebaseStatus />
+          <DatabaseStatus />
           <Section icon="📊" title="Platform Information" accent="#0ea5e9">
             {[
               { label: 'Platform',     value: 'ArivuPro ExamApp' },
               { label: 'Version',      value: '1.0.0' },
               { label: 'Backend',      value: 'Django 4.2 + DRF' },
               { label: 'Frontend',     value: 'React 18' },
-              { label: 'Database',     value: 'SQLite (dev) / PostgreSQL (prod)' },
+              { label: 'Database',     value: 'Railway PostgreSQL', badge: true },
               { label: 'AI Evaluator', value: '● Active', badge: true },
               { label: 'Auth',         value: 'JWT (SimpleJWT)' },
               { label: 'Exam Types',   value: 'CA · CS · CMA' },

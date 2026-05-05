@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { syncUserToFirestore } from '../services/firestoreService';
 
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 const AuthContext = createContext(null);
@@ -62,7 +61,6 @@ function createAuthProvider(storagePrefix) {
       try {
         const { data } = await authAxios.get('/auth/profile/');
         setUser(data);
-        if (storagePrefix === 'student') syncUserToFirestore(data).catch(() => {});
         setLoading(false);
         return data;
       } catch {

@@ -30,9 +30,6 @@ django-filter>=23.5
 # AI Integration
 openai>=1.0
 
-# Firebase / Firestore
-firebase-admin>=6.2
-
 # Production server
 gunicorn>=21.2
 

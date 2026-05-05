@@ -47,6 +47,16 @@ def trigger_evaluation(submission_id):
         submission.save()
         logger.info(f"Evaluation completed for submission {submission_id}")
 
+        try:
+            from apps.accounts.models import Notification
+            Notification.objects.create(
+                user=submission.student,
+                message=f"Your answer script for '{submission.exam_paper.title}' has been evaluated. View your report now.",
+                type='success',
+            )
+        except Exception as ne:
+            logger.warning(f"Could not create notification: {ne}")
+
     except Exception as e:
         logger.error(f"Evaluation FAILED for {submission_id}: {e}\n{traceback.format_exc()}")
         try:

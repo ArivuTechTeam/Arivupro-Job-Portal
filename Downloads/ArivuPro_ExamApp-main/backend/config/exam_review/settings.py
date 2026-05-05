@@ -232,14 +232,7 @@ CACHES = {
     }
 }
 
-# Firebase / Firestore
-# Download service-account JSON from:
-# Firebase Console → Project Settings → Service Accounts → Generate new private key
-FIREBASE_CREDENTIALS_PATH = os.environ.get(
-    'FIREBASE_CREDENTIALS_PATH',
-    str(BASE_DIR / 'firebase-credentials.json'),
-)
-FIREBASE_PROJECT_ID = os.environ.get('FIREBASE_PROJECT_ID', 'arivupro-examapp')
+# Firebase removed — notifications handled via Django Notification model + REST API
 
 # Exam types supported
 EXAM_TYPES = [

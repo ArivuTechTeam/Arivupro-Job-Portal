@@ -12,8 +12,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 
-from .serializers import RegisterSerializer, UserSerializer, UserProfileUpdateSerializer, AdminUserSerializer
-from .models import SystemConfig
+from .serializers import RegisterSerializer, UserSerializer, UserProfileUpdateSerializer, AdminUserSerializer, NotificationSerializer
+from .models import SystemConfig, Notification
 
 logger = logging.getLogger(__name__)
 
@@ -441,3 +441,24 @@ class AdminBulkActionsView(APIView):
             return Response({'error': f'Unknown action: {action}'}, status=400)
 
         return Response({'message': f'Action "{action}" applied to {count} user(s).', 'count': count})
+
+
+class NotificationListView(generics.ListAPIView):
+    serializer_class = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user, read=False)[:30]
+
+
+class NotificationReadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, pk):
+        try:
+            notif = Notification.objects.get(id=pk, user=request.user)
+            notif.read = True
+            notif.save()
+            return Response({'ok': True})
+        except Notification.DoesNotExist:
+            return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)

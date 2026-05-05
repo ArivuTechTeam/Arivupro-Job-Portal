@@ -1,0 +1,50 @@
+/**
+ * AdminPanel.css - Shared styles for admin components
+ * Uses the ArivuPro green theme via CSS variables from index.css
+ */
+
+/* Ensure admin pages use the same .page layout as existing admin pages */
+/* All styles reference CSS variables from index.css */
+
+/* Override stat-card layout for admin pages to be horizontal */
+.page .stat-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Success message */
+.success-message {
+  background: #dcfce7;
+  color: #166534;
+  padding: 1rem;
+  border-radius: var(--radius);
+  margin-bottom: 1.5rem;
+  border: 1px solid #bbf7d0;
+  border-left: 4px solid #22c55e;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* Error message fallback (if not in AdminPages.css) */
+.page .error-message {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 1rem;
+  border-radius: var(--radius);
+  margin-bottom: 1.5rem;
+  border: 1px solid #fecaca;
+  border-left: 4px solid var(--danger);
+  font-size: 0.875rem;
+}
+
+/* Admin table wrapper - clean look */
+.page .table-wrapper {
+  overflow-x: auto;
+  margin: 0 -1.5rem;
+  padding: 0;
+}
+
+.page .table-wrapper table {
+  margin: 0;
+}

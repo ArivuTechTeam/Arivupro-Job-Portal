@@ -1,0 +1,1510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ArivuPro – AI Script Corrector</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:#1B6B3A;--gl:#2A8A50;--gd:#124D2A;
+  --gbg:#EAF5EF;--gmid:#C5E8D3;
+  --red:#DC2626;--rbg:#FEF2F2;
+  --blue:#1D4ED8;--bbg:#EFF6FF;
+  --amber:#D97706;--abg:#FEF3C7;
+  --purple:#7C3AED;--pbg:#F5F3FF;
+  --g50:#F9FAFB;--g100:#F3F4F6;--g200:#E5E7EB;--g300:#D1D5DB;
+  --g400:#9CA3AF;--g500:#6B7280;--g600:#4B5563;--g700:#374151;
+  --g800:#1F2937;--g900:#111827;--wh:#fff;--r:10px;--rl:14px;
+}
+body{font-family:'DM Sans',sans-serif;background:#F0F4F1;color:var(--g800);min-height:100vh;font-size:15px;line-height:1.6}
+
+/* ══ LANDING ══ */
+#landingScreen{position:fixed;inset:0;background:linear-gradient(135deg,var(--gd) 0%,#1e5c35 60%,#0f3d22 100%);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px}
+.landing-wrap{width:100%;max-width:600px}
+.landing-logo{display:flex;align-items:center;gap:14px;margin-bottom:36px;justify-content:center}
+.landing-mark{width:52px;height:52px;background:var(--green);border-radius:14px;display:flex;align-items:center;justify-content:center}
+.landing-appname{font-family:'Playfair Display',serif;font-size:26px;color:#fff}
+.landing-apptag{font-size:13px;color:#9CBFAB;margin-top:-2px}
+.landing-heading{font-family:'Playfair Display',serif;font-size:20px;color:rgba(255,255,255,.7);text-align:center;margin-bottom:24px}
+.landing-cards{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.lcard{background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.15);border-radius:18px;padding:28px 24px;text-align:center;cursor:pointer;transition:all .25s}
+.lcard:hover{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.35);transform:translateY(-2px)}
+.lcard-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+.lcard-icon.student{background:rgba(156,191,171,.25)}
+.lcard-icon.staff{background:rgba(255,255,255,.15)}
+.lcard-title{font-size:17px;font-weight:600;color:#fff;margin-bottom:5px}
+.lcard-sub{font-size:13px;color:rgba(255,255,255,.55)}
+
+/* ══ LOGIN MODAL ══ */
+#loginModal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:9999;padding:20px}
+#loginModal.show{display:flex}
+.lbox{background:var(--wh);border-radius:18px;padding:36px;width:100%;max-width:380px}
+.lbox-title{font-family:'Playfair Display',serif;font-size:20px;color:var(--g900);margin-bottom:4px}
+.lbox-sub{font-size:13px;color:var(--g500);margin-bottom:22px}
+.lfg{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.lfg label{font-size:12px;font-weight:600;color:var(--g600);text-transform:uppercase;letter-spacing:.5px}
+.lfg input{border:1px solid var(--g200);border-radius:var(--r);padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:15px;color:var(--g800);background:var(--g50);width:100%}
+.lfg input:focus{outline:none;border-color:var(--green);background:var(--wh)}
+.login-btn{width:100%;padding:11px;background:var(--green);color:#fff;border:none;border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:background .2s}
+.login-btn:hover{background:var(--gl)}
+.login-cancel{width:100%;padding:9px;background:none;color:var(--g500);border:1px solid var(--g200);border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;margin-top:8px;transition:all .2s}
+.login-cancel:hover{background:var(--g50)}
+.lerr{background:var(--rbg);border:1px solid #FCA5A5;color:var(--red);border-radius:8px;padding:9px 13px;font-size:13px;margin-bottom:14px;display:none}
+.lerr.show{display:block}
+
+/* ══ STUDENT ENTRY ══ */
+#studentEntry{position:fixed;inset:0;background:linear-gradient(135deg,var(--gd),#1e5c35,#0f3d22);display:none;align-items:center;justify-content:center;z-index:9999;padding:20px}
+#studentEntry.show{display:flex}
+.sentry-box{background:var(--wh);border-radius:20px;padding:36px;width:100%;max-width:420px}
+.sentry-back{display:flex;align-items:center;gap:8px;color:var(--g500);font-size:13px;cursor:pointer;margin-bottom:20px;border:none;background:none;font-family:'DM Sans',sans-serif}
+.sentry-back:hover{color:var(--green)}
+.sentry-title{font-family:'Playfair Display',serif;font-size:20px;color:var(--g900);margin-bottom:4px}
+.sentry-sub{font-size:13px;color:var(--g500);margin-bottom:22px}
+
+/* ══ APP SHELL ══ */
+.header{background:var(--gd);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-mark{width:32px;height:32px;background:var(--green);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.logo-name{font-family:'Playfair Display',serif;font-size:18px;color:#fff}
+.logo-tag{font-size:11px;color:#9CBFAB;margin-top:-2px}
+.hdr-right{display:flex;align-items:center;gap:12px}
+.api-wrap{display:flex;align-items:center;gap:8px}
+.api-wrap label{font-size:12px;color:#9CBFAB}
+#apiKey{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:6px;padding:5px 10px;font-size:13px;width:220px;font-family:'DM Sans',sans-serif}
+#apiKey::placeholder{color:rgba(255,255,255,.35)}
+#apiKey:focus{outline:none;border-color:rgba(255,255,255,.5)}
+.ubadge{display:flex;align-items:center;gap:8px;padding:5px 10px;background:rgba(255,255,255,.1);border-radius:8px;border:1px solid rgba(255,255,255,.15)}
+.uavatar{width:26px;height:26px;border-radius:6px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff}
+.uname{font-size:13px;font-weight:500;color:#fff}
+.urole{font-size:10px;color:#9CBFAB;text-transform:uppercase;letter-spacing:.5px}
+.out-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#9CBFAB;border-radius:7px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
+.out-btn:hover{background:rgba(255,255,255,.2);color:#fff}
+
+/* ══ STUDENT HEADER ══ */
+.student-header-bar{background:var(--gd);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
+.stu-badge{background:rgba(156,191,171,.25);border:1px solid rgba(156,191,171,.4);border-radius:8px;padding:5px 12px;display:flex;align-items:center;gap:8px}
+.stu-name{font-size:13px;font-weight:600;color:#fff}
+.stu-roll{font-size:11px;color:#9CBFAB}
+
+/* ══ TABS ══ */
+.tabs{background:var(--wh);border-bottom:1px solid var(--g200);padding:0 24px;display:flex}
+.tab{padding:14px 20px;border:none;background:none;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;color:var(--g500);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;display:flex;align-items:center;gap:7px}
+.tab.active{color:var(--green);border-bottom-color:var(--green)}
+.tab:hover:not(.active){color:var(--g700)}
+.tab-badge{font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;min-width:18px;text-align:center}
+.tab-badge.amber{background:var(--abg);color:var(--amber)}
+.tab-badge.admin{background:var(--abg);color:var(--amber)}
+
+.main{max-width:940px;margin:0 auto;padding:28px 20px}
+.panel{display:none}.panel.active{display:block}
+
+/* ══ CARDS ══ */
+.card{background:var(--wh);border-radius:var(--rl);border:1px solid var(--g200);padding:24px;margin-bottom:20px}
+.card-title{font-family:'Playfair Display',serif;font-size:17px;color:var(--g900);margin-bottom:4px}
+.card-sub{font-size:13px;color:var(--g500);margin-bottom:20px}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg label{font-size:12px;font-weight:600;color:var(--g600);text-transform:uppercase;letter-spacing:.5px}
+.fg input,.fg select{border:1px solid var(--g200);border-radius:var(--r);padding:9px 12px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--g800);background:var(--g50);transition:border .15s}
+.fg input:focus,.fg select:focus{outline:none;border-color:var(--green);background:var(--wh)}
+.fg textarea{border:1px solid var(--g200);border-radius:var(--r);padding:9px 12px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--g800);background:var(--g50);resize:vertical;min-height:70px;line-height:1.5}
+.fg textarea:focus{outline:none;border-color:var(--green);background:var(--wh)}
+.frow{display:grid;gap:14px;margin-bottom:16px}
+.fr2{grid-template-columns:1fr 1fr}
+.fr3{grid-template-columns:2fr 1fr 1fr}
+
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:var(--r);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;border:none;transition:all .18s}
+.btn-p{background:var(--green);color:#fff}.btn-p:hover{background:var(--gl)}.btn-p:disabled{background:var(--g400);cursor:not-allowed}
+.btn-s{background:var(--wh);color:var(--g700);border:1px solid var(--g300)}.btn-s:hover{background:var(--g50)}
+.btn-d{background:var(--rbg);color:var(--red);border:1px solid #FCA5A5}.btn-d:hover{background:#FEE2E2}
+.btn-amber{background:var(--abg);color:var(--amber);border:1px solid #FCD34D}.btn-amber:hover{background:#FDE68A}
+.btn-purple{background:var(--pbg);color:var(--purple);border:1px solid #C4B5FD}.btn-purple:hover{background:#EDE9FE}
+.btn-sm{padding:6px 12px;font-size:13px}
+.btn-ico{width:32px;height:32px;padding:0;justify-content:center;border-radius:8px}
+
+/* ══ UPLOAD ══ */
+.upload-pair{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.uzone{border:2px dashed var(--g300);border-radius:var(--rl);padding:26px 20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--g50)}
+.uzone:hover,.uzone.drag{border-color:var(--green);background:var(--gbg)}
+.uzone-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin:0 auto 9px}
+.ui-qp{background:var(--bbg)}.ui-ans{background:var(--gbg)}
+.uzone-title{font-weight:600;font-size:14px;color:var(--g700);margin-bottom:3px}
+.uzone-sub{font-size:12px;color:var(--g500)}
+.tpills{margin-top:8px;display:flex;gap:4px;justify-content:center}
+.tp{font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px}
+.tp-pdf{background:var(--rbg);color:var(--red)}.tp-docx{background:var(--bbg);color:var(--blue)}
+.fprev{margin-top:10px;background:var(--wh);border:1px solid var(--g200);border-radius:8px;padding:10px 12px;text-align:left}
+.fpr{display:flex;align-items:center;gap:8px}
+.ficon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
+.fi-pdf{background:var(--rbg);color:var(--red)}.fi-docx{background:var(--bbg);color:var(--blue)}.fi-img{background:var(--pbg);color:var(--purple)}
+.fn{flex:1;font-size:13px;color:var(--g700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fsz{font-size:11px;color:var(--g400)}
+.fst{font-size:11px;margin-top:5px;padding-left:36px}
+.fst-ok{color:#166534}.fst-l{color:var(--blue)}.fst-e{color:var(--red)}
+.pspin{display:inline-block;width:12px;height:12px;border:2px solid #BFDBFE;border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:4px}
+
+.szone{border:2px dashed var(--g300);border-radius:var(--rl);padding:36px;text-align:center;cursor:pointer;transition:all .2s;background:var(--g50)}
+.szone:hover,.szone.drag{border-color:var(--green);background:var(--gbg)}
+.flist{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.fi-row{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--wh);border:1px solid var(--g200);border-radius:8px}
+.fi-name{flex:1;font-size:13px;color:var(--g700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ══ PAPER GRID ══ */
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:12px;margin-bottom:20px}
+.pc{background:var(--wh);border:1.5px solid var(--g200);border-radius:var(--r);padding:14px;cursor:pointer;transition:all .2s}
+.pc:hover{border-color:var(--green);box-shadow:0 0 0 3px var(--gbg)}
+.pc.sel{border-color:var(--green);background:var(--gbg)}
+.pc-name{font-weight:600;font-size:14px;color:var(--g800)}
+.pc-sub{font-size:12px;color:var(--g500);margin-top:2px}
+.pc-marks{font-size:12px;font-weight:500;color:var(--green);margin-top:6px}
+.pc-tags{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.ptag{font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;background:var(--g100);color:var(--g600)}
+
+/* ══ STATUS BAR ══ */
+.sbar{display:none;align-items:center;gap:12px;padding:14px 18px;background:var(--bbg);border:1px solid #BFDBFE;border-radius:var(--r);margin-bottom:16px}
+.sbar.on{display:flex}
+.spin{width:18px;height:18px;border:2px solid #BFDBFE;border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.stxt{font-size:14px;color:var(--blue)}
+
+/* ══ RESULT HEADER ══ */
+.rhdr{border-radius:var(--rl);padding:24px;color:#fff;margin-bottom:20px}
+.rhdr.preliminary{background:linear-gradient(135deg,#1e40af,#1D4ED8)}
+.rhdr.validated{background:linear-gradient(135deg,var(--gd),var(--green))}
+.rhdr.pending{background:linear-gradient(135deg,#78350f,var(--amber))}
+.rhdr-title{font-family:'Playfair Display',serif;font-size:20px;margin-bottom:3px}
+.rhdr-meta{font-size:13px;opacity:.8;margin-bottom:4px}
+.status-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;margin-bottom:16px;background:rgba(255,255,255,.2)}
+.score-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.sn{font-size:44px;font-weight:700;line-height:1}.sd{font-size:17px;opacity:.7}
+.spct,.gb{background:rgba(255,255,255,.2);border-radius:8px;padding:5px 13px;font-size:19px;font-weight:700}
+.prog{margin-top:14px;background:rgba(255,255,255,.2);border-radius:4px;height:6px}
+.prog-fill{height:100%;background:#fff;border-radius:4px;transition:width 1s}
+
+/* ══ Q RESULT CARDS ══ */
+.qr{background:var(--wh);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:10px;overflow:hidden}
+.qr-hdr{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;cursor:pointer;user-select:none}
+.qr-hdr:hover{background:var(--g50)}
+.qr-lbl{display:flex;align-items:center;gap:10px;font-weight:600;font-size:14px;color:var(--g800);flex:1;min-width:0}
+.qr-lbl span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qs{font-weight:700;font-size:14px;padding:3px 11px;border-radius:20px;flex-shrink:0}
+.qs-full{background:#DCFCE7;color:#166534}.qs-part{background:#FEF9C3;color:#854D0E}.qs-low{background:#FEE2E2;color:#991B1B}
+.qr-body{padding:0 18px;max-height:0;overflow:hidden;transition:max-height .3s,padding .2s}
+.qr-body.open{max-height:1000px;padding:16px 18px}
+.fb{margin-bottom:12px}
+.fb-lbl{font-size:11px;font-weight:600;color:var(--g500);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.fb-body{font-size:14px;color:var(--g700);line-height:1.65}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.tag{font-size:12px;padding:3px 10px;border-radius:20px;font-weight:500}
+.tag-s{background:#DCFCE7;color:#166534}.tag-i{background:#FEF9C3;color:#854D0E}
+.chev{transition:transform .2s;flex-shrink:0}.chev.open{transform:rotate(180deg)}
+.ofb{background:var(--gbg);border:1px solid var(--gmid);border-radius:var(--r);padding:16px;margin-top:20px}
+.ofb-t{font-weight:700;color:var(--gd);margin-bottom:8px;display:flex;align-items:center;gap:7px;font-size:14px}
+.ofb-b{font-size:14px;color:var(--g700);line-height:1.7}
+
+/* ══ VALIDATION REQUEST BOX ══ */
+.val-request-box{border:2px solid var(--purple);border-radius:var(--rl);padding:22px;background:var(--pbg);margin-top:20px}
+.val-request-title{font-weight:700;color:var(--purple);font-size:15px;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.val-request-sub{font-size:13px;color:var(--g600);margin-bottom:16px}
+.pending-notice{border:2px solid var(--amber);border-radius:var(--rl);padding:18px 22px;background:var(--abg);margin-top:20px;display:flex;align-items:center;gap:14px}
+.pending-icon{width:40px;height:40px;background:rgba(217,119,6,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pending-title{font-weight:700;color:var(--amber);font-size:14px;margin-bottom:2px}
+.pending-sub{font-size:13px;color:#92400E}
+.validated-notice{border:2px solid var(--green);border-radius:var(--rl);padding:18px 22px;background:var(--gbg);margin-top:20px;display:flex;align-items:center;gap:14px}
+.validated-icon{width:40px;height:40px;background:rgba(27,107,58,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.validated-title{font-weight:700;color:var(--green);font-size:14px;margin-bottom:2px}
+.validated-sub{font-size:13px;color:var(--gd)}
+
+/* ══ VALIDATION QUEUE ══ */
+.vq-item{background:var(--wh);border:1.5px solid var(--g200);border-radius:var(--r);padding:18px;margin-bottom:12px;transition:border-color .2s}
+.vq-item:hover{border-color:var(--purple);box-shadow:0 0 0 3px var(--pbg)}
+.vq-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.vq-student{font-weight:600;font-size:15px;color:var(--g800)}
+.vq-roll{font-size:12px;color:var(--g500);margin-top:1px}
+.vq-paper{font-size:13px;color:var(--g600);margin-top:4px}
+.vq-score{text-align:right}
+.vq-score-num{font-size:18px;font-weight:700;color:var(--blue)}
+.vq-score-label{font-size:11px;color:var(--g400)}
+.vq-time{font-size:12px;color:var(--g400);margin-top:2px}
+
+/* ══ FACULTY REVIEW MODAL ══ */
+#reviewModal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-start;justify-content:center;z-index:9999;padding:20px;overflow-y:auto}
+#reviewModal.show{display:flex}
+.rmodal{background:var(--wh);border-radius:18px;width:100%;max-width:720px;margin:auto}
+.rmodal-hdr{padding:22px 24px 16px;border-bottom:1px solid var(--g200);display:flex;align-items:center;justify-content:space-between}
+.rmodal-title{font-family:'Playfair Display',serif;font-size:18px;color:var(--g900)}
+.rmodal-body{padding:24px;max-height:70vh;overflow-y:auto}
+.rmodal-foot{padding:16px 24px;border-top:1px solid var(--g200);display:flex;gap:10px;justify-content:flex-end}
+.q-edit{background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:16px;margin-bottom:12px}
+.q-edit-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.q-edit-label{font-weight:600;font-size:14px;color:var(--g800)}
+.q-marks-edit{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--g600)}
+.q-marks-edit input{width:60px;border:1px solid var(--g300);border-radius:6px;padding:4px 8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;color:var(--g800);text-align:center}
+.q-marks-edit input:focus{outline:none;border-color:var(--green)}
+.ai-mark{font-size:12px;color:var(--g400);margin-left:4px}
+
+/* ══ MISC ══ */
+.user-table{width:100%;border-collapse:collapse;font-size:14px}
+.user-table th{text-align:left;font-size:12px;font-weight:600;color:var(--g500);text-transform:uppercase;letter-spacing:.5px;padding:8px 12px;border-bottom:1px solid var(--g200)}
+.user-table td{padding:10px 12px;border-bottom:1px solid var(--g100);color:var(--g700)}
+.user-table tr:last-child td{border-bottom:none}
+.role-tag{font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px}
+.rt-admin{background:var(--abg);color:var(--amber)}.rt-teacher{background:var(--gbg);color:var(--gd)}
+.empty{text-align:center;padding:48px 24px;color:var(--g400)}
+.empty svg{width:44px;height:44px;margin-bottom:12px;opacity:.4}
+.alrt{padding:12px 16px;border-radius:var(--r);font-size:13px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.alrt-e{background:var(--rbg);border:1px solid #FCA5A5;color:var(--red)}
+.alrt-s{background:#DCFCE7;border:1px solid #86EFAC;color:#166534}
+.divider{height:1px;background:var(--g200);margin:20px 0}
+.st{font-family:'Playfair Display',serif;font-size:16px;color:var(--g800);margin-bottom:14px}
+.flex-bw{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.arow{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+.info-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+.info-box{background:var(--g100);border-radius:8px;padding:10px 16px;flex:1;min-width:110px}
+.info-box-label{font-size:11px;font-weight:600;color:var(--g500);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+.info-box-val{font-size:15px;font-weight:600;color:var(--g800)}
+
+/* ══ FREE TIER ══ */
+.free-banner{background:linear-gradient(135deg,#1e3a5f,#1D4ED8);border-radius:var(--rl);padding:18px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.free-banner-left{display:flex;align-items:center;gap:12px}
+.free-icon{width:38px;height:38px;background:rgba(255,255,255,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.free-label{font-size:11px;font-weight:700;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px}
+.free-title{font-size:14px;font-weight:600;color:#fff}
+.free-slots{display:flex;align-items:center;gap:8px}
+.slot-dot{width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.4)}
+.slot-dot.used{background:rgba(255,255,255,.35);border-color:rgba(255,255,255,.35)}
+.slot-dot.avail{background:#fff;border-color:#fff}
+.slot-dot.empty{background:transparent}
+.free-slots-txt{font-size:13px;color:rgba(255,255,255,.8)}
+
+.limit-wall{background:linear-gradient(135deg,#1e3a5f 0%,#1D4ED8 100%);border-radius:var(--rl);padding:36px 28px;text-align:center;margin-top:16px}
+.limit-icon{width:56px;height:56px;background:rgba(255,255,255,.15);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+.limit-title{font-family:'Playfair Display',serif;font-size:22px;color:#fff;margin-bottom:8px}
+.limit-sub{font-size:14px;color:rgba(255,255,255,.75);line-height:1.7;margin-bottom:24px;max-width:380px;margin-left:auto;margin-right:auto}
+.limit-used{display:flex;justify-content:center;gap:10px;margin-bottom:24px}
+.limit-slot{width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:20px}
+.limit-slot.used{background:rgba(255,255,255,.1);opacity:.5}
+.unlock-box{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:var(--r);padding:16px 20px;margin-bottom:16px;text-align:left}
+.unlock-title{font-weight:700;color:#fff;font-size:14px;margin-bottom:8px;display:flex;align-items:center;gap:7px}
+.unlock-feature{font-size:13px;color:rgba(255,255,255,.75);display:flex;align-items:center;gap:7px;margin-bottom:4px}
+.btn-upgrade{background:#fff;color:var(--blue);font-weight:700;border:none;border-radius:var(--r);padding:12px 28px;font-family:'DM Sans',sans-serif;font-size:15px;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+.btn-upgrade:hover{background:#EFF6FF;transform:translateY(-1px)}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════ LANDING ══════════════════════ -->
+<div id="landingScreen">
+  <div class="landing-wrap">
+    <div class="landing-logo">
+      <div class="landing-mark">
+        <svg width="30" height="30" viewBox="0 0 30 30" fill="none"><path d="M15 3L18 10.5H26L20 15L22.5 23L15 18.5L7.5 23L10 15L4 10.5H12L15 3Z" fill="#9CBFAB"/><path d="M15 7L17 12H21.5L18 14.5L19.5 19.5L15 17L10.5 19.5L12 14.5L8.5 12H13L15 7Z" fill="white"/></svg>
+      </div>
+      <div>
+        <div class="landing-appname">ArivuPro Academy</div>
+        <div class="landing-apptag">AI Script Corrector</div>
+      </div>
+    </div>
+    <div class="landing-heading">Who are you signing in as?</div>
+    <div class="landing-cards">
+      <div class="lcard" onclick="showStudentEntry()">
+        <div class="lcard-icon student">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="13" cy="9" r="5" stroke="#9CBFAB" stroke-width="1.8" fill="none"/><path d="M3 22c0-5 4.5-9 10-9s10 4 10 9" stroke="#9CBFAB" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>
+        </div>
+        <div class="lcard-title">I'm a Student</div>
+        <div class="lcard-sub">Submit your answer script and get instant AI feedback</div>
+      </div>
+      <div class="lcard" onclick="showLoginModal()">
+        <div class="lcard-icon staff">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><rect x="4" y="3" width="18" height="20" rx="3" stroke="rgba(255,255,255,.7)" stroke-width="1.8" fill="none"/><path d="M8 10h10M8 14h10M8 18h6" stroke="rgba(255,255,255,.7)" stroke-width="1.6" stroke-linecap="round"/><circle cx="20" cy="20" r="4" fill="rgba(255,255,255,.15)" stroke="rgba(255,255,255,.7)" stroke-width="1.5"/><path d="M18.5 20l1 1 2-2" stroke="rgba(255,255,255,.7)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="lcard-title">Staff Login</div>
+        <div class="lcard-sub">Admin & teachers — manage papers, grade and validate</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ LOGIN MODAL ══════════════════════ -->
+<div id="loginModal">
+  <div class="lbox">
+    <div class="lbox-title">Staff Sign In</div>
+    <div class="lbox-sub">Enter your username and password to continue</div>
+    <div class="lerr" id="loginErr">Incorrect username or password.</div>
+    <div class="lfg"><label>Username</label><input type="text" id="loginUser" placeholder="Your username" autocomplete="username"/></div>
+    <div class="lfg"><label>Password</label><input type="password" id="loginPass" placeholder="Your password" autocomplete="current-password"/></div>
+    <button class="login-btn" onclick="doLogin()">Sign In</button>
+    <button class="login-cancel" onclick="hideLoginModal()">← Back</button>
+  </div>
+</div>
+
+<!-- ══════════════════════ STUDENT ENTRY ══════════════════════ -->
+<div id="studentEntry">
+  <div class="sentry-box">
+    <button class="sentry-back" onclick="hideStudentEntry()">← Back</button>
+    <div class="sentry-title">Student Portal</div>
+    <div class="sentry-sub">Enter your details to submit your answer script</div>
+    <div class="lfg"><label>Full Name</label><input type="text" id="stuName" placeholder="e.g. Priya Sharma"/></div>
+    <div class="lfg"><label>Roll Number / Student ID</label><input type="text" id="stuRoll" placeholder="e.g. AP-2024-042"/></div>
+    <div id="stuEntryErr" style="display:none;color:var(--red);font-size:13px;margin-bottom:12px"></div>
+    <button class="login-btn" onclick="enterStudentApp()" style="margin-top:4px">Continue →</button>
+  </div>
+</div>
+
+<!-- ══════════════════════ REVIEW MODAL ══════════════════════ -->
+<div id="reviewModal">
+  <div class="rmodal">
+    <div class="rmodal-hdr">
+      <div>
+        <div class="rmodal-title" id="rmTitle">Validate Submission</div>
+        <div style="font-size:13px;color:var(--g500);margin-top:2px" id="rmSub">Review AI scores and adjust if needed</div>
+      </div>
+      <button class="btn btn-s btn-sm" onclick="closeReview()">✕ Close</button>
+    </div>
+    <div class="rmodal-body" id="rmBody"></div>
+    <div class="rmodal-foot">
+      <button class="btn btn-s" onclick="closeReview()">Cancel</button>
+      <button class="btn btn-p" onclick="approveValidation()">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="#fff" stroke-width="1.3"/><path d="M4.5 7l2 2 3-3" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/></svg>
+        Approve &amp; Validate
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ APP SHELL ══════════════════════ -->
+<div id="appShell" style="display:none">
+  <div class="header">
+    <div class="logo">
+      <div class="logo-mark"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2L12.4 7.5H18L13.5 11.1L15.3 17L10 13.5L4.7 17L6.5 11.1L2 7.5H7.6L10 2Z" fill="#9CBFAB"/><path d="M10 5L11.5 8.5H15L12 10.8L13 14L10 12.1L7 14L8 10.8L5 8.5H8.5L10 5Z" fill="white"/></svg></div>
+      <div><div class="logo-name">ArivuPro Academy</div><div class="logo-tag">AI Script Corrector</div></div>
+    </div>
+    <div class="hdr-right">
+      <div class="api-wrap"><label>Gemini API Key</label><input type="password" id="apiKey" placeholder="AIza..."/></div>
+      <div class="ubadge">
+        <div class="uavatar" id="hdrAv">?</div>
+        <div><div class="uname" id="hdrName">User</div><div class="urole" id="hdrRole">—</div></div>
+      </div>
+      <button class="out-btn" onclick="doLogout()">Sign out</button>
+    </div>
+  </div>
+  <div class="tabs" id="staffTabs">
+    <button class="tab active" onclick="switchTab('queue')" id="tab-queue" style="display:none">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M7.5 5v3l2 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      Validation Queue
+      <span class="tab-badge amber" id="queueBadge" style="display:none">0</span>
+    </button>
+    <button class="tab" onclick="switchTab('grade')" id="tab-grade">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M3 2h7l3 3v8H3V2z" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M10 2v3h3" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M5 8h5M5 10.5h3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      Grade Script
+    </button>
+    <button class="tab" onclick="switchTab('results')" id="tab-results">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 10l4-4 3 3 5-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+      Results
+    </button>
+    <button class="tab" onclick="switchTab('papers')" id="tab-papers" style="display:none">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><rect x="2" y="2" width="11" height="3" rx="1" fill="currentColor" opacity=".4"/><rect x="2" y="6.5" width="11" height="3" rx="1" fill="currentColor" opacity=".7"/><rect x="2" y="11" width="6" height="2" rx="1" fill="currentColor"/></svg>
+      Paper Bank
+      <span class="tab-badge admin">Admin</span>
+    </button>
+    <button class="tab" onclick="switchTab('users')" id="tab-users" style="display:none">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="5" r="3" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M1.5 13.5c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" fill="none"/></svg>
+      Users
+      <span class="tab-badge admin">Admin</span>
+    </button>
+  </div>
+  <div class="main">
+
+    <!-- VALIDATION QUEUE -->
+    <div class="panel" id="panel-queue">
+      <div class="card">
+        <div class="flex-bw">
+          <div><div class="card-title">Validation Queue</div><div class="card-sub" style="margin-bottom:0">Student submissions awaiting faculty review</div></div>
+        </div>
+      </div>
+      <div id="queueList"></div>
+      <div id="queueEmpty" class="empty" style="display:none">
+        <svg viewBox="0 0 44 44" fill="none"><circle cx="22" cy="22" r="17" stroke="currentColor" stroke-width="1.8"/><path d="M22 14v8l5 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <p style="font-size:15px">Queue is empty</p>
+        <span style="font-size:13px">No pending validation requests right now</span>
+      </div>
+    </div>
+
+    <!-- GRADE (Staff manual grading) -->
+    <div class="panel" id="panel-grade">
+      <div class="card">
+        <div class="card-title">Grade a Student Script</div>
+        <div class="card-sub">Select a paper, enter student details and upload their scanned answer script</div>
+        <div class="st">1. Select Paper</div>
+        <div id="gradeGrid" class="pgrid" style="margin-bottom:20px"></div>
+        <div id="gradeEmpty" class="empty" style="display:none;padding:20px 0"><p style="font-size:14px">No papers available — add papers in Paper Bank first</p></div>
+        <div class="divider"></div>
+        <div class="st">2. Student Details</div>
+        <div class="frow fr2" style="margin-bottom:0">
+          <div class="fg"><label>Student Name</label><input id="sName" placeholder="e.g. Priya Sharma"/></div>
+          <div class="fg"><label>Roll No / Student ID</label><input id="sRoll" placeholder="e.g. AP-2024-042"/></div>
+        </div>
+        <div class="divider"></div>
+        <div class="st">3. Upload Answer Script</div>
+        <div class="szone" id="sZone" onclick="document.getElementById('sInput').click()">
+          <div style="width:42px;height:42px;background:var(--gbg);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 3v11M6 8l5-5 5 5" stroke="#1B6B3A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 16v1a2 2 0 002 2h12a2 2 0 002-2v-1" stroke="#1B6B3A" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+          <div style="font-weight:600;color:var(--g700);margin-bottom:3px">Click or drag &amp; drop student answer script</div>
+          <div style="font-size:13px;color:var(--g500)">PDF, JPG, PNG, WEBP · Multiple files for multi-page scripts</div>
+          <div style="margin-top:10px;display:inline-flex;align-items:center;gap:6px;background:var(--abg);border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;font-size:12px;color:var(--amber);font-weight:500">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5.5" stroke="currentColor" stroke-width="1.2"/><path d="M6.5 4.5v3M6.5 9v.3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            Recommended: PDF under 3MB for best results · Compress at ilovepdf.com if larger
+          </div>
+        </div>
+        <input type="file" id="sInput" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style="display:none"/>
+        <div class="flist" id="sFlist"></div>
+        <div class="divider"></div>
+        <div id="gradeAlrt"></div>
+        <div class="sbar" id="gradeSt"><div class="spin"></div><div class="stxt" id="stxt">Analysing...</div></div>
+        <button class="btn btn-p" id="gradeBtn" onclick="runGrading('staff')" style="width:100%;justify-content:center;padding:13px;font-size:15px">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#fff" stroke-width="1.5"/><path d="M5.5 8l2 2 3-3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Grade This Script
+        </button>
+      </div>
+    </div>
+
+    <!-- STAFF RESULTS -->
+    <div class="panel" id="panel-results">
+      <div id="staffResultsOut">
+        <div class="empty" style="padding:60px 24px"><svg viewBox="0 0 44 44" fill="none"><path d="M6 34l12-12 8 8 16-20" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg><p style="font-size:15px">No results yet</p><span style="font-size:13px">Grade a script to see results here</span></div>
+      </div>
+    </div>
+
+    <!-- PAPER BANK -->
+    <div class="panel" id="panel-papers">
+      <div class="card">
+        <div class="flex-bw">
+          <div><div class="card-title">Paper Bank</div><div class="card-sub" style="margin-bottom:0">Manage question papers and suggested answers</div></div>
+          <button class="btn btn-p" onclick="openPaperForm()"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1.5v10M1.5 6.5h10" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>Add Paper</button>
+        </div>
+      </div>
+      <div id="bankGrid" class="pgrid"></div>
+      <div id="bankEmpty" class="empty" style="display:none"><svg viewBox="0 0 44 44" fill="none"><rect x="6" y="4" width="28" height="36" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M12 16h20M12 22h20M12 28h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><p style="font-size:15px">No papers yet</p></div>
+      <div class="card" id="paperForm" style="display:none">
+        <div class="flex-bw">
+          <div class="card-title" id="paperFormTitle">Upload New Paper</div>
+          <button class="btn btn-d btn-sm" id="delPaperBtn" style="display:none" onclick="deletePaper()">Delete Paper</button>
+        </div>
+        <div class="card-sub">Enter details then upload question paper and suggested answers</div>
+        <div class="frow fr3">
+          <div class="fg"><label>Paper Name</label><input id="pName" placeholder="e.g. FA Mock 1 – June 2025"/></div>
+          <div class="fg"><label>Subject / Exam</label><input id="pSubj" placeholder="e.g. ACCA F3"/></div>
+          <div class="fg"><label>Total Marks</label><input id="pMarks" type="number" placeholder="100" min="1"/></div>
+        </div>
+        <div class="divider"></div>
+        <div class="st">Upload Documents</div>
+        <div class="upload-pair">
+          <div>
+            <p style="font-size:13px;font-weight:600;color:var(--g600);margin-bottom:8px">Question Paper</p>
+            <div class="uzone" id="qpZone" onclick="document.getElementById('qpInput').click()">
+              <div class="uzone-icon ui-qp"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 2h9l4 4v12H4V2z" stroke="#1D4ED8" stroke-width="1.5" fill="none"/><path d="M13 2v4h4" stroke="#1D4ED8" stroke-width="1.5" fill="none"/><path d="M7 10h6M7 13h4" stroke="#1D4ED8" stroke-width="1.3" stroke-linecap="round"/></svg></div>
+              <div class="uzone-title">Upload Question Paper</div><div class="uzone-sub">Click or drag &amp; drop</div>
+              <div class="tpills"><span class="tp tp-pdf">PDF</span><span class="tp tp-docx">DOCX</span></div>
+            </div>
+            <input type="file" id="qpInput" accept=".pdf,.docx" style="display:none"/>
+            <div id="qpPrev"></div>
+          </div>
+          <div>
+            <p style="font-size:13px;font-weight:600;color:var(--g600);margin-bottom:8px">Suggested Answers</p>
+            <div class="uzone" id="ansZone" onclick="document.getElementById('ansInput').click()">
+              <div class="uzone-icon ui-ans"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 2h9l4 4v12H4V2z" stroke="#1B6B3A" stroke-width="1.5" fill="none"/><path d="M13 2v4h4" stroke="#1B6B3A" stroke-width="1.5" fill="none"/><path d="M7 9l2 2 4-4M7 13h6" stroke="#1B6B3A" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+              <div class="uzone-title">Upload Suggested Answers</div><div class="uzone-sub">Click or drag &amp; drop</div>
+              <div class="tpills"><span class="tp tp-pdf">PDF</span><span class="tp tp-docx">DOCX</span></div>
+            </div>
+            <input type="file" id="ansInput" accept=".pdf,.docx" style="display:none"/>
+            <div id="ansPrev"></div>
+          </div>
+        </div>
+        <div id="paperFormAlrt"></div>
+        <div class="arow">
+          <button class="btn btn-p" onclick="savePaper()">Save Paper</button>
+          <button class="btn btn-s" onclick="closePaperForm()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- USERS -->
+    <div class="panel" id="panel-users">
+      <!-- API Key config card -->
+      <div class="card" style="border:2px solid var(--green);background:var(--gbg)">
+        <div class="flex-bw" style="margin-bottom:4px">
+          <div>
+            <div class="card-title" style="font-size:16px;display:flex;align-items:center;gap:8px">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" stroke="#1B6B3A" stroke-width="1.4"/><path d="M6 9.5l2 2 4-4" stroke="#1B6B3A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              OpenRouter API Key
+              <span style="font-size:11px;font-weight:700;background:#DCFCE7;color:#166534;padding:2px 8px;border-radius:10px">FREE</span>
+            </div>
+            <div class="card-sub" style="margin-bottom:0;color:var(--gd)">Set once — powers all AI grading for students and staff. 100% free via Google AI Studio.</div>
+          </div>
+          <span id="apiKeyStatus" style="font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;background:#DCFCE7;color:#166534;display:none;flex-shrink:0">✓ Saved</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-end">
+          <div class="fg" style="flex:1;margin-bottom:0">
+            <label>API Key</label>
+            <input type="password" id="adminApiKeyInput" placeholder="sk-or-..." style="font-family:monospace;font-size:13px"/>
+          </div>
+          <button class="btn btn-p" onclick="saveApiKey()" style="flex-shrink:0;height:40px;align-self:flex-end">Save Key</button>
+          <button class="btn btn-s" id="toggleKeyBtn" onclick="toggleShowKey()" style="flex-shrink:0;height:40px;align-self:flex-end">Show</button>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:var(--g500)">🔒 Stored in browser localStorage. Never sent anywhere except directly to OpenRouter's API.</div>
+      </div>
+      <div class="card">
+        <div class="flex-bw">
+          <div><div class="card-title">User Management</div><div class="card-sub" style="margin-bottom:0">Manage admin and teacher accounts</div></div>
+          <button class="btn btn-p" onclick="openUserForm()"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1.5v10M1.5 6.5h10" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>Add User</button>
+        </div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table class="user-table"><thead><tr><th>Username</th><th>Role</th><th>Created</th><th></th></tr></thead><tbody id="usersTbody"></tbody></table>
+      </div>
+      <!-- Guest quota reset tool -->
+      <div class="card">
+        <div class="card-title" style="font-size:15px">Reset Student Free Quota</div>
+        <div class="card-sub" style="margin-bottom:14px">Allow a student to submit more scripts by resetting their 2-evaluation free limit</div>
+        <div class="frow fr2" style="margin-bottom:0;align-items:flex-end">
+          <div class="fg"><label>Student Roll Number</label><input id="resetRoll" placeholder="e.g. AP-2024-042"/></div>
+          <button class="btn btn-amber" onclick="resetStudentQuota()" style="height:40px;align-self:flex-end">Reset Quota</button>
+        </div>
+        <div id="resetAlrt" style="margin-top:10px"></div>
+      </div>
+      <div class="card" id="userForm" style="display:none">
+        <div class="card-title">Add New User</div><div class="card-sub">Create a login account for admin or teacher</div>
+        <div class="frow fr2">
+          <div class="fg"><label>Username</label><input id="uUsername" placeholder="e.g. teacher_priya"/></div>
+          <div class="fg"><label>Role</label><select id="uRole"><option value="teacher">Teacher</option><option value="admin">Admin</option></select></div>
+        </div>
+        <div class="frow fr2" style="margin-bottom:0">
+          <div class="fg"><label>Password</label><input type="password" id="uPass" placeholder="Set a password"/></div>
+          <div class="fg"><label>Confirm Password</label><input type="password" id="uPassConf" placeholder="Re-enter password"/></div>
+        </div>
+        <div id="userFormAlrt" style="margin-top:14px"></div>
+        <div class="arow" style="margin-top:16px">
+          <button class="btn btn-p" onclick="saveUser()">Save User</button>
+          <button class="btn btn-s" onclick="closeUserForm()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════ STUDENT APP ══════════════════════ -->
+<div id="studentApp" style="display:none">
+  <div class="student-header-bar">
+    <div class="logo">
+      <div class="logo-mark"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2L12.4 7.5H18L13.5 11.1L15.3 17L10 13.5L4.7 17L6.5 11.1L2 7.5H7.6L10 2Z" fill="#9CBFAB"/><path d="M10 5L11.5 8.5H15L12 10.8L13 14L10 12.1L7 14L8 10.8L5 8.5H8.5L10 5Z" fill="white"/></svg></div>
+      <div><div class="logo-name">ArivuPro Academy</div><div class="logo-tag">AI Script Corrector</div></div>
+    </div>
+    <div class="hdr-right">
+      <div class="stu-badge"><div><div class="stu-name" id="stuHdrName">Student</div><div class="stu-roll" id="stuHdrRoll">—</div></div></div>
+      <button class="out-btn" onclick="exitStudentApp()">← Exit</button>
+    </div>
+  </div>
+  <div class="main" style="max-width:800px">
+
+    <!-- Step 1: Select paper + upload -->
+    <div id="stuSubmitPanel">
+
+      <!-- Free tier usage banner -->
+      <div class="free-banner" id="freeBanner">
+        <div class="free-banner-left">
+          <div class="free-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2l1.8 5.5H17l-4.5 3.3 1.7 5.2L10 13l-4.2 3 1.7-5.2L3 7.5h5.2L10 2z" fill="rgba(255,255,255,.85)"/></svg></div>
+          <div><div class="free-label">Free Plan</div><div class="free-title" id="freeTitleTxt">2 of 2 evaluations remaining</div></div>
+        </div>
+        <div class="free-slots" id="freeSlotsDots"></div>
+      </div>
+
+      <!-- Limit wall — shown when quota exhausted -->
+      <div class="limit-wall" id="limitWall" style="display:none">
+        <div class="limit-icon"><svg width="28" height="28" viewBox="0 0 28 28" fill="none"><path d="M14 3l2.5 7.5H24L18 14.5l2.4 7.5L14 18l-6.4 4 2.4-7.5L4 10.5h7.5L14 3z" fill="rgba(255,255,255,.85)"/></svg></div>
+        <div class="limit-title">Free Evaluations Used Up</div>
+        <div class="limit-sub">You've used both your free AI evaluations. Upgrade to continue submitting scripts, get priority faculty validation, and unlock detailed performance analytics.</div>
+        <div class="limit-used" id="limitSlotIcons">
+          <div class="limit-slot used">✓</div><div class="limit-slot used">✓</div>
+        </div>
+        <div class="unlock-box">
+          <div class="unlock-title"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5C5.07 1.5 3.5 3.07 3.5 5v1H3a1 1 0 00-1 1v5a1 1 0 001 1h8a1 1 0 001-1V7a1 1 0 00-1-1h-.5V5C10.5 3.07 8.93 1.5 7 1.5z" stroke="#fff" stroke-width="1.2" fill="none"/></svg>Unlock with Pro Plan</div>
+          <div class="unlock-feature"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="rgba(255,255,255,.5)" stroke-width="1.2"/><path d="M4 6.5l2 2 3-3" stroke="rgba(255,255,255,.85)" stroke-width="1.3" stroke-linecap="round"/></svg>Unlimited script evaluations</div>
+          <div class="unlock-feature"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="rgba(255,255,255,.5)" stroke-width="1.2"/><path d="M4 6.5l2 2 3-3" stroke="rgba(255,255,255,.85)" stroke-width="1.3" stroke-linecap="round"/></svg>Priority faculty validation</div>
+          <div class="unlock-feature"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="rgba(255,255,255,.5)" stroke-width="1.2"/><path d="M4 6.5l2 2 3-3" stroke="rgba(255,255,255,.85)" stroke-width="1.3" stroke-linecap="round"/></svg>Detailed performance analytics</div>
+          <div class="unlock-feature"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="rgba(255,255,255,.5)" stroke-width="1.2"/><path d="M4 6.5l2 2 3-3" stroke="rgba(255,255,255,.85)" stroke-width="1.3" stroke-linecap="round"/></svg>Full history of all past submissions</div>
+        </div>
+        <button class="btn-upgrade" onclick="contactUpgrade()">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M7.5 1.5l1.7 5H14l-4.2 3 1.6 5-3.9-2.8-3.9 2.8 1.6-5-4.2-3h4.8z" fill="currentColor"/></svg>
+          Contact Admin to Upgrade
+        </button>
+        <div style="margin-top:12px;font-size:12px;color:rgba(255,255,255,.45)">Already a Pro user? Sign in via Staff Login on the home screen</div>
+      </div>
+
+      <!-- Actual form (hidden when limit hit) -->
+      <div id="stuFormContent">
+        <div class="card">
+          <div class="card-title">Submit Your Answer Script</div>
+          <div class="card-sub">Select the exam paper, upload your scanned script and get instant AI feedback</div>
+
+          <div class="st">1. Select Paper</div>
+          <div id="stuPaperGrid" class="pgrid" style="margin-bottom:20px"></div>
+          <div id="stuPaperEmpty" class="empty" style="display:none;padding:20px 0"><p style="font-size:14px">No papers available — please check with your admin</p></div>
+
+          <div class="divider"></div>
+          <div class="st">2. Upload Your Answer Script</div>
+          <div class="szone" id="stuZone" onclick="document.getElementById('stuInput').click()">
+            <div style="width:42px;height:42px;background:var(--gbg);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 3v11M6 8l5-5 5 5" stroke="#1B6B3A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 16v1a2 2 0 002 2h12a2 2 0 002-2v-1" stroke="#1B6B3A" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+            <div style="font-weight:600;color:var(--g700);margin-bottom:3px">Click or drag &amp; drop your answer script</div>
+            <div style="font-size:13px;color:var(--g500)">PDF, JPG, PNG, WEBP · Upload multiple pages if needed</div>
+            <div style="margin-top:10px;display:inline-flex;align-items:center;gap:6px;background:var(--abg);border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;font-size:12px;color:var(--amber);font-weight:500">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5.5" stroke="currentColor" stroke-width="1.2"/><path d="M6.5 4.5v3M6.5 9v.3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+              Keep PDF under 3MB for best results · Compress at ilovepdf.com if larger
+            </div>
+          </div>
+          <input type="file" id="stuInput" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style="display:none"/>
+          <div class="flist" id="stuFlist"></div>
+
+          <div class="divider"></div>
+          <div id="stuSubmitAlrt"></div>
+          <div class="sbar" id="stuGradeSt"><div class="spin"></div><div class="stxt" id="stuStxt">AI examiner is reading your script...</div></div>
+          <button class="btn btn-p" id="stuSubmitBtn" onclick="runStudentGrading()" style="width:100%;justify-content:center;padding:14px;font-size:16px">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#fff" stroke-width="1.5"/><path d="M5.5 8l2 2 3-3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Get AI Feedback
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Results + validation request -->
+    <div id="stuResultPanel" style="display:none">
+      <div id="stuResultOut"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ═══ DATA ═══════════════════════════════════════════════════════════════════ */
+var currentUser = null;
+var stuInfo = null; // { name, roll }
+var papers = [], users = [], submissions = [];
+var guestCounts = {}; // { [rollKey]: number }
+var FREE_LIMIT = 2;
+var staffScriptFiles = [], stuScriptFiles = [];
+var staffSelPaper = null, stuSelPaper = null;
+var editPaperId = null, formQP = null, formAns = null;
+var reviewingSubId = null;
+
+function load(){
+  try{ papers = JSON.parse(localStorage.getItem('ap_papers3')||'[]'); }catch(e){ papers=[]; }
+  try{ users = JSON.parse(localStorage.getItem('ap_users')||'[]'); }catch(e){ users=[]; }
+  try{ submissions = JSON.parse(localStorage.getItem('ap_submissions')||'[]'); }catch(e){ submissions=[]; }
+  try{ guestCounts = JSON.parse(localStorage.getItem('ap_guest_counts')||'{}'); }catch(e){ guestCounts={}; }
+  if(!users.length){ users=[{username:'admin',password:'Admin@123',role:'admin',created:Date.now()}]; saveUsers(); }
+}
+function saveUsers(){ localStorage.setItem('ap_users',JSON.stringify(users)); }
+function savePapers(){ try{ localStorage.setItem('ap_papers3',JSON.stringify(papers)); }catch(e){ alert('Storage full.'); } }
+function saveSubs(){ try{ localStorage.setItem('ap_submissions',JSON.stringify(submissions)); }catch(e){ alert('Storage full.'); } }
+function saveGuestCounts(){ localStorage.setItem('ap_guest_counts',JSON.stringify(guestCounts)); }
+
+function getGuestKey(roll){ return (roll||'').toLowerCase().replace(/\s+/g,'_'); }
+function getGuestUsed(roll){ return guestCounts[getGuestKey(roll)]||0; }
+function getGuestRemaining(roll){ return Math.max(0, FREE_LIMIT - getGuestUsed(roll)); }
+function incrementGuest(roll){ var k=getGuestKey(roll); guestCounts[k]=(guestCounts[k]||0)+1; saveGuestCounts(); }
+
+/* ═══ SESSION PERSISTENCE ═══ */
+function saveStaffSession(username, tab){
+  sessionStorage.setItem('ap_staff_user', username);
+  if(tab) sessionStorage.setItem('ap_staff_tab', tab);
+}
+function saveStudentSession(){
+  if(stuInfo) sessionStorage.setItem('ap_stu_info', JSON.stringify(stuInfo));
+}
+function saveStudentResult(subId){
+  sessionStorage.setItem('ap_stu_result', subId);
+  sessionStorage.setItem('ap_stu_view', 'result');
+}
+function saveStudentView(view){
+  sessionStorage.setItem('ap_stu_view', view);
+}
+function clearStaffSession(){
+  sessionStorage.removeItem('ap_staff_user');
+  sessionStorage.removeItem('ap_staff_tab');
+}
+function clearStudentSession(){
+  sessionStorage.removeItem('ap_stu_info');
+  sessionStorage.removeItem('ap_stu_result');
+  sessionStorage.removeItem('ap_stu_view');
+}
+
+function restoreSession(){
+  // Try staff session first
+  var staffUser = sessionStorage.getItem('ap_staff_user');
+  if(staffUser){
+    var u = users.find(function(x){ return x.username===staffUser; });
+    if(u){
+      currentUser = u;
+      document.getElementById('landingScreen').style.display = 'none';
+      document.getElementById('appShell').style.display = 'block';
+      document.getElementById('hdrAv').textContent = u.username.slice(0,2).toUpperCase();
+      document.getElementById('hdrName').textContent = u.username;
+      document.getElementById('hdrRole').textContent = u.role.charAt(0).toUpperCase()+u.role.slice(1);
+      if(u.role==='admin'){ document.getElementById('tab-papers').style.display='flex'; document.getElementById('tab-users').style.display='flex'; }
+      document.getElementById('tab-queue').style.display = 'flex';
+      loadApiKeyUI();
+      var tab = sessionStorage.getItem('ap_staff_tab') || 'queue';
+      switchTab(tab);
+      renderQueueBadge();
+      return;
+    }
+  }
+  // Try student session
+  var stuSaved = sessionStorage.getItem('ap_stu_info');
+  if(stuSaved){
+    try{
+      stuInfo = JSON.parse(stuSaved);
+      document.getElementById('landingScreen').style.display = 'none';
+      document.getElementById('stuHdrName').textContent = stuInfo.name;
+      document.getElementById('stuHdrRoll').textContent = stuInfo.roll;
+      document.getElementById('studentApp').style.display = 'block';
+      renderStuPapers();
+      updateFreeUI();
+      var view = sessionStorage.getItem('ap_stu_view');
+      var subId = sessionStorage.getItem('ap_stu_result');
+      if(view==='result' && subId){
+        var sub = submissions.find(function(s){ return s.id===subId; });
+        if(sub){
+          document.getElementById('stuSubmitPanel').style.display = 'none';
+          document.getElementById('stuResultPanel').style.display = 'block';
+          renderStudentResult(sub);
+          return;
+        }
+      }
+    } catch(e){ clearStudentSession(); }
+  }
+}
+
+/* ═══ LANDING ═══ */
+function showStudentEntry(){ document.getElementById('landingScreen').style.display='none'; document.getElementById('studentEntry').classList.add('show'); }
+function hideStudentEntry(){ document.getElementById('studentEntry').classList.remove('show'); document.getElementById('landingScreen').style.display='flex'; }
+function showLoginModal(){ document.getElementById('landingScreen').style.display='none'; document.getElementById('loginModal').classList.add('show'); }
+function hideLoginModal(){ document.getElementById('loginModal').classList.remove('show'); document.getElementById('landingScreen').style.display='flex'; }
+
+function enterStudentApp(){
+  var name = document.getElementById('stuName').value.trim();
+  var roll = document.getElementById('stuRoll').value.trim();
+  var err = document.getElementById('stuEntryErr');
+  if(!name){ err.textContent='Please enter your full name.'; err.style.display='block'; return; }
+  if(!roll){ err.textContent='Please enter your roll number.'; err.style.display='block'; return; }
+  err.style.display='none';
+  stuInfo = { name: name, roll: roll };
+  saveStudentSession();
+  document.getElementById('studentEntry').classList.remove('show');
+  document.getElementById('stuHdrName').textContent = name;
+  document.getElementById('stuHdrRoll').textContent = roll;
+  document.getElementById('studentApp').style.display='block';
+  renderStuPapers();
+  updateFreeUI();
+}
+
+function updateFreeUI(){
+  if(!stuInfo) return;
+  var used = getGuestUsed(stuInfo.roll);
+  var remaining = getGuestRemaining(stuInfo.roll);
+  var isLimited = remaining <= 0;
+
+  // Banner text
+  var titleEl = document.getElementById('freeTitleTxt');
+  if(titleEl) titleEl.textContent = isLimited
+    ? 'Free limit reached ('+FREE_LIMIT+'/'+FREE_LIMIT+' used)'
+    : remaining + ' of ' + FREE_LIMIT + ' free evaluation' + (remaining===1?'':'s') + ' remaining';
+
+  // Slot dots
+  var dotsEl = document.getElementById('freeSlotsDots');
+  if(dotsEl){
+    var html='';
+    for(var i=0;i<FREE_LIMIT;i++){
+      html+='<div class="slot-dot '+(i<used?'used':'avail')+'"></div>';
+    }
+    html+='<span class="free-slots-txt" style="margin-left:4px">'+(isLimited?'Used up':''+remaining+' left')+'</span>';
+    dotsEl.innerHTML=html;
+  }
+
+  // Show wall or form
+  var wall = document.getElementById('limitWall');
+  var form = document.getElementById('stuFormContent');
+  var banner = document.getElementById('freeBanner');
+  if(isLimited){
+    if(wall) wall.style.display='block';
+    if(form) form.style.display='none';
+    if(banner) banner.style.display='none'; // banner replaced by wall
+  } else {
+    if(wall) wall.style.display='none';
+    if(form) form.style.display='block';
+    if(banner) banner.style.display='flex';
+  }
+}
+
+function contactUpgrade(){
+  alert('Please contact your ArivuPro Academy admin to upgrade your account to Pro.\n\nYour Roll Number: '+(stuInfo?stuInfo.roll:'—'));
+}
+
+function exitStudentApp(){
+  document.getElementById('studentApp').style.display='none';
+  document.getElementById('stuSubmitPanel').style.display='block';
+  document.getElementById('stuResultPanel').style.display='none';
+  stuScriptFiles=[]; stuSelPaper=null;
+  document.getElementById('stuFlist').innerHTML='';
+  document.getElementById('landingScreen').style.display='flex';
+  stuInfo=null;
+  clearStudentSession();
+}
+
+/* ═══ AUTH ═══ */
+document.getElementById('loginPass').addEventListener('keydown',function(e){ if(e.key==='Enter') doLogin(); });
+document.getElementById('loginUser').addEventListener('keydown',function(e){ if(e.key==='Enter') doLogin(); });
+
+function doLogin(){
+  var un=document.getElementById('loginUser').value.trim();
+  var pw=document.getElementById('loginPass').value;
+  var u=users.find(function(x){ return x.username===un && x.password===pw; });
+  if(!u){ document.getElementById('loginErr').classList.add('show'); return; }
+  document.getElementById('loginErr').classList.remove('show');
+  currentUser=u;
+  document.getElementById('loginModal').classList.remove('show');
+  document.getElementById('appShell').style.display='block';
+  document.getElementById('hdrAv').textContent=un.slice(0,2).toUpperCase();
+  document.getElementById('hdrName').textContent=un;
+  document.getElementById('hdrRole').textContent=u.role.charAt(0).toUpperCase()+u.role.slice(1);
+  if(u.role==='admin'){ document.getElementById('tab-papers').style.display='flex'; document.getElementById('tab-users').style.display='flex'; }
+  document.getElementById('tab-queue').style.display='flex';
+  loadApiKeyUI();
+  saveStaffSession(un, 'queue');
+  switchTab('queue');
+  renderQueueBadge();
+}
+
+function doLogout(){
+  currentUser=null;
+  clearStaffSession();
+  document.getElementById('appShell').style.display='none';
+  document.getElementById('tab-papers').style.display='none';
+  document.getElementById('tab-users').style.display='none';
+  document.getElementById('loginUser').value='';
+  document.getElementById('loginPass').value='';
+  switchTab('grade');
+  document.getElementById('landingScreen').style.display='flex';
+}
+
+/* ═══ TABS ═══ */
+function switchTab(n){
+  document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(function(b){ b.classList.remove('active'); });
+  document.getElementById('panel-'+n).classList.add('active');
+  var t=document.getElementById('tab-'+n); if(t) t.classList.add('active');
+  if(n==='papers') renderBank();
+  if(n==='users'){ renderUsers(); loadApiKeyUI(); }
+  if(n==='grade') renderGradeGrid();
+  if(n==='queue') renderQueue();
+  if(currentUser) sessionStorage.setItem('ap_staff_tab', n);
+}
+
+/* ═══ QUEUE BADGE ═══ */
+function renderQueueBadge(){
+  var pending=submissions.filter(function(s){ return s.status==='pending_validation'; }).length;
+  var badge=document.getElementById('queueBadge');
+  if(pending>0){ badge.textContent=pending; badge.style.display='inline-block'; }
+  else { badge.style.display='none'; }
+}
+
+/* ═══ VALIDATION QUEUE ═══ */
+function renderQueue(){
+  var list=document.getElementById('queueList');
+  var empty=document.getElementById('queueEmpty');
+  var pending=submissions.filter(function(s){ return s.status==='pending_validation'; });
+  list.innerHTML='';
+  if(!pending.length){ empty.style.display='block'; return; }
+  empty.style.display='none';
+  pending.forEach(function(s){
+    var paper=papers.find(function(p){ return p.id===s.paperId; });
+    var pct=Math.round((s.aiResult.totalMarks/s.aiResult.maxMarks)*100);
+    var el=document.createElement('div'); el.className='vq-item';
+    el.innerHTML='<div class="vq-top">'
+      +'<div><div class="vq-student">'+esc(s.studentName)+'</div><div class="vq-roll">'+esc(s.studentRoll)+'</div>'
+      +'<div class="vq-paper">'+esc(s.paperName)+' &nbsp;•&nbsp; '+esc(s.paperSubject)+'</div></div>'
+      +'<div class="vq-score"><div class="vq-score-num">'+s.aiResult.totalMarks+'/'+s.aiResult.maxMarks+'</div>'
+      +'<div class="vq-score-label">AI Score ('+pct+'%)</div>'
+      +'<div class="vq-time">'+relTime(s.submittedAt)+'</div></div>'
+      +'</div>'
+      +'<button class="btn btn-purple btn-sm" onclick="openReview(\''+s.id+'\')"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M4 6.5l2 2 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Review &amp; Validate</button>';
+    list.appendChild(el);
+  });
+  renderQueueBadge();
+}
+
+function relTime(ts){
+  var diff=Date.now()-ts;
+  if(diff<60000) return 'Just now';
+  if(diff<3600000) return Math.round(diff/60000)+'m ago';
+  if(diff<86400000) return Math.round(diff/3600000)+'h ago';
+  return Math.round(diff/86400000)+'d ago';
+}
+
+/* ═══ REVIEW MODAL ═══ */
+function openReview(subId){
+  reviewingSubId=subId;
+  var sub=submissions.find(function(s){ return s.id===subId; });
+  if(!sub) return;
+  document.getElementById('rmTitle').textContent='Validate: '+sub.studentName;
+  document.getElementById('rmSub').textContent=sub.paperName+' · '+sub.paperSubject+' · AI Score: '+sub.aiResult.totalMarks+'/'+sub.aiResult.maxMarks;
+  var body='<div style="margin-bottom:16px;font-size:13px;color:var(--g600)">Adjust marks per question if needed. Feedback can also be edited below.</div>';
+  (sub.aiResult.questions||[]).forEach(function(q,i){
+    body+='<div class="q-edit">'
+      +'<div class="q-edit-hdr"><div class="q-edit-label">Q'+(q.qNo||i+1)+': '+esc(q.questionSummary||'Question '+(i+1))+'</div>'
+      +'<div class="q-marks-edit">Marks: <input type="number" id="rm_m_'+i+'" value="'+q.marksAwarded+'" min="0" max="'+q.maxMarks+'" oninput="updateRmTotal()"/> / '+q.maxMarks+' <span class="ai-mark">(AI: '+q.marksAwarded+')</span></div>'
+      +'</div>'
+      +'<div class="fg" style="margin-bottom:0"><label>Feedback</label><textarea id="rm_f_'+i+'" rows="2">'+esc(q.feedback||'')+'</textarea></div>'
+      +'</div>';
+  });
+  body+='<div class="fg"><label>Overall Faculty Feedback</label><textarea id="rm_overall" rows="3">'+esc(sub.aiResult.overallFeedback||'')+'</textarea></div>';
+  body+='<div style="margin-top:14px;padding:12px 16px;background:var(--g50);border-radius:8px;font-size:13px;color:var(--g600)">'
+    +'New Total: <strong id="rmTotalDisplay">'+sub.aiResult.totalMarks+'</strong> / '+sub.aiResult.maxMarks+'</div>';
+  document.getElementById('rmBody').innerHTML=body;
+  document.getElementById('reviewModal').classList.add('show');
+}
+
+function updateRmTotal(){
+  var sub=submissions.find(function(s){ return s.id===reviewingSubId; });
+  if(!sub) return;
+  var total=0;
+  (sub.aiResult.questions||[]).forEach(function(q,i){
+    var inp=document.getElementById('rm_m_'+i);
+    if(inp) total+=parseInt(inp.value)||0;
+  });
+  var el=document.getElementById('rmTotalDisplay'); if(el) el.textContent=total;
+}
+
+function closeReview(){ document.getElementById('reviewModal').classList.remove('show'); reviewingSubId=null; }
+
+function approveValidation(){
+  var sub=submissions.find(function(s){ return s.id===reviewingSubId; });
+  if(!sub) return;
+  var questions=[];
+  (sub.aiResult.questions||[]).forEach(function(q,i){
+    var inp=document.getElementById('rm_m_'+i);
+    var fb=document.getElementById('rm_f_'+i);
+    var marks=inp?Math.min(parseInt(inp.value)||0,q.maxMarks):q.marksAwarded;
+    questions.push(Object.assign({},q,{ marksAwarded: marks, feedback: fb?fb.value:q.feedback }));
+  });
+  var total=questions.reduce(function(s,q){ return s+q.marksAwarded; },0);
+  var overall=document.getElementById('rm_overall');
+  sub.status='validated';
+  sub.finalResult={
+    questions: questions,
+    totalMarks: total,
+    maxMarks: sub.aiResult.maxMarks,
+    percentage: Math.round((total/sub.aiResult.maxMarks)*100),
+    grade: calcGrade(Math.round((total/sub.aiResult.maxMarks)*100)),
+    overallFeedback: overall?overall.value:sub.aiResult.overallFeedback,
+    validatedBy: currentUser.username,
+    validatedAt: Date.now()
+  };
+  saveSubs(); closeReview(); renderQueue(); renderQueueBadge();
+}
+
+function calcGrade(pct){
+  if(pct>=85) return 'A+'; if(pct>=75) return 'A'; if(pct>=65) return 'B+';
+  if(pct>=55) return 'B'; if(pct>=45) return 'C'; if(pct>=35) return 'D'; return 'F';
+}
+
+/* ═══ STUDENT PAPER GRID ═══ */
+function renderStuPapers(){
+  var g=document.getElementById('stuPaperGrid'), e=document.getElementById('stuPaperEmpty');
+  g.innerHTML='';
+  if(!papers.length){ g.style.display='none'; e.style.display='block'; return; }
+  e.style.display='none'; g.style.display='grid';
+  papers.forEach(function(p){
+    var el=document.createElement('div'); el.className='pc'+(stuSelPaper===p.id?' sel':'');
+    el.innerHTML='<div class="pc-name">'+esc(p.name)+'</div><div class="pc-sub">'+esc(p.subject)+'</div><div class="pc-marks">'+p.totalMarks+' marks</div>';
+    el.onclick=function(){ stuSelPaper=p.id; renderStuPapers(); };
+    g.appendChild(el);
+  });
+}
+
+/* ═══ STUDENT SCRIPT UPLOAD ═══ */
+var stuInput=document.getElementById('stuInput'), stuZone=document.getElementById('stuZone');
+stuInput.addEventListener('change',function(e){ addStuFiles(e.target.files); stuInput.value=''; });
+stuZone.addEventListener('dragover',function(e){ e.preventDefault(); stuZone.classList.add('drag'); });
+stuZone.addEventListener('dragleave',function(){ stuZone.classList.remove('drag'); });
+stuZone.addEventListener('drop',function(e){ e.preventDefault(); stuZone.classList.remove('drag'); addStuFiles(e.dataTransfer.files); });
+
+function addStuFiles(files){
+  for(var i=0;i<files.length;i++){
+    if(stuScriptFiles.length>=10){ showA('stuSubmitAlrt','Max 10 files.','e'); break; }
+    stuScriptFiles.push(files[i]);
+  }
+  renderStuList();
+}
+
+function rmStuFile(i){ stuScriptFiles.splice(i,1); renderStuList(); }
+
+function renderStuList(){
+  var list=document.getElementById('stuFlist'); list.innerHTML='';
+  stuScriptFiles.forEach(function(f,i){
+    var ip=f.type==='application/pdf';
+    var el=document.createElement('div'); el.className='fi-row';
+    el.innerHTML='<div class="ficon '+(ip?'fi-pdf':'fi-img')+'">'+(ip?'PDF':'IMG')+'</div>'
+      +'<span class="fi-name">'+esc(f.name)+'</span>'
+      +'<span class="fsz">'+fmtSz(f.size)+'</span>'
+      +'<button class="btn btn-sm btn-ico" onclick="rmStuFile('+i+')"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>';
+    list.appendChild(el);
+  });
+}
+
+/* ═══ STUDENT GRADING ═══ */
+async function runStudentGrading(){
+  var apiKey=getStoredApiKey();
+  clearA('stuSubmitAlrt');
+  if(!apiKey) return showA('stuSubmitAlrt','No API key configured. Please ask your admin to set the API key in Settings.','e');
+  if(!stuSelPaper) return showA('stuSubmitAlrt','Please select a paper.','e');
+  if(!stuScriptFiles.length) return showA('stuSubmitAlrt','Please upload your answer script.','e');
+
+  // Free tier quota check
+  if(getGuestRemaining(stuInfo.roll) <= 0){
+    updateFreeUI(); return;
+  }
+
+  var paper=papers.find(function(p){ return p.id===stuSelPaper; });
+  if(!paper) return showA('stuSubmitAlrt','Paper not found.','e');
+
+  var btn=document.getElementById('stuSubmitBtn'), st=document.getElementById('stuGradeSt');
+  btn.disabled=true; st.classList.add('on');
+  var steps=['Reading your answer script...','Comparing with marking scheme...','Scoring your answers...','Writing personalised feedback...','Almost done...'];
+  var si=0;
+  var ticker=setInterval(function(){ document.getElementById('stuStxt').textContent=steps[Math.min(si++,steps.length-1)]; },5000);
+
+  try{
+    var result=await callGradingAPI(apiKey, paper, stuInfo.name, stuInfo.roll, stuScriptFiles);
+    result.studentName=stuInfo.name; result.studentRoll=stuInfo.roll;
+    result.paperName=paper.name; result.paperSubject=paper.subject;
+    // Deduct from free quota
+    incrementGuest(stuInfo.roll);
+    // Save submission
+    var sub={ id:Date.now().toString(), studentName:stuInfo.name, studentRoll:stuInfo.roll,
+      paperId:paper.id, paperName:paper.name, paperSubject:paper.subject,
+      submittedAt:Date.now(), status:'preliminary', aiResult:result, finalResult:null };
+    submissions.push(sub);
+    saveSubs();
+    renderQueueBadge();
+    saveStudentResult(sub.id);
+    // Show result
+    document.getElementById('stuSubmitPanel').style.display='none';
+    document.getElementById('stuResultPanel').style.display='block';
+    renderStudentResult(sub);
+  } catch(err){
+    showA('stuSubmitAlrt','Error: '+err.message,'e');
+  } finally {
+    clearInterval(ticker); btn.disabled=false; st.classList.remove('on');
+  }
+}
+
+function renderStudentResult(sub){
+  var r=sub.aiResult;
+  var pct=r.percentage||Math.round((r.totalMarks/r.maxMarks)*100);
+  var html=buildResultHTML(r,'preliminary');
+  // Validation section
+  if(sub.status==='preliminary'){
+    html+='<div class="val-request-box">'
+      +'<div class="val-request-title"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M6 8l2 2 4-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Get Faculty Validation</div>'
+      +'<div class="val-request-sub">This is your AI preliminary score. Would you like a teacher to review and officially validate your result? Your submission will be added to the faculty review queue.</div>'
+      +'<button class="btn btn-purple" onclick="requestValidation(\''+sub.id+'\')"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1.5v5M7 1.5l-2.5 2.5M7 1.5l2.5 2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M1.5 8v4h11V8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Request Faculty Validation</button>'
+      +'</div>';
+  } else if(sub.status==='pending_validation'){
+    html+='<div class="pending-notice"><div class="pending-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.5" stroke="#D97706" stroke-width="1.5"/><path d="M10 6v5l3 2" stroke="#D97706" stroke-width="1.5" stroke-linecap="round"/></svg></div>'
+      +'<div><div class="pending-title">Validation Request Sent</div><div class="pending-sub">Your script has been sent to the faculty queue. You\'ll receive the validated result once a teacher reviews it.</div></div></div>';
+  } else if(sub.status==='validated' && sub.finalResult){
+    html+='<div class="validated-notice"><div class="validated-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.5" stroke="#1B6B3A" stroke-width="1.5"/><path d="M6.5 10l3 3 4.5-5" stroke="#1B6B3A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>'
+      +'<div><div class="validated-title">Faculty Validated ✓</div><div class="validated-sub">Validated by '+esc(sub.finalResult.validatedBy)+' · Final score: '+sub.finalResult.totalMarks+'/'+sub.finalResult.maxMarks+'</div></div></div>';
+    html+=buildResultHTML(sub.finalResult,'validated');
+  }
+  html+='<div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap">'
+    +'<button class="btn btn-p" onclick="window.print()"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="3" y="1" width="8" height="5" rx="1" stroke="#fff" stroke-width="1.3" fill="none"/><path d="M1 6h12v5H1V6z" stroke="#fff" stroke-width="1.3" fill="none"/></svg>Print / Save PDF</button>'
+    +'<button class="btn btn-s" onclick="submitAnother()">Submit Another Script</button>'
+    +'</div>';
+  document.getElementById('stuResultOut').innerHTML=html;
+}
+
+
+function requestValidation(subId){
+  var sub=submissions.find(function(s){ return s.id===subId; });
+  if(!sub) return;
+  sub.status='pending_validation';
+  saveSubs();
+  renderStudentResult(sub);
+  renderQueueBadge();
+}
+
+function submitAnother(){
+  stuScriptFiles=[]; stuSelPaper=null;
+  document.getElementById('stuFlist').innerHTML='';
+  document.getElementById('stuResultPanel').style.display='none';
+  document.getElementById('stuSubmitPanel').style.display='block';
+  saveStudentView('submit');
+  renderStuPapers();
+  updateFreeUI();
+}
+
+/* ═══ STAFF GRADING ═══ */
+function renderGradeGrid(){
+  var g=document.getElementById('gradeGrid'), e=document.getElementById('gradeEmpty');
+  g.innerHTML='';
+  if(!papers.length){ g.style.display='none'; e.style.display='block'; return; }
+  e.style.display='none'; g.style.display='grid';
+  papers.forEach(function(p){
+    var el=document.createElement('div'); el.className='pc'+(staffSelPaper===p.id?' sel':'');
+    el.innerHTML='<div class="pc-name">'+esc(p.name)+'</div><div class="pc-sub">'+esc(p.subject)+'</div><div class="pc-marks">'+p.totalMarks+' marks</div><div class="pc-tags">'+(p.qp?'<span class="ptag">QP</span>':'')+(p.ans?'<span class="ptag">ANS</span>':'')+'</div>';
+    el.onclick=function(){ staffSelPaper=p.id; renderGradeGrid(); };
+    g.appendChild(el);
+  });
+}
+
+var sInput=document.getElementById('sInput'), sZone=document.getElementById('sZone');
+sInput.addEventListener('change',function(e){ addSFiles(e.target.files,'staff'); sInput.value=''; });
+sZone.addEventListener('dragover',function(e){ e.preventDefault(); sZone.classList.add('drag'); });
+sZone.addEventListener('dragleave',function(){ sZone.classList.remove('drag'); });
+sZone.addEventListener('drop',function(e){ e.preventDefault(); sZone.classList.remove('drag'); addSFiles(e.dataTransfer.files,'staff'); });
+
+function addSFiles(files, who){
+  var arr=staffScriptFiles;
+  for(var i=0;i<files.length;i++){
+    if(arr.length>=10){ showA('gradeAlrt','Max 10 files.','e'); break; }
+    arr.push(files[i]);
+  }
+  renderSFlist();
+}
+
+function rmS(i){ staffScriptFiles.splice(i,1); renderSFlist(); }
+
+function renderSFlist(){
+  var list=document.getElementById('sFlist'); list.innerHTML='';
+  staffScriptFiles.forEach(function(f,i){
+    var ip=f.type==='application/pdf';
+    var el=document.createElement('div'); el.className='fi-row';
+    el.innerHTML='<div class="ficon '+(ip?'fi-pdf':'fi-img')+'">'+(ip?'PDF':'IMG')+'</div><span class="fi-name">'+esc(f.name)+'</span><span class="fsz">'+fmtSz(f.size)+'</span>'
+      +'<button class="btn btn-sm btn-ico" onclick="rmS('+i+')"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>';
+    list.appendChild(el);
+  });
+}
+
+async function runGrading(who){
+  var apiKey=getStoredApiKey();
+  var sName=document.getElementById('sName').value.trim();
+  var sRoll=document.getElementById('sRoll').value.trim();
+  clearA('gradeAlrt');
+  if(!apiKey) return showA('gradeAlrt','No API key configured. Go to Users → API Key Settings to save your key.','e');
+  if(!staffSelPaper) return showA('gradeAlrt','Please select a paper.','e');
+  if(!sName) return showA('gradeAlrt','Please enter the student name.','e');
+  if(!staffScriptFiles.length) return showA('gradeAlrt','Please upload the student answer script.','e');
+  var paper=papers.find(function(p){ return p.id===staffSelPaper; });
+  if(!paper) return showA('gradeAlrt','Paper not found.','e');
+  var btn=document.getElementById('gradeBtn'), st=document.getElementById('gradeSt');
+  btn.disabled=true; st.classList.add('on');
+  var steps=['Reading question paper...','Analysing marking scheme...','Reading student handwriting...','Scoring questions...','Writing feedback...'];
+  var si=0;
+  var ticker=setInterval(function(){ document.getElementById('stxt').textContent=steps[Math.min(si++,steps.length-1)]; },5000);
+  try{
+    var result=await callGradingAPI(apiKey,paper,sName,sRoll,staffScriptFiles);
+    result.studentName=sName; result.studentRoll=sRoll; result.paperName=paper.name; result.paperSubject=paper.subject;
+    document.getElementById('staffResultsOut').innerHTML=buildResultHTML(result,'validated')
+      +'<div style="margin-top:20px;display:flex;gap:10px"><button class="btn btn-p" onclick="window.print()">Print / Export PDF</button><button class="btn btn-s" onclick="switchTab(\'grade\')">Grade Another</button></div>';
+    switchTab('results');
+  } catch(err){ showA('gradeAlrt','Error: '+err.message,'e'); }
+  finally{ clearInterval(ticker); btn.disabled=false; st.classList.remove('on'); }
+}
+
+/* ═══ SHARED GRADING API CALL — OpenRouter claude-sonnet-4.5 ═══ */
+async function callGradingAPI(apiKey, paper, sName, sRoll, files){
+
+  var content = [];
+
+  var prompt = 'You are a professional examiner for '+paper.subject+'. You will receive the question paper, suggested answers, and the student\'s handwritten answer script.\n\n'
+    +'PAPER: '+paper.name+'\nSUBJECT: '+paper.subject+'\nTOTAL MARKS: '+paper.totalMarks
+    +'\nSTUDENT: '+sName+(sRoll?' (Roll: '+sRoll+')':'')+'\n\n'
+    +'Instructions:\n'
+    +'- Read the handwriting carefully.\n'
+    +'- Grade each question strictly against the marking scheme.\n'
+    +'- Award partial credit where partial understanding is shown.\n'
+    +'- Be specific in feedback — reference what the student actually wrote.\n\n'
+    +'Return ONLY valid JSON with no markdown, no backticks, no explanation:\n'
+    +'{"questions":[{"qNo":1,"questionSummary":"5-word summary of the question","marksAwarded":0,"maxMarks":0,'
+    +'"feedback":"2-3 sentences referencing the student\'s actual answer",'
+    +'"strengths":["specific thing done well"],"improvements":["specific thing missing or wrong"]}],'
+    +'"totalMarks":0,"maxMarks":'+paper.totalMarks+',"percentage":0,"grade":"A",'
+    +'"overallFeedback":"2-3 holistic sentences of feedback for the student"}';
+
+  content.push({type:'text', text: prompt});
+
+  // Question paper — use file type for PDFs (OpenRouter Claude format)
+  if(paper.qp.dtype==='pdf'){
+    content.push({type:'file', file:{filename:'question-paper.pdf', file_data:'data:application/pdf;base64,'+paper.qp.data}});
+  } else {
+    content.push({type:'text', text:'═══ QUESTION PAPER ═══\n'+paper.qp.data});
+  }
+
+  // Suggested answers
+  if(paper.ans.dtype==='pdf'){
+    content.push({type:'file', file:{filename:'suggested-answers.pdf', file_data:'data:application/pdf;base64,'+paper.ans.data}});
+  } else {
+    content.push({type:'text', text:'═══ SUGGESTED ANSWERS ═══\n'+paper.ans.data});
+  }
+
+  // Student script
+  content.push({type:'text', text:'═══ STUDENT ANSWER SCRIPT ═══'});
+  for(var i=0;i<files.length;i++){
+    var f=files[i], b64=await toB64(f);
+    if(f.type==='application/pdf'){
+      content.push({type:'file', file:{filename:'student-script-'+(i+1)+'.pdf', file_data:'data:application/pdf;base64,'+b64}});
+    } else {
+      content.push({type:'image_url', image_url:{url:'data:'+f.type+';base64,'+b64}});
+    }
+  }
+
+  var requestBody = {
+    model:'anthropic/claude-sonnet-4.5',
+    max_tokens:4096,
+    messages:[{role:'user', content:content}]
+  };
+
+
+  var resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'Authorization':'Bearer '+apiKey,
+      'HTTP-Referer':'https://arivupro.com',
+      'X-OpenRouter-Title':'ArivuPro Script Corrector'
+    },
+    body: JSON.stringify(requestBody)
+  });
+
+
+  if(!resp.ok){
+    var errData=await resp.json().catch(function(){return{};});
+    var msg=(errData.error&&errData.error.message)||'API error '+resp.status;
+    if(resp.status===401) throw new Error('Invalid API key. Check your OpenRouter key in Settings.');
+    if(resp.status===402) throw new Error('OpenRouter credits exhausted. Top up at openrouter.ai/credits');
+    if(resp.status===429) throw new Error('Rate limit reached. Wait a moment and try again.');
+    throw new Error(msg);
+  }
+
+  var data = await resp.json();
+
+  // Handle OpenRouter error body even on 200 OK
+  if(data.error) throw new Error(data.error.message||'OpenRouter error. Check your API key and credits.');
+
+  if(!data.choices || !data.choices.length)
+    throw new Error('No response from model. Raw: '+JSON.stringify(data).slice(0,300));
+
+  var txt = data.choices[0].message && data.choices[0].message.content;
+  if(!txt) throw new Error('Empty response from model. Try again.');
+  if(Array.isArray(txt)) txt = txt.map(function(b){return b.text||'';}).join('');
+
+  var jsonMatch = txt.replace(/```json|```/g,'').trim().match(/\{[\s\S]*\}/);
+  if(!jsonMatch) throw new Error('AI did not return valid JSON. Response: '+txt.slice(0,300));
+  return JSON.parse(jsonMatch[0]);
+}
+
+/* ═══ RESULT HTML BUILDER ═══ */
+function buildResultHTML(r, type){
+  var pct=r.percentage||Math.round((r.totalMarks/r.maxMarks)*100);
+  var gc=pct>=70?'#166534':pct>=50?'#854D0E':'#991B1B';
+  var gbg=pct>=70?'#DCFCE7':pct>=50?'#FEF9C3':'#FEE2E2';
+  var chipLabel=type==='preliminary'?'🤖 AI Preliminary Score':type==='validated'?'✓ Faculty Validated':'⏳ Pending';
+  var hdrClass=type==='preliminary'?'preliminary':type==='validated'?'validated':'pending';
+  var html='<div class="rhdr '+hdrClass+'">'
+    +'<div class="rhdr-title">'+(r.paperName||'')+'</div>'
+    +'<div class="rhdr-meta">'+(r.paperSubject||'')+(r.studentName?' &nbsp;•&nbsp; '+esc(r.studentName):'')+'</div>'
+    +'<div class="status-chip">'+chipLabel+'</div>'
+    +'<div class="score-row"><div style="display:flex;align-items:baseline;gap:4px"><span class="sn">'+r.totalMarks+'</span><span class="sd">/ '+r.maxMarks+'</span></div>'
+    +'<span class="spct">'+pct+'%</span><span class="gb">Grade '+(r.grade||calcGrade(pct))+'</span></div>'
+    +'<div class="prog"><div class="prog-fill" style="width:'+pct+'%"></div></div></div>';
+  html+='<div class="card"><div class="st" style="margin-bottom:14px">Question Breakdown</div>';
+  (r.questions||[]).forEach(function(q,i){
+    var qp=q.maxMarks?(q.marksAwarded/q.maxMarks):0;
+    var sc=qp===1?'qs-full':qp>=0.5?'qs-part':'qs-low';
+    var strs=Array.isArray(q.strengths)?q.strengths:(q.strengths?[q.strengths]:[]);
+    var imps=Array.isArray(q.improvements)?q.improvements:(q.improvements?[q.improvements]:[]);
+    html+='<div class="qr"><div class="qr-hdr" onclick="tQ(this)">'
+      +'<div class="qr-lbl"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="flex-shrink:0"><rect x="2" y="2" width="10" height="10" rx="2" stroke="var(--g300)" stroke-width="1.2"/><path d="M4 7h6M4 4.5h6M4 9.5h3" stroke="var(--g400)" stroke-width="1" stroke-linecap="round"/></svg><span>Q'+(q.qNo||i+1)+': '+esc(q.questionSummary||'Question '+(i+1))+'</span></div>'
+      +'<div style="display:flex;align-items:center;gap:8px"><span class="qs '+sc+'">'+q.marksAwarded+' / '+(q.maxMarks||'?')+'</span>'
+      +'<svg class="chev" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div></div>'
+      +'<div class="qr-body">'
+      +'<div class="fb"><div class="fb-lbl">Feedback</div><div class="fb-body">'+esc(q.feedback||'No feedback.')+'</div></div>'
+      +(strs.length?'<div class="fb"><div class="fb-lbl">Strengths</div><div class="tags">'+strs.map(function(s){return'<span class="tag tag-s">'+esc(s)+'</span>';}).join('')+'</div></div>':'')
+      +(imps.length?'<div class="fb"><div class="fb-lbl">Areas to Improve</div><div class="tags">'+imps.map(function(s){return'<span class="tag tag-i">'+esc(s)+'</span>';}).join('')+'</div></div>':'')
+      +'</div></div>';
+  });
+  html+='</div>';
+  if(r.overallFeedback) html+='<div class="ofb"><div class="ofb-t"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="#1B6B3A" stroke-width="1.5"/><path d="M8 7v4M8 5v.5" stroke="#1B6B3A" stroke-width="1.5" stroke-linecap="round"/></svg>'+(type==='validated'?'Faculty':'AI')+' Feedback</div><div class="ofb-b">'+esc(r.overallFeedback)+'</div></div>';
+  return html;
+}
+
+function tQ(hdr){ var b=hdr.nextElementSibling, c=hdr.querySelector('.chev'); var o=b.classList.toggle('open'); if(c) c.classList.toggle('open',o); }
+
+/* ═══ PAPER BANK ═══ */
+function renderBank(){
+  var g=document.getElementById('bankGrid'), e=document.getElementById('bankEmpty');
+  g.innerHTML='';
+  if(!papers.length){ e.style.display='block'; return; }
+  e.style.display='none';
+  papers.forEach(function(p){
+    var el=document.createElement('div'); el.className='pc';
+    el.innerHTML='<div class="pc-name">'+esc(p.name)+'</div><div class="pc-sub">'+esc(p.subject)+'</div><div class="pc-marks">'+p.totalMarks+' marks</div><div class="pc-tags">'+(p.qp?'<span class="ptag">QP ('+p.qp.ft.toUpperCase()+')</span>':'')+(p.ans?'<span class="ptag">ANS ('+p.ans.ft.toUpperCase()+')</span>':'')+'</div>';
+    el.onclick=function(){ editPaper(p.id); }; g.appendChild(el);
+  });
+}
+
+function openPaperForm(id){ editPaperId=id||null; formQP=null; formAns=null; document.getElementById('qpPrev').innerHTML=''; document.getElementById('ansPrev').innerHTML=''; clearA('paperFormAlrt');
+  if(id){ var p=papers.find(function(x){return x.id===id;}); document.getElementById('paperFormTitle').textContent='Edit Paper'; document.getElementById('pName').value=p.name; document.getElementById('pSubj').value=p.subject; document.getElementById('pMarks').value=p.totalMarks; document.getElementById('delPaperBtn').style.display='inline-flex'; if(p.qp){showExist('qpPrev',p.qp);formQP=p.qp;} if(p.ans){showExist('ansPrev',p.ans);formAns=p.ans;} }
+  else { document.getElementById('paperFormTitle').textContent='Upload New Paper'; document.getElementById('pName').value=''; document.getElementById('pSubj').value=''; document.getElementById('pMarks').value=''; document.getElementById('delPaperBtn').style.display='none'; }
+  document.getElementById('paperForm').style.display='block'; document.getElementById('paperForm').scrollIntoView({behavior:'smooth'}); }
+
+function closePaperForm(){ document.getElementById('paperForm').style.display='none'; editPaperId=null; formQP=null; formAns=null; }
+function editPaper(id){ openPaperForm(id); }
+function deletePaper(){ if(!editPaperId||!confirm('Delete this paper?')) return; papers=papers.filter(function(p){return p.id!==editPaperId;}); savePapers(); renderBank(); closePaperForm(); }
+function showExist(cid,doc){ document.getElementById(cid).innerHTML='<div class="fprev"><div class="fpr"><div class="ficon fi-'+doc.ft+'">'+doc.ft.toUpperCase()+'</div><span class="fn">'+esc(doc.name)+'</span></div><div class="fst fst-ok">✓ Saved</div></div>'; }
+
+function setupZone(inputId,zoneId,prevId,which){
+  var inp=document.getElementById(inputId), zone=document.getElementById(zoneId);
+  inp.addEventListener('change',function(e){ if(e.target.files[0]) processDoc(e.target.files[0],prevId,which); inp.value=''; });
+  zone.addEventListener('dragover',function(e){ e.preventDefault(); zone.classList.add('drag'); });
+  zone.addEventListener('dragleave',function(){ zone.classList.remove('drag'); });
+  zone.addEventListener('drop',function(e){ e.preventDefault(); zone.classList.remove('drag'); if(e.dataTransfer.files[0]) processDoc(e.dataTransfer.files[0],prevId,which); });
+}
+
+async function processDoc(file,prevId,which){
+  var isPdf=file.type==='application/pdf'||file.name.endsWith('.pdf');
+  var isDocx=file.name.endsWith('.docx')||file.type.includes('wordprocessingml');
+  if(!isPdf&&!isDocx){ showA('paperFormAlrt','Please upload a PDF or DOCX file.','e'); return; }
+  var ft=isPdf?'pdf':'docx';
+  var prev=document.getElementById(prevId);
+  prev.innerHTML='<div class="fprev"><div class="fpr"><div class="ficon fi-'+ft+'">'+ft.toUpperCase()+'</div><span class="fn">'+esc(file.name)+'</span><span class="fsz">'+fmtSz(file.size)+'</span></div><div class="fst fst-l"><span class="pspin"></span>Processing...</div></div>';
+  try{
+    var doc;
+    if(isPdf){ var b64=await toB64(file); doc={name:file.name,ft:'pdf',dtype:'pdf',data:b64}; }
+    else { var ab=await file.arrayBuffer(); var res=await mammoth.extractRawText({arrayBuffer:ab}); doc={name:file.name,ft:'docx',dtype:'docx',data:res.value}; }
+    if(which==='qp') formQP=doc; else formAns=doc;
+    var info=isPdf?'(PDF ready)':'(~'+doc.data.split(/\s+/).length+' words)';
+    prev.innerHTML='<div class="fprev"><div class="fpr"><div class="ficon fi-'+ft+'">'+ft.toUpperCase()+'</div><span class="fn">'+esc(file.name)+'</span><span class="fsz">'+fmtSz(file.size)+'</span></div><div class="fst fst-ok">✓ '+info+'</div></div>';
+  } catch(err){
+    prev.innerHTML='<div class="fprev"><div class="fpr"><div class="ficon fi-'+ft+'">'+ft.toUpperCase()+'</div><span class="fn">'+esc(file.name)+'</span></div><div class="fst fst-e">Error: '+esc(err.message)+'</div></div>';
+  }
+}
+
+function savePaper(){
+  var name=document.getElementById('pName').value.trim(), subj=document.getElementById('pSubj').value.trim(), marks=parseInt(document.getElementById('pMarks').value)||0;
+  clearA('paperFormAlrt');
+  if(!name) return showA('paperFormAlrt','Please enter a paper name.','e');
+  if(!subj) return showA('paperFormAlrt','Please enter a subject.','e');
+  if(!marks) return showA('paperFormAlrt','Please enter total marks.','e');
+  if(!formQP) return showA('paperFormAlrt','Please upload the question paper.','e');
+  if(!formAns) return showA('paperFormAlrt','Please upload the suggested answers.','e');
+  var paper={id:editPaperId||Date.now().toString(),name:name,subject:subj,totalMarks:marks,qp:formQP,ans:formAns,created:editPaperId?(papers.find(function(p){return p.id===editPaperId;})||{}).created||Date.now():Date.now()};
+  if(editPaperId) papers=papers.map(function(p){return p.id===editPaperId?paper:p;}); else papers.push(paper);
+  savePapers(); renderBank(); closePaperForm();
+}
+
+/* ═══ USERS ═══ */
+function renderUsers(){
+  var tbody=document.getElementById('usersTbody'); tbody.innerHTML='';
+  users.forEach(function(u,i){
+    var isMe=currentUser&&u.username===currentUser.username;
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td style="font-weight:500">'+esc(u.username)+(isMe?' <span style="font-size:11px;color:var(--g400)">(you)</span>':'')+'</td>'
+      +'<td><span class="role-tag rt-'+u.role+'">'+u.role.charAt(0).toUpperCase()+u.role.slice(1)+'</span></td>'
+      +'<td style="color:var(--g500);font-size:13px">'+new Date(u.created||0).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})+'</td>'
+      +'<td>'+(isMe?'':'<button class="btn btn-d btn-sm" onclick="deleteUser('+i+')">Remove</button>')+'</td>';
+    tbody.appendChild(tr);
+  });
+}
+
+function openUserForm(){ document.getElementById('uUsername').value=''; document.getElementById('uPass').value=''; document.getElementById('uPassConf').value=''; document.getElementById('uRole').value='teacher'; clearA('userFormAlrt'); document.getElementById('userForm').style.display='block'; document.getElementById('userForm').scrollIntoView({behavior:'smooth'}); }
+function closeUserForm(){ document.getElementById('userForm').style.display='none'; }
+function saveUser(){
+  var un=document.getElementById('uUsername').value.trim(), role=document.getElementById('uRole').value, pw=document.getElementById('uPass').value, pw2=document.getElementById('uPassConf').value;
+  clearA('userFormAlrt');
+  if(!un) return showA('userFormAlrt','Please enter a username.','e');
+  if(users.find(function(u){return u.username===un;})) return showA('userFormAlrt','Username already exists.','e');
+  if(!pw) return showA('userFormAlrt','Please enter a password.','e');
+  if(pw.length<6) return showA('userFormAlrt','Password must be at least 6 characters.','e');
+  if(pw!==pw2) return showA('userFormAlrt','Passwords do not match.','e');
+  users.push({username:un,password:pw,role:role,created:Date.now()});
+  saveUsers(); renderUsers(); closeUserForm();
+}
+function deleteUser(i){ if(!confirm('Remove user "'+users[i].username+'"?')) return; users.splice(i,1); saveUsers(); renderUsers(); }
+
+function saveApiKey(){
+  var val=document.getElementById('adminApiKeyInput').value.trim();
+  if(!val) return showA('resetAlrt','Please enter an API key.','e');
+  if(!val.startsWith('sk-')){ showA('resetAlrt','That doesn\'t look like a valid OpenRouter key (should start with sk-or-...).','e'); return; }
+  localStorage.setItem('ap_api_key', val);
+  sessionStorage.setItem('ap_api_key', val);
+  var staffInp=document.getElementById('apiKey'); if(staffInp) staffInp.value=val;
+  var status=document.getElementById('apiKeyStatus'); if(status) status.style.display='inline-block';
+  showA('resetAlrt','API key saved. All grading (students and staff) will now use this key.','s');
+}
+
+function toggleShowKey(){
+  var inp=document.getElementById('adminApiKeyInput');
+  var btn=document.getElementById('toggleKeyBtn');
+  if(!inp||!btn) return;
+  if(inp.type==='password'){ inp.type='text'; btn.textContent='Hide'; }
+  else { inp.type='password'; btn.textContent='Show'; }
+}
+
+function getStoredApiKey(){
+  return localStorage.getItem('ap_api_key')||sessionStorage.getItem('ap_api_key')||'';
+}
+
+function loadApiKeyUI(){
+  var stored=localStorage.getItem('ap_api_key')||sessionStorage.getItem('ap_api_key')||'';
+  if(stored){
+    localStorage.setItem('ap_api_key', stored);
+    sessionStorage.setItem('ap_api_key', stored);
+    var inp=document.getElementById('adminApiKeyInput'); if(inp) inp.value=stored;
+    var staffInp=document.getElementById('apiKey'); if(staffInp) staffInp.value=stored;
+    var status=document.getElementById('apiKeyStatus'); if(status) status.style.display='inline-block';
+  }
+}
+
+function resetStudentQuota(){
+  var roll=document.getElementById('resetRoll').value.trim();
+  clearA('resetAlrt');
+  if(!roll) return showA('resetAlrt','Please enter a roll number.','e');
+  var k=getGuestKey(roll);
+  var prev=guestCounts[k]||0;
+  if(prev===0) return showA('resetAlrt','No usage found for roll number: '+esc(roll)+'. Nothing to reset.','e');
+  delete guestCounts[k];
+  saveGuestCounts();
+  document.getElementById('resetRoll').value='';
+  showA('resetAlrt','Quota reset for '+esc(roll)+'. They can now submit '+FREE_LIMIT+' free evaluations again.','s');
+}
+
+/* ═══ UTILS ═══ */
+function toB64(file){ return new Promise(function(res,rej){ var r=new FileReader(); r.onload=function(){res(r.result.split(',')[1]);}; r.onerror=function(){rej(new Error('Read failed'));}; r.readAsDataURL(file); }); }
+function fmtSz(b){ if(b<1024) return b+'B'; if(b<1048576) return Math.round(b/1024)+'KB'; return (b/1048576).toFixed(1)+'MB'; }
+function esc(s){ if(!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function showA(id,msg,t){ var el=document.getElementById(id); if(!el) return; el.innerHTML='<div class="alrt alrt-'+(t==='e'?'e':'s')+'"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.3"/>'+(t==='e'?'<path d="M7 5v2.5M7 9v.3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>':'<path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>')+'</svg>'+msg+'</div>'; }
+function clearA(id){ var el=document.getElementById(id); if(el) el.innerHTML=''; }
+
+/* ─ Init ─ */
+load();
+loadApiKeyUI();
+setupZone('qpInput','qpZone','qpPrev','qp');
+setupZone('ansInput','ansZone','ansPrev','ans');
+restoreSession();
+</script>
+</body>
+</html>

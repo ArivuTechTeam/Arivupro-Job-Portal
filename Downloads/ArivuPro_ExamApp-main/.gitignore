@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+*venv/
+.venv/
+venv/
+
+# Django
+db.sqlite3
+media/
+staticfiles/
+
+# Environment
+.env
+.env.local
+
+# Firebase service account (NEVER commit this)
+firebase-credentials.json
+*-service-account.json
+
+# IDE
+.idea/
+.vscode/
+
+# Node
+node_modules/
+npm-debug.log
+# React build output
+frontend/build/
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+!.env.example
+!frontend/.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Secrets
+*.pem
+*.key
+*.p12

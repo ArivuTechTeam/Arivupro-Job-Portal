@@ -2,18 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../services/api';
-
-const EXAM_LEVELS = {
-  CA:  ['Foundation', 'Intermediate', 'Final'],
-  CS:  ['Foundation', 'Executive', 'Professional'],
-  CMA: ['Foundation', 'Intermediate', 'Final'],
-};
-
-const EXAM_INFO = {
-  CA:  { label: 'Chartered Accountant',      color: '#16a34a', bg: '#f0fdf4', icon: '📊' },
-  CS:  { label: 'Company Secretary',          color: '#2563eb', bg: '#eff6ff', icon: '⚖️' },
-  CMA: { label: 'Cost Management Accountant', color: '#9333ea', bg: '#faf5ff', icon: '📈' },
-};
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faUser, faAt, faEnvelope, faLock, faEye, faEyeSlash,
+  faMobile, faBuilding, faPencil, faHashtag,
+  faPaperPlane, faCheck, faTriangleExclamation,
+  faMagnifyingGlass, faXmark, faGraduationCap,
+} from '@fortawesome/free-solid-svg-icons';
 
 const INSTITUTES = [
   'ICAI - Ahmedabad', 'ICAI - Bangalore', 'ICAI - Chennai', 'ICAI - Delhi',
@@ -65,6 +60,8 @@ function getStrength(pw) {
 const STRENGTH_LABEL = ['', 'Weak', 'Fair', 'Good', 'Strong', 'Very Strong'];
 const STRENGTH_COLOR = ['', '#ef4444', '#f97316', '#eab308', '#22c55e', '#16a34a'];
 
+const FA_STYLE = { color: '#94a3b8', fontSize: '0.85rem' };
+
 function InstituteSearch({ value, onChange, disabled }) {
   const [query, setQuery] = useState(value || '');
   const [open, setOpen] = useState(false);
@@ -90,7 +87,9 @@ function InstituteSearch({ value, onChange, disabled }) {
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <div style={{ position: 'relative' }}>
-        <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: '1rem', pointerEvents: 'none' }}>🏫</span>
+        <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+          <FontAwesomeIcon icon={faMagnifyingGlass} style={FA_STYLE} />
+        </span>
         <input
           type="text" value={query}
           onChange={e => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); setHighlighted(0); }}
@@ -109,7 +108,9 @@ function InstituteSearch({ value, onChange, disabled }) {
         />
         {query && (
           <button type="button" onClick={() => { setQuery(''); onChange(''); }}
-            style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '1rem' }}>✕</button>
+            style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '0.85rem', display: 'flex', alignItems: 'center' }}>
+            <FontAwesomeIcon icon={faXmark} />
+          </button>
         )}
       </div>
       {open && filtered.length > 0 && (
@@ -117,7 +118,8 @@ function InstituteSearch({ value, onChange, disabled }) {
           {filtered.map((inst, i) => (
             <div key={inst} onMouseDown={() => select(inst)} onMouseEnter={() => setHighlighted(i)}
               style={{ padding: '0.65rem 1rem', cursor: 'pointer', fontSize: '0.875rem', background: i === highlighted ? '#eef2ff' : 'transparent', color: inst === 'Other' ? (i === highlighted ? '#9333ea' : '#7c3aed') : (i === highlighted ? '#4f46e5' : '#374151'), display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: i < filtered.length - 1 ? '1px solid #f8fafc' : 'none', fontWeight: inst === 'Other' ? 600 : 400, fontStyle: inst === 'Other' ? 'italic' : 'normal' }}>
-              <span style={{ fontSize: '0.8rem' }}>{inst === 'Other' ? '✏️' : '🏛️'}</span> {inst}
+              <FontAwesomeIcon icon={inst === 'Other' ? faPencil : faBuilding} style={{ fontSize: '0.75rem', flexShrink: 0 }} />
+              {inst}
             </div>
           ))}
         </div>
@@ -160,8 +162,8 @@ function StepBar({ step, total }) {
         const n = i + 1; const done = step > n; const active = step === n;
         return (
           <React.Fragment key={n}>
-            <div style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, background: done || active ? '#4f46e5' : '#e2e8f0', color: done || active ? '#fff' : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: done ? '0.8rem' : '0.85rem', fontWeight: 700, boxShadow: active ? '0 0 0 4px #c7d2fe' : 'none', transition: 'all 0.3s' }}>
-              {done ? '✓' : n}
+            <div style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, background: done || active ? '#4f46e5' : '#e2e8f0', color: done || active ? '#fff' : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: done ? '0.75rem' : '0.85rem', fontWeight: 700, boxShadow: active ? '0 0 0 4px #c7d2fe' : 'none', transition: 'all 0.3s' }}>
+              {done ? <FontAwesomeIcon icon={faCheck} /> : n}
             </div>
             {i < total - 1 && (
               <div style={{ flex: 1, height: 3, borderRadius: 2, background: step > n ? '#4f46e5' : '#e2e8f0', transition: 'background 0.3s' }} />
@@ -183,7 +185,6 @@ export default function Register() {
   const [formData, setFormData] = useState({
     username: '', email: '', first_name: '', last_name: '',
     password: '', password_confirm: '',
-    exam_type: 'CA', exam_level: 'Foundation',
     phone: '', institute: '', custom_institute: '', registration_number: '',
   });
 
@@ -202,11 +203,7 @@ export default function Register() {
   const isOtherInstitute = formData.institute === 'Other';
 
   const set = (name, value) => {
-    setFormData(prev => {
-      const updated = { ...prev, [name]: value };
-      if (name === 'exam_type') updated.exam_level = EXAM_LEVELS[value][0];
-      return updated;
-    });
+    setFormData(prev => ({ ...prev, [name]: value }));
     setErrors(prev => ({ ...prev, [name]: '' }));
   };
   const handleChange = e => set(e.target.name, e.target.value);
@@ -227,8 +224,6 @@ export default function Register() {
 
   const validateStep2 = () => {
     const e = {};
-    if (!formData.exam_type)  e.exam_type  = 'Required';
-    if (!formData.exam_level) e.exam_level = 'Required';
     if (!formData.phone.trim()) e.phone = 'Mobile number is required';
     else if (!/^\d{10}$/.test(formData.phone.replace(/\s/g, ''))) e.phone = 'Enter a valid 10-digit number';
     if (formData.institute === 'Other' && !formData.custom_institute.trim())
@@ -255,7 +250,6 @@ export default function Register() {
       setOtpSending(false);
     }
   };
-  // sendOtp also used by the Resend button on step 3
 
   useEffect(() => () => clearInterval(timerRef.current), []);
 
@@ -304,7 +298,6 @@ export default function Register() {
         first_name: formData.first_name, last_name: formData.last_name,
         password: formData.password, password_confirm: formData.password_confirm,
         role: 'student',
-        exam_type: formData.exam_type, exam_level: formData.exam_level,
         phone: formData.phone.replace(/\s/g, ''),
         institute: finalInstitute,
         registration_number: formData.registration_number,
@@ -328,7 +321,9 @@ export default function Register() {
 
         {/* Header */}
         <div style={{ background: 'linear-gradient(135deg,#312e81 0%,#4f46e5 60%,#6d28d9 100%)', padding: '1.75rem 2rem 1.5rem', textAlign: 'center' }}>
-          <div style={{ fontSize: '2.2rem', marginBottom: '0.4rem' }}>🎓</div>
+          <div style={{ fontSize: '2.2rem', marginBottom: '0.4rem', color: '#fff' }}>
+            <FontAwesomeIcon icon={faGraduationCap} />
+          </div>
           <h2 style={{ margin: 0, color: '#fff', fontSize: '1.4rem', fontWeight: 800 }}>Create Your Account</h2>
           <p style={{ margin: '0.3rem 0 0', color: 'rgba(255,255,255,0.75)', fontSize: '0.83rem' }}>
             ArivuPro — Score Improvement System for CA / CS / CMA
@@ -346,11 +341,11 @@ export default function Register() {
             <div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 {[
-                  { name: 'first_name', label: 'First Name', placeholder: 'Arjun', icon: '👤' },
-                  { name: 'last_name',  label: 'Last Name',  placeholder: 'Sharma', icon: '👤' },
+                  { name: 'first_name', label: 'First Name', placeholder: 'Arjun' },
+                  { name: 'last_name',  label: 'Last Name',  placeholder: 'Sharma' },
                 ].map(f => (
                   <FieldWrap key={f.name} label={f.label} error={errors[f.name]} required>
-                    <InputIcon icon={f.icon}>
+                    <InputIcon icon={<FontAwesomeIcon icon={faUser} style={FA_STYLE} />}>
                       <input name={f.name} value={formData[f.name]} onChange={handleChange} placeholder={f.placeholder} style={inputStyle(errors[f.name])} />
                     </InputIcon>
                   </FieldWrap>
@@ -358,21 +353,21 @@ export default function Register() {
               </div>
 
               <FieldWrap label="Username" error={errors.username} required mb>
-                <InputIcon icon="@">
+                <InputIcon icon={<FontAwesomeIcon icon={faAt} style={FA_STYLE} />}>
                   <input name="username" value={formData.username} onChange={handleChange} placeholder="e.g. arjun_sharma" style={inputStyle(errors.username)} />
                 </InputIcon>
               </FieldWrap>
 
               <FieldWrap label="Email Address" error={errors.email} required mb>
-                <InputIcon icon="✉️">
+                <InputIcon icon={<FontAwesomeIcon icon={faEnvelope} style={FA_STYLE} />}>
                   <input name="email" type="email" value={formData.email} onChange={handleChange} placeholder="your@email.com" style={inputStyle(errors.email)} />
                 </InputIcon>
               </FieldWrap>
 
               <FieldWrap label="Password" error={errors.password} required mb>
-                <InputIcon icon="🔒" right={
-                  <button type="button" onClick={() => setShowPw(p => !p)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '1rem' }}>
-                    {showPw ? '🙈' : '👁️'}
+                <InputIcon icon={<FontAwesomeIcon icon={faLock} style={FA_STYLE} />} right={
+                  <button type="button" onClick={() => setShowPw(p => !p)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '0.9rem', display: 'flex', alignItems: 'center' }}>
+                    <FontAwesomeIcon icon={showPw ? faEyeSlash : faEye} />
                   </button>
                 }>
                   <input name="password" type={showPw ? 'text' : 'password'} value={formData.password} onChange={handleChange} placeholder="Min 8 characters" style={inputStyle(errors.password)} />
@@ -390,20 +385,22 @@ export default function Register() {
               </FieldWrap>
 
               <FieldWrap label="Confirm Password" error={errors.password_confirm} required mb>
-                <InputIcon icon="🔒" right={
-                  <button type="button" onClick={() => setShowCpw(p => !p)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '1rem' }}>
-                    {showCpw ? '🙈' : '👁️'}
+                <InputIcon icon={<FontAwesomeIcon icon={faLock} style={FA_STYLE} />} right={
+                  <button type="button" onClick={() => setShowCpw(p => !p)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '0.9rem', display: 'flex', alignItems: 'center' }}>
+                    <FontAwesomeIcon icon={showCpw ? faEyeSlash : faEye} />
                   </button>
                 }>
                   <input name="password_confirm" type={showCpw ? 'text' : 'password'} value={formData.password_confirm} onChange={handleChange} placeholder="Re-enter password" style={inputStyle(errors.password_confirm)} />
                 </InputIcon>
                 {formData.password_confirm && formData.password === formData.password_confirm && (
-                  <p style={{ fontSize: '0.72rem', color: '#16a34a', margin: '3px 0 0', fontWeight: 600 }}>✓ Passwords match</p>
+                  <p style={{ fontSize: '0.72rem', color: '#16a34a', margin: '3px 0 0', fontWeight: 600 }}>
+                    <FontAwesomeIcon icon={faCheck} style={{ marginRight: 4 }} /> Passwords match
+                  </p>
                 )}
               </FieldWrap>
 
               <button type="button" onClick={nextStep} style={primaryBtn}>
-                Continue → Academic Details
+                Continue to Academic Details
               </button>
             </div>
           )}
@@ -411,31 +408,8 @@ export default function Register() {
           {/* Step 2 — Academic Details */}
           {step === 2 && (
             <div>
-              <FieldWrap label="Exam Type" error={errors.exam_type} required mb>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '0.6rem' }}>
-                  {Object.entries(EXAM_INFO).map(([key, info]) => (
-                    <button key={key} type="button" onClick={() => set('exam_type', key)}
-                      style={{ padding: '0.75rem 0.5rem', borderRadius: 12, border: `2px solid ${formData.exam_type === key ? info.color : '#e2e8f0'}`, background: formData.exam_type === key ? info.bg : '#fff', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s' }}>
-                      <div style={{ fontSize: '1.4rem', marginBottom: '0.2rem' }}>{info.icon}</div>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: formData.exam_type === key ? info.color : '#64748b' }}>{key}</div>
-                    </button>
-                  ))}
-                </div>
-              </FieldWrap>
-
-              <FieldWrap label="Exam Level" error={errors.exam_level} required mb>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  {EXAM_LEVELS[formData.exam_type].map(lvl => (
-                    <button key={lvl} type="button" onClick={() => set('exam_level', lvl)}
-                      style={{ padding: '0.5rem 1.1rem', borderRadius: 20, border: `1.5px solid ${formData.exam_level === lvl ? '#4f46e5' : '#e2e8f0'}`, background: formData.exam_level === lvl ? '#4f46e5' : '#fff', color: formData.exam_level === lvl ? '#fff' : '#374151', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>
-                      {lvl}
-                    </button>
-                  ))}
-                </div>
-              </FieldWrap>
-
               <FieldWrap label="Mobile Number" error={errors.phone} required mb>
-                <InputIcon icon="📱">
+                <InputIcon icon={<FontAwesomeIcon icon={faMobile} style={FA_STYLE} />}>
                   <input name="phone" type="tel"
                     value={formData.phone}
                     onChange={e => set('phone', e.target.value.replace(/[^\d\s]/g, ''))}
@@ -454,28 +428,36 @@ export default function Register() {
               <FieldWrap label="College / Institute" mb>
                 <InstituteSearch value={formData.institute} onChange={v => set('institute', v)} />
                 <p style={{ fontSize: '0.72rem', color: '#94a3b8', margin: '4px 0 0' }}>
-                  Start typing to search from {INSTITUTES.length - 1}+ institutes
+                  Optional — start typing to search from {INSTITUTES.length - 1}+ institutes
                 </p>
               </FieldWrap>
 
               {isOtherInstitute && (
                 <FieldWrap label="Institute Name (specify)" error={errors.custom_institute} required mb>
-                  <InputIcon icon="✏️">
+                  <InputIcon icon={<FontAwesomeIcon icon={faPencil} style={FA_STYLE} />}>
                     <input name="custom_institute" value={formData.custom_institute} onChange={handleChange} placeholder="Enter your college or institute name" style={inputStyle(errors.custom_institute)} />
                   </InputIcon>
                 </FieldWrap>
               )}
 
-              <FieldWrap label="Registration Number">
-                <InputIcon icon="🪪">
-                  <input name="registration_number" value={formData.registration_number} onChange={handleChange} placeholder="e.g. CAF/2024/123456" style={inputStyle()} />
+              <FieldWrap label="Registration Number" mb>
+                <InputIcon icon={<FontAwesomeIcon icon={faHashtag} style={FA_STYLE} />}>
+                  <input name="registration_number" value={formData.registration_number} onChange={handleChange} placeholder="e.g. CAF/2024/123456 (optional)" style={inputStyle()} />
                 </InputIcon>
+                <p style={{ fontSize: '0.72rem', color: '#94a3b8', margin: '4px 0 0' }}>Optional</p>
               </FieldWrap>
 
+              {otpError && (
+                <div style={{ background: '#fee2e2', border: '1px solid #fecaca', borderRadius: 8, padding: '0.65rem', textAlign: 'center', color: '#991b1b', fontSize: '0.82rem', marginBottom: '0.75rem' }}>
+                  <FontAwesomeIcon icon={faTriangleExclamation} style={{ marginRight: 6 }} />
+                  {otpError}
+                </div>
+              )}
+
               <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
-                <button type="button" onClick={() => setStep(1)} style={secondaryBtn}>← Back</button>
-                <button type="button" onClick={nextStep} style={{ ...primaryBtn, flex: 1, marginTop: 0 }}>
-                  {otpSending ? <><Spinner /> Sending OTP…</> : 'Continue → Verify Email'}
+                <button type="button" onClick={() => setStep(1)} style={secondaryBtn}>Back</button>
+                <button type="button" onClick={nextStep} style={{ ...primaryBtn, flex: 1, marginTop: 0 }} disabled={otpSending}>
+                  {otpSending ? <><Spinner /> Sending OTP…</> : 'Continue — Verify Email'}
                 </button>
               </div>
             </div>
@@ -485,7 +467,9 @@ export default function Register() {
           {step === 3 && (
             <form onSubmit={handleSubmit}>
               <div style={{ background: 'linear-gradient(135deg,#f0fdf4,#dcfce7)', border: '1.5px solid #86efac', borderRadius: 14, padding: '1.25rem', textAlign: 'center', marginBottom: '1.5rem' }}>
-                <div style={{ fontSize: '2rem', marginBottom: '0.4rem' }}>📧</div>
+                <div style={{ fontSize: '2rem', marginBottom: '0.4rem', color: '#16a34a' }}>
+                  <FontAwesomeIcon icon={faEnvelope} />
+                </div>
                 <p style={{ margin: 0, fontWeight: 700, color: '#15803d', fontSize: '0.95rem' }}>Verification code sent!</p>
                 <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: '#166534' }}>
                   We sent a 6-digit OTP to <strong>{formData.email}</strong>
@@ -507,7 +491,8 @@ export default function Register() {
 
               {otpError && (
                 <div style={{ background: '#fee2e2', border: '1px solid #fecaca', borderRadius: 8, padding: '0.65rem', textAlign: 'center', color: '#991b1b', fontSize: '0.82rem', marginTop: '1rem' }}>
-                  ⚠ {otpError}
+                  <FontAwesomeIcon icon={faTriangleExclamation} style={{ marginRight: 6 }} />
+                  {otpError}
                 </div>
               )}
 
@@ -516,12 +501,16 @@ export default function Register() {
                   ? <p style={{ fontSize: '0.8rem', color: '#4f46e5' }}>Sending OTP…</p>
                   : resendTimer > 0
                     ? <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Resend in {resendTimer}s</p>
-                    : <button type="button" onClick={sendOtp} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#4f46e5', fontSize: '0.82rem', fontWeight: 600 }}>📨 Resend OTP</button>
+                    : (
+                      <button type="button" onClick={sendOtp} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#4f46e5', fontSize: '0.82rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <FontAwesomeIcon icon={faPaperPlane} /> Resend OTP
+                      </button>
+                    )
                 }
               </div>
 
               <div style={{ display: 'flex', gap: '0.75rem' }}>
-                <button type="button" onClick={() => setStep(2)} style={secondaryBtn} disabled={loading}>← Back</button>
+                <button type="button" onClick={() => setStep(2)} style={secondaryBtn} disabled={loading}>Back</button>
                 <button type="submit" disabled={loading || otp.length < 6}
                   style={{
                     ...primaryBtn, flex: 1, marginTop: 0,
@@ -530,7 +519,10 @@ export default function Register() {
                     cursor: otp.length === 6 && !loading ? 'pointer' : 'not-allowed',
                     boxShadow: otp.length === 6 ? '0 4px 14px rgba(22,163,74,0.35)' : 'none',
                   }}>
-                  {loading ? <><Spinner /> Creating account…</> : '✓ Verify & Create Account'}
+                  {loading
+                    ? <><Spinner /> Creating account…</>
+                    : <><FontAwesomeIcon icon={faCheck} style={{ marginRight: 6 }} /> Verify &amp; Create Account</>
+                  }
                 </button>
               </div>
             </form>
@@ -555,7 +547,11 @@ function FieldWrap({ label, error, required, children, mb }) {
         </label>
       )}
       {children}
-      {error && <p style={{ color: '#ef4444', fontSize: '0.72rem', margin: '3px 0 0', fontWeight: 600 }}>⚠ {error}</p>}
+      {error && (
+        <p style={{ color: '#ef4444', fontSize: '0.72rem', margin: '3px 0 0', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <FontAwesomeIcon icon={faTriangleExclamation} /> {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -563,7 +559,7 @@ function FieldWrap({ label, error, required, children, mb }) {
 function InputIcon({ icon, children, right }) {
   return (
     <div style={{ position: 'relative' }}>
-      <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: '0.95rem', pointerEvents: 'none' }}>{icon}</span>
+      <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: '0.85rem', pointerEvents: 'none', display: 'flex', alignItems: 'center' }}>{icon}</span>
       {React.cloneElement(children, {
         style: { ...children.props.style, paddingLeft: '2.2rem', paddingRight: right ? '2.5rem' : undefined },
       })}

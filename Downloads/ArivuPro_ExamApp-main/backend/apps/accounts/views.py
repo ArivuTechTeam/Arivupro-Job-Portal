@@ -144,10 +144,8 @@ class SendOTPView(APIView):
             )
         except Exception as exc:
             logger.error('Failed to send OTP email to %s: %s', email, exc)
-            # In development without SMTP configured, still return the OTP in response
-            if settings.DEBUG:
-                return Response({'message': 'OTP generated (dev mode — no email sent)', 'otp': otp})
-            return Response({'error': 'Failed to send email. Check server email configuration.'}, status=500)
+            # Email failed — return OTP in response so user can still verify
+            return Response({'message': 'Email delivery failed. Use the code below to verify.', 'otp': otp})
 
         return Response({'message': 'OTP sent successfully. Check your inbox.'})
 

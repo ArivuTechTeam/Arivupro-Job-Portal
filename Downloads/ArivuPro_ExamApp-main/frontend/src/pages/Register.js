@@ -255,13 +255,33 @@ export default function Register() {
       setOtpSending(false);
     }
   };
+  // sendOtp also used by the Resend button on step 3
 
   useEffect(() => () => clearInterval(timerRef.current), []);
 
-  const nextStep = () => {
+  const nextStep = async () => {
     if (step === 1 && !validateStep1()) return;
     if (step === 2 && !validateStep2()) return;
-    if (step === 2) sendOtp();
+    if (step === 2) {
+      setOtpSending(true);
+      setOtpError('');
+      try {
+        const res = await authAPI.sendOTP(formData.email);
+        setOtp('');
+        setDevOtp(res.data?.otp || '');
+        setResendTimer(30);
+        clearInterval(timerRef.current);
+        timerRef.current = setInterval(() => {
+          setResendTimer(t => { if (t <= 1) { clearInterval(timerRef.current); return 0; } return t - 1; });
+        }, 1000);
+        setStep(s => s + 1);
+      } catch (err) {
+        setOtpError(err.response?.data?.error || 'Failed to send OTP. Please try again.');
+      } finally {
+        setOtpSending(false);
+      }
+      return;
+    }
     setStep(s => s + 1);
   };
 

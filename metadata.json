@@ -1,0 +1,6 @@
+{
+  "name": "ArivuPro Finance Career Portal",
+  "description": "Exclusive job discovery, AI candidate matching, and application tracking portal for ArivuPro Academy finance, accounting, CA, ACCA, US CPA, and CMA students.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

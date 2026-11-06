@@ -1,9 +1,0 @@
-packages:
-  - "."
-
-allowBuilds:
-  unrs-resolver: true
-
-overrides:
-  nanoid: 3.3.19
-  postcss: 8.5.28

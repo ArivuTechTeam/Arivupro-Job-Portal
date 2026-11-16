@@ -49,7 +49,7 @@ async def fetch() -> list[NormalizedJob]:
     jobs: list[NormalizedJob] = []
 
     for p in placements:
-        if not p.get('_id') or p.get('isActive') is False:
+        if not p.get('_id') or not p.get('isActive'):
             continue
         company = (p.get('name') or '').strip() or 'CA Firm (WIRC)'
         title = (p.get('position') or '').strip() or 'Article Assistant'

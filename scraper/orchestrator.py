@@ -15,6 +15,7 @@ from scraper.dedup import build_fingerprint, is_over_experience_cap
 # Source fetcher registry
 from scraper.sources.caclubindia import fetch as fetch_caclubindia
 from scraper.sources.icai_eirc import fetch as fetch_icai_eirc
+from scraper.sources.icai_nirc import fetch as fetch_icai_nirc
 from scraper.sources.icai_kochi import fetch as fetch_icai_kochi
 from scraper.sources.icai_sirc import fetch as fetch_icai_sirc
 from scraper.sources.icai_wirc import fetch as fetch_icai_wirc
@@ -27,12 +28,15 @@ from scraper.sources.jobspy_source import fetch as fetch_jobspy
 from scraper.sources.apify_multi_board import fetch as fetch_apify_multi_board
 from scraper.sources.apify_google_jobs import fetch as fetch_apify_google_jobs
 from scraper.sources.apify_career_sites import fetch as fetch_apify_career_sites
+from scraper.sources.greenhouse import fetch as fetch_greenhouse
+from scraper.sources.lever import fetch as fetch_lever
 
 logger = logging.getLogger(__name__)
 
 SOURCE_FETCHERS: dict = {
     'caclubindia':    fetch_caclubindia,
     'icai_eirc':      fetch_icai_eirc,
+    'icai_nirc':      fetch_icai_nirc,
     'icai_kochi':     fetch_icai_kochi,
     'icai_sirc':      fetch_icai_sirc,
     'icai_wirc':      fetch_icai_wirc,
@@ -45,6 +49,8 @@ SOURCE_FETCHERS: dict = {
     'apify_multi_board':    fetch_apify_multi_board,
     'apify_google_jobs':    fetch_apify_google_jobs,
     'apify_career_sites':   fetch_apify_career_sites,
+    'greenhouse':           fetch_greenhouse,
+    'lever':                fetch_lever,
 }
 
 

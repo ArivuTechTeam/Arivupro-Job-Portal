@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { supabase } from '../lib/supabase/client.ts';
 import {
   LayoutDashboard, Briefcase, Users, PlusCircle,
   ChevronDown, Download, Eye, CheckCircle2, ArrowLeft,
   FileText, Phone, Mail, GraduationCap, Star,
 } from 'lucide-react';
-import { RegisteredCompany } from '../types/index.ts';
 
 interface RecruiterDashboardProps {
-  recruiter: RegisteredCompany;
-  jobs: any[];
-  applicants: any[];
+  recruiterName: string;
+  recruiterEmail: string;
+  companyName: string;
+  sessionToken: string;
 }
 
 type RecruiterPage = 'dashboard' | 'jobs' | 'applicants' | 'post';
@@ -23,55 +24,6 @@ const JOB_TYPES = ['Full-Time', 'Articleship / Industrial Training', 'Internship
 const WORKPLACES = ['Hybrid', 'Onsite', 'Remote'];
 const QUALIFICATIONS = ['CA', 'CA_INTER', 'ACCA', 'US_CPA', 'US_CMA', 'CFA', 'CS', 'CMA_INDIA'];
 
-// ── Seed data ───────────────────────────────────────────────────────────────
-const SEED_JOBS = [
-  { id: 'rj1', title: 'Audit & Assurance Associate', type: 'Full-Time', status: 'Active', applicants: 3, posted: '2026-11-02', deadline: '2026-11-20' },
-  { id: 'rj2', title: 'US Tax Senior Analyst',       type: 'Full-Time', status: 'Active', applicants: 2, posted: '2026-11-01', deadline: '2026-11-25' },
-  { id: 'rj3', title: 'Risk Advisory Associate',     type: 'Full-Time', status: 'Draft',  applicants: 0, posted: '—',          deadline: '—' },
-];
-
-const SEED_APPLICANTS = [
-  {
-    id: 'ap1', jobId: 'rj1', name: 'Rohan Venkatesh', email: 'rohan.v@arivupro.in',
-    phone: '+91 98765 43210', course: 'ACCA + US CPA', match: 94,
-    stage: 'Technical Round', applied: 'Nov 3',
-    skills: ['US GAAP', 'PCAOB', 'Audit', 'Excel', 'SAP'],
-    about: 'ACCA Affiliate with 1 year Big 4 internship experience. Cleared all ACCA papers and 2 US CPA exams.',
-    resumeUrl: '#',
-  },
-  {
-    id: 'ap2', jobId: 'rj1', name: 'Priya Sundaram', email: 'priya.s@arivupro.in',
-    phone: '+91 91234 56789', course: 'CA Final', match: 88,
-    stage: 'Recruiter Screen', applied: 'Nov 2',
-    skills: ['Ind AS', 'Statutory Audit', 'TallyPrime', 'Tax Audit'],
-    about: 'CA Final student with articleship at mid-tier firm. Strong Ind AS and statutory audit exposure.',
-    resumeUrl: '#',
-  },
-  {
-    id: 'ap3', jobId: 'rj1', name: 'Aditya Patel', email: 'aditya.p@arivupro.in',
-    phone: '+91 87654 32109', course: 'CFA L2', match: 76,
-    stage: 'Applied', applied: 'Nov 4',
-    skills: ['Financial Modeling', 'DCF', 'Excel', 'Bloomberg'],
-    about: 'CFA Level 2 candidate with strong equity research background. Interned at a SEBI-registered IA.',
-    resumeUrl: '#',
-  },
-  {
-    id: 'ap4', jobId: 'rj2', name: 'Sneha Reddy', email: 'sneha.r@arivupro.in',
-    phone: '+91 99887 76655', course: 'US CPA', match: 91,
-    stage: 'Recruiter Screen', applied: 'Nov 2',
-    skills: ['Form 1120', 'Form 1065', 'OneSource', 'Federal Tax'],
-    about: 'US CPA candidate with Big 4 US tax internship. Proficient in Form 1120, 1065 and OneSource.',
-    resumeUrl: '#',
-  },
-  {
-    id: 'ap5', jobId: 'rj2', name: 'Karthik Iyer', email: 'karthik.i@arivupro.in',
-    phone: '+91 88776 65544', course: 'CA + US CPA', match: 83,
-    stage: 'Applied', applied: 'Nov 3',
-    skills: ['ASC 740', 'CCH Axcess', 'State Tax', 'Transfer Pricing'],
-    about: 'CA with US CPA in progress. 2 years tax advisory experience at a consulting firm.',
-    resumeUrl: '#',
-  },
-];
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 function stageColor(s: string) {
@@ -90,13 +42,57 @@ function matchBadge(score: number) {
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
-export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruiter }) => {
+export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruiterName, recruiterEmail, companyName, sessionToken }) => {
   const [page, setPage] = useState<RecruiterPage>('dashboard');
-  const [viewingJobId, setViewingJobId] = useState<string | null>(null); // which job's applicants
-  const [viewingApplicant, setViewingApplicant] = useState<typeof SEED_APPLICANTS[0] | null>(null);
+  const [viewingJobId, setViewingJobId] = useState<string | null>(null);
+  const [viewingApplicant, setViewingApplicant] = useState<any | null>(null);
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [applicants, setApplicants] = useState<any[]>([]);
+  const tokenRef = useRef(sessionToken);
+
+  // Always use latest token from Supabase session (handles race on mount)
+  const getToken = async () => {
+    if (tokenRef.current) return tokenRef.current;
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token ?? '';
+  };
+
+  const fetchJobs = async () => {
+    const token = await getToken();
+    if (!token) return;
+    fetch('/api/recruiters/jobs', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : { jobs: [] })
+      .then(d => setJobs(d.jobs || []))
+      .catch(() => {});
+  };
+
+  const fetchApplicants = async (jobId?: string) => {
+    const token = await getToken();
+    if (!token) return;
+    const url = jobId ? `/api/recruiters/applicants?job_id=${jobId}` : '/api/recruiters/applicants';
+    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : { applicants: [] })
+      .then(d => setApplicants(d.applicants || []))
+      .catch(() => {});
+  };
+
+  const authHeader = async () => {
+    const token = await getToken();
+    return { Authorization: `Bearer ${token}` };
+  };
+
+  useEffect(() => {
+    tokenRef.current = sessionToken;
+    if (sessionToken) { fetchJobs(); fetchApplicants(); }
+  }, [sessionToken]);
+  // Also try on mount after a short delay to handle cases where token arrives late
+  useEffect(() => {
+    const t = setTimeout(() => { fetchJobs(); fetchApplicants(); }, 1500);
+    return () => clearTimeout(t);
+  }, []);
   const [stages, setStages] = useState<Record<string, string>>({});
   const [toast, setToast] = useState<string | null>(null);
-  const [form, setForm] = useState({ title: '', type: 'Full-Time', workplace: 'Hybrid', location: '', salary: '', description: '', qualifications: [] as string[] });
+  const [form, setForm] = useState({ title: '', company: '', type: 'Full-Time', workplace: 'Hybrid', experience: 'Fresher / 0-1 yr', location: '', salary: '', skills: '', deadline: '', description: '', qualifications: [] as string[] });
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
   const getStage = (id: string, def: string) => stages[id] ?? def;
@@ -107,16 +103,56 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
     qualifications: p.qualifications.includes(q) ? p.qualifications.filter(x => x !== q) : [...p.qualifications, q],
   }));
 
-  const handlePublish = (isDraft: boolean) => {
+  const handlePublish = async (isDraft: boolean) => {
     if (!form.title.trim()) { showToast('⚠️ Job title is required.'); return; }
-    showToast(isDraft ? '📋 Draft saved!' : '✅ Job published to ArivuPro Portal!');
-    setForm({ title: '', type: 'Full-Time', workplace: 'Hybrid', location: '', salary: '', description: '', qualifications: [] });
-    if (!isDraft) setPage('jobs');
+    const payload = {
+      title: form.title,
+      company: form.company || companyName,
+      salary_text: form.salary || '—',
+      location: form.location || '',
+      city: form.location?.split(',')[0]?.trim() || '',
+      workplace_type: form.workplace.toLowerCase(),
+      job_type: ({ 'Full-Time': 'full-time', 'Articleship / Industrial Training': 'articleship', 'Internship': 'internship', 'Contract': 'full-time' } as Record<string,string>)[form.type] ?? 'full-time',
+      experience_level: form.experience,
+      min_experience_years: form.experience.startsWith('1') ? 1 : form.experience.startsWith('3') ? 3 : form.experience.startsWith('5') ? 5 : 0,
+      qualifications: form.qualifications,
+      mandatory_skills: form.skills ? form.skills.split(',').map(s => s.trim()).filter(Boolean) : [],
+      description: form.description,
+      deadline_date: form.deadline || undefined,
+      crm_drive_code: isDraft ? 'draft' : undefined,
+    };
+    try {
+      const res = await fetch('/api/recruiters/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) { const err = await res.json().catch(() => ({})); showToast(`❌ ${err.detail || 'Failed to publish job.'}`); return; }
+      showToast(isDraft ? '📋 Draft saved!' : '✅ Job published to ArivuPro Portal!');
+      setForm({ title: '', company: '', type: 'Full-Time', workplace: 'Hybrid', experience: 'Fresher / 0-1 yr', location: '', salary: '', skills: '', deadline: '', description: '', qualifications: [] });
+      fetchJobs();
+      if (!isDraft) setPage('jobs');
+    } catch { showToast('❌ Network error. Please try again.'); }
   };
 
+  // Normalize DB snake_case to display fields
+  const normalizeApplicant = (a: any) => ({
+    id: a.id,
+    jobId: a.job_id,
+    name: a.student_name || '—',
+    email: a.student_email || '—',
+    phone: a.student_phone || '—',
+    course: a.primary_course || '—',
+    match: a.ai_match_score ?? 0,
+    stage: a.stage || 'applied',
+    applied: a.created_at ? new Date(a.created_at).toLocaleDateString('en-IN') : '—',
+    about: a.cover_note || '',
+    skills: [],
+  });
+  const normalizedApplicants = applicants.map(normalizeApplicant);
   // Which applicants to show (filtered by job)
-  const jobApplicants = viewingJobId ? SEED_APPLICANTS.filter(a => a.jobId === viewingJobId) : [];
-  const viewingJob = SEED_JOBS.find(j => j.id === viewingJobId);
+  const jobApplicants = viewingJobId ? normalizedApplicants.filter((a: any) => a.jobId === viewingJobId) : normalizedApplicants;
+  const viewingJob = jobs.find((j: any) => j.id === viewingJobId);
 
   // Sidebar nav items
   const NAV = [
@@ -142,13 +178,11 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
         <div style={{ padding: '0 16px 20px', borderBottom: '1px solid #f3f4f6', marginBottom: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 36, height: 36, borderRadius: 8, background: '#1a7a4a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 13, flexShrink: 0 }}>
-              {recruiter.name.slice(0, 2).toUpperCase()}
+              {(companyName || '??').slice(0, 2).toUpperCase()}
             </div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#0f2419', lineHeight: 1.2 }}>{recruiter.name}</div>
-              <span className={`badge ${recruiter.verificationStatus === 'MoU Partner' ? 'badge-yellow' : 'badge-green'}`} style={{ fontSize: '0.55rem', marginTop: 2 }}>
-                {recruiter.verificationStatus}
-              </span>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#0f2419', lineHeight: 1.2 }}>{companyName}</div>
+              <span className="badge badge-green" style={{ fontSize: '0.55rem', marginTop: 2 }}>Verified</span>
             </div>
           </div>
         </div>
@@ -161,7 +195,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
           return (
             <button
               key={n.id}
-              onClick={() => { setPage(n.id); setViewingJobId(null); setViewingApplicant(null); }}
+              onClick={() => { setPage(n.id); setViewingJobId(null); setViewingApplicant(null); if (n.id === 'applicants') fetchApplicants(); }}
               style={{
                 display: 'flex', alignItems: 'center', gap: 10,
                 margin: '1px 10px', padding: '10px 12px', borderRadius: 8,
@@ -189,16 +223,16 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             <div>
               <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0f2419', margin: '0 0 4px' }}>Recruiter Dashboard</h1>
-              <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>{recruiter.name} — Campus Recruitment</p>
+              <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>{companyName} — Campus Recruitment</p>
             </div>
 
             {/* Stat cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
               {[
-                { label: 'Active Job Posts', value: 3, sub: '2 receiving applications',   color: '#b45309', border: '#fde68a' },
-                { label: 'Total Applicants', value: 53, sub: 'This month',                color: '#1a7a4a', border: '#d7f4ea' },
-                { label: 'In Interview Stage', value: 8, sub: 'Scheduled this week',      color: '#1d4ed8', border: '#dbeafe' },
-                { label: 'Offers Extended', value: 2, sub: 'Awaiting acceptance',         color: '#7c3aed', border: '#ede9fe' },
+                { label: 'Active Job Posts',   value: jobs.filter((j: any) => j.status === 'Active').length, sub: 'Currently active', color: '#b45309', border: '#fde68a' },
+                { label: 'Total Applicants',   value: normalizedApplicants.length, sub: 'All time',          color: '#1a7a4a', border: '#d7f4ea' },
+                { label: 'In Interview Stage', value: 0, sub: 'Scheduled this week',               color: '#1d4ed8', border: '#dbeafe' },
+                { label: 'Offers Extended',    value: 0, sub: 'Awaiting acceptance',               color: '#7c3aed', border: '#ede9fe' },
               ].map(s => (
                 <div key={s.label} style={{ background: '#fff', border: `1px solid ${s.border}`, borderLeft: `4px solid ${s.color}`, borderRadius: 12, padding: '20px 20px 16px' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>{s.label}</div>
@@ -223,7 +257,10 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                   </tr>
                 </thead>
                 <tbody>
-                  {SEED_APPLICANTS.slice(0, 3).map((ap, i) => {
+                  {normalizedApplicants.length === 0 && (
+                    <tr><td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>No applicants yet. Post a job to start receiving applications.</td></tr>
+                  )}
+                  {normalizedApplicants.slice(0, 3).map((ap: any, i: number) => {
                     const mb = matchBadge(ap.match);
                     return (
                       <tr key={ap.id} style={{ borderTop: '1px solid #f3f4f6', background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
@@ -279,27 +316,30 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                   </tr>
                 </thead>
                 <tbody>
-                  {SEED_JOBS.map((job, i) => (
+                  {jobs.length === 0 && (
+                    <tr><td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>No job posts yet. <button className="btn-ghost" style={{ fontSize: 13 }} onClick={() => setPage('post')}>Post your first job →</button></td></tr>
+                  )}
+                  {jobs.map((job: any, i: number) => (
                     <tr key={job.id} style={{ borderTop: '1px solid #f3f4f6', background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
                       <td style={{ padding: '14px 20px' }}>
                         <div style={{ fontWeight: 700, color: '#0f2419' }}>{job.title}</div>
-                        <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{job.type}</div>
+                        <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{job.job_type}</div>
                       </td>
                       <td style={{ padding: '14px 20px' }}>
-                        <span className={job.status === 'Active' ? 'badge badge-green' : 'badge badge-gray'}>{job.status}</span>
+                        <span className={job.status === 'active' ? 'badge badge-green' : 'badge badge-gray'}>{job.status}</span>
                       </td>
-                      <td style={{ padding: '14px 20px', fontWeight: 700, color: job.applicants > 0 ? '#1a7a4a' : '#9ca3af', fontSize: 15 }}>{job.applicants}</td>
-                      <td style={{ padding: '14px 20px', color: '#6b7280' }}>{job.posted}</td>
-                      <td style={{ padding: '14px 20px', color: '#6b7280' }}>{job.deadline}</td>
+                      <td style={{ padding: '14px 20px', fontWeight: 700, color: (job.applicants_count ?? 0) > 0 ? '#1a7a4a' : '#9ca3af', fontSize: 15 }}>{job.applicants_count ?? 0}</td>
+                      <td style={{ padding: '14px 20px', color: '#6b7280' }}>{job.posted_date ? new Date(job.posted_date).toLocaleDateString('en-IN') : '—'}</td>
+                      <td style={{ padding: '14px 20px', color: '#6b7280' }}>{job.deadline_date ? new Date(job.deadline_date).toLocaleDateString('en-IN') : '—'}</td>
                       <td style={{ padding: '14px 20px' }}>
                         <div style={{ display: 'flex', gap: 8 }}>
                           <button
                             className="btn-primary"
                             style={{ fontSize: 12, padding: '6px 14px' }}
-                            onClick={() => { setViewingJobId(job.id); }}
-                            disabled={job.applicants === 0}
+                            onClick={() => { setViewingJobId(job.id); fetchApplicants(job.id); }}
+                            disabled={(job.applicants_count ?? 0) === 0}
                           >
-                            View Apps {job.applicants > 0 && `(${job.applicants})`}
+                            View Apps {(job.applicants_count ?? 0) > 0 && `(${job.applicants_count})`}
                           </button>
                           <button
                             style={{ fontSize: 12, padding: '6px 12px', borderRadius: 999, border: '1px solid #fca5a5', background: 'transparent', color: '#dc2626', fontWeight: 700, cursor: 'pointer', fontFamily: 'Manrope, sans-serif' }}
@@ -551,9 +591,12 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                   </tr>
                 </thead>
                 <tbody>
-                  {SEED_APPLICANTS.map((ap, i) => {
+                  {normalizedApplicants.length === 0 && (
+                    <tr><td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>No applicants yet.</td></tr>
+                  )}
+                  {normalizedApplicants.map((ap: any, i: number) => {
                     const mb = matchBadge(ap.match);
-                    const jobTitle = SEED_JOBS.find(j => j.id === ap.jobId)?.title ?? '—';
+                    const jobTitle = jobs.find((j: any) => j.id === ap.jobId)?.title ?? '—';
                     return (
                       <tr key={ap.id} style={{ borderTop: '1px solid #f3f4f6', background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
                         <td style={{ padding: '14px 20px' }}>
@@ -606,7 +649,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                 </div>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 6 }}>Company Name</label>
-                  <input className="input-field" value={recruiter.name} readOnly style={{ background: '#f9fafb', color: '#6b7280' }} />
+                  <input className="input-field" value={form.company || companyName} onChange={e => setForm(p => ({ ...p, company: e.target.value }))} placeholder="Company name" />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -620,6 +663,18 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                   <label style={{ fontSize: 12, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 6 }}>Workplace</label>
                   <select className="input-field" value={form.workplace} onChange={e => setForm(p => ({ ...p, workplace: e.target.value }))}>
                     {WORKPLACES.map(w => <option key={w}>{w}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 6 }}>Experience Required</label>
+                  <select className="input-field" value={form.experience} onChange={e => setForm(p => ({ ...p, experience: e.target.value }))}>
+                    <option>Fresher / 0-1 yr</option>
+                    <option>1-3 yrs</option>
+                    <option>3-5 yrs</option>
+                    <option>5+ yrs</option>
+                    <option>Articleship / Training</option>
                   </select>
                 </div>
               </div>
@@ -646,6 +701,16 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                   })}
                 </div>
               </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 6 }}>Key Skills (comma-separated)</label>
+                  <input className="input-field" placeholder="e.g. Ind AS, Excel, SAP" value={form.skills} onChange={e => setForm(p => ({ ...p, skills: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 6 }}>Application Deadline</label>
+                  <input className="input-field" type="date" value={form.deadline} onChange={e => setForm(p => ({ ...p, deadline: e.target.value }))} />
+                </div>
+              </div>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 6 }}>Job Description</label>
                 <textarea className="input-field" rows={4} placeholder="Describe the role, responsibilities, and requirements..." value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} style={{ resize: 'vertical', lineHeight: 1.6 }} />
@@ -653,7 +718,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
               <div style={{ display: 'flex', gap: 12 }}>
                 <button className="btn-primary" style={{ fontSize: 14, padding: '11px 28px' }} onClick={() => handlePublish(false)}>Publish Job</button>
                 <button className="btn-outline" style={{ fontSize: 14, padding: '11px 24px' }} onClick={() => handlePublish(true)}>Save Draft</button>
-                <button className="btn-ghost" style={{ fontSize: 13, marginLeft: 'auto' }} onClick={() => setForm({ title: '', type: 'Full-Time', workplace: 'Hybrid', location: '', salary: '', description: '', qualifications: [] })}>Clear</button>
+                <button className="btn-ghost" style={{ fontSize: 13, marginLeft: 'auto' }} onClick={() => setForm({ title: '', company: '', type: 'Full-Time', workplace: 'Hybrid', experience: 'Fresher / 0-1 yr', location: '', salary: '', description: '', qualifications: [] })}>Clear</button>
               </div>
             </div>
           </div>

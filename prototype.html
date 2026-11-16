@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ArivuPro Finance Career Portal — Prototype</title>
+<style>
+  :root {
+    --bg: #0a0f1e;
+    --surface: #111827;
+    --surface2: #1a2234;
+    --border: #1f2d45;
+    --amber: #f59e0b;
+    --amber2: #fbbf24;
+    --green: #10b981;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --purple: #8b5cf6;
+    --text: #f1f5f9;
+    --muted: #64748b;
+    --muted2: #94a3b8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  .hidden { display: none !important; }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: var(--bg); } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── LOGIN PAGE ── */
+  #login-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; background: radial-gradient(ellipse at 20% 50%, #1a1040 0%, var(--bg) 60%); }
+  .login-wrap { width: 100%; max-width: 440px; }
+  .login-logo { text-align: center; margin-bottom: 32px; }
+  .login-logo .badge { display: inline-flex; align-items: center; gap: 10px; }
+  .logo-icon { width: 42px; height: 42px; background: var(--amber); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 18px; color: #0a0f1e; }
+  .logo-name { font-size: 22px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
+  .login-logo p { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; }
+  .login-card h2 { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+  .role-tabs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 24px; background: var(--bg); border-radius: 10px; padding: 4px; }
+  .role-tab { padding: 8px 4px; text-align: center; border-radius: 7px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--muted); border: none; background: none; transition: all .2s; }
+  .role-tab.active { background: var(--surface2); color: var(--amber); }
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 12px; color: var(--muted2); margin-bottom: 6px; font-weight: 500; }
+  .form-group input, .form-group select { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--text); font-size: 14px; outline: none; transition: border .2s; }
+  .form-group input:focus, .form-group select:focus { border-color: var(--amber); }
+  .form-group input::placeholder { color: var(--muted); }
+  .btn-primary { width: 100%; background: var(--amber); color: #0a0f1e; font-weight: 700; border: none; border-radius: 8px; padding: 11px; font-size: 14px; cursor: pointer; transition: background .2s; }
+  .btn-primary:hover { background: var(--amber2); }
+  .login-hint { text-align: center; margin-top: 16px; font-size: 12px; color: var(--muted); }
+  .demo-creds { margin-top: 20px; background: var(--surface2); border-radius: 10px; padding: 14px; }
+  .demo-creds p { font-size: 11px; color: var(--muted); margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+  .demo-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted2); padding: 3px 0; }
+  .demo-row span:last-child { color: var(--amber); font-weight: 600; }
+
+  /* ── APP SHELL ── */
+  #app { display: none; min-height: 100vh; }
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .topbar-left { display: flex; align-items: center; gap: 12px; }
+  .topbar-logo { display: flex; align-items: center; gap: 8px; }
+  .topbar-logo .logo-icon { width: 32px; height: 32px; font-size: 14px; border-radius: 7px; }
+  .topbar-logo span { font-weight: 800; font-size: 15px; }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .user-chip { display: flex; align-items: center; gap: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 5px 12px 5px 5px; }
+  .user-avatar { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+  .user-chip span { font-size: 12px; font-weight: 600; }
+  .role-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; text-transform: uppercase; letter-spacing: .4px; }
+  .role-badge.student { background: #1e3a5f; color: var(--blue); }
+  .role-badge.recruiter { background: #1a3a2a; color: var(--green); }
+  .role-badge.admin { background: #3a1a2a; color: #f472b6; }
+  .btn-logout { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 7px; padding: 5px 12px; font-size: 12px; cursor: pointer; transition: all .2s; }
+  .btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+  /* ── LAYOUT ── */
+  .layout { display: flex; min-height: calc(100vh - 56px); }
+  .sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); padding: 16px 12px; flex-shrink: 0; }
+  .sidebar-section { margin-bottom: 24px; }
+  .sidebar-label { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; padding: 0 8px; margin-bottom: 8px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--muted2); transition: all .2s; border: none; background: none; width: 100%; text-align: left; }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: rgba(245,158,11,.12); color: var(--amber); }
+  .nav-item .icon { font-size: 15px; width: 18px; text-align: center; }
+  .nav-badge { margin-left: auto; background: var(--amber); color: #0a0f1e; font-size: 10px; font-weight: 700; border-radius: 10px; padding: 1px 6px; }
+  .main { flex: 1; padding: 28px; overflow-y: auto; }
+
+  /* ── PAGE HEADER ── */
+  .page-header { margin-bottom: 24px; }
+  .page-header h1 { font-size: 22px; font-weight: 800; letter-spacing: -.3px; }
+  .page-header p { color: var(--muted2); font-size: 13px; margin-top: 4px; }
+  .page-title-row { display: flex; align-items: center; justify-content: space-between; }
+
+  /* ── STAT CARDS ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+  .stat-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; }
+  .stat-value { font-size: 28px; font-weight: 800; letter-spacing: -1px; }
+  .stat-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .stat-card.amber .stat-value { color: var(--amber); }
+  .stat-card.green .stat-value { color: var(--green); }
+  .stat-card.blue .stat-value { color: var(--blue); }
+  .stat-card.purple .stat-value { color: var(--purple); }
+
+  /* ── CARDS / PANELS ── */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+  .card-title { font-size: 14px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
+  .card-title span { font-size: 12px; color: var(--muted); font-weight: 400; }
+
+  /* ── JOB CARDS ── */
+  .job-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .job-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; cursor: pointer; transition: border-color .2s, transform .15s; }
+  .job-card:hover { border-color: var(--amber); transform: translateY(-1px); }
+  .job-card-top { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+  .co-logo { width: 40px; height: 40px; border-radius: 8px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; color: var(--amber); border: 1px solid var(--border); flex-shrink: 0; }
+  .job-title { font-size: 14px; font-weight: 700; line-height: 1.3; }
+  .job-company { font-size: 12px; color: var(--muted2); margin-top: 2px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .tag { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 6px; }
+  .tag.type { background: #1e3a5f; color: var(--blue); }
+  .tag.loc { background: var(--surface2); color: var(--muted2); }
+  .tag.qual { background: rgba(245,158,11,.12); color: var(--amber); }
+  .tag.urgent { background: rgba(239,68,68,.15); color: var(--red); }
+  .tag.exclusive { background: rgba(139,92,246,.15); color: var(--purple); }
+  .tag.source { background: var(--surface2); color: var(--muted); }
+  .job-salary { font-size: 13px; font-weight: 700; color: var(--green); }
+  .job-meta { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+  .job-meta-info { font-size: 11px; color: var(--muted); }
+  .match-pill { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+  .match-pill.excellent { background: rgba(16,185,129,.15); color: var(--green); }
+  .match-pill.strong { background: rgba(59,130,246,.15); color: var(--blue); }
+  .apply-btn { margin-top: 12px; width: 100%; background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.3); color: var(--amber); border-radius: 8px; padding: 8px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all .2s; }
+  .apply-btn:hover { background: var(--amber); color: #0a0f1e; }
+
+  /* ── FILTER BAR ── */
+  .filter-bar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+  .filter-select { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 7px 12px; font-size: 12px; outline: none; cursor: pointer; }
+  .search-input { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 7px 12px; font-size: 12px; outline: none; flex: 1; min-width: 200px; }
+  .search-input::placeholder { color: var(--muted); }
+  .search-input:focus, .filter-select:focus { border-color: var(--amber); }
+
+  /* ── PIPELINE / TRACKER ── */
+  .pipeline { display: flex; gap: 0; margin-bottom: 20px; overflow-x: auto; }
+  .pipeline-stage { flex: 1; min-width: 110px; text-align: center; padding: 10px 8px; position: relative; }
+  .pipeline-stage::after { content: '→'; position: absolute; right: -6px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 12px; z-index: 1; }
+  .pipeline-stage:last-child::after { display: none; }
+  .ps-dot { width: 28px; height: 28px; border-radius: 50%; margin: 0 auto 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+  .ps-dot.done { background: rgba(16,185,129,.2); color: var(--green); border: 2px solid var(--green); }
+  .ps-dot.active { background: rgba(245,158,11,.2); color: var(--amber); border: 2px solid var(--amber); }
+  .ps-dot.pending { background: var(--surface2); color: var(--muted); border: 2px solid var(--border); }
+  .ps-label { font-size: 10px; color: var(--muted2); font-weight: 500; }
+
+  /* ── TABLE ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  td { padding: 12px 12px; font-size: 13px; border-bottom: 1px solid rgba(31,45,69,.5); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,.02); }
+  .status-pill { display: inline-block; font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px; text-transform: capitalize; }
+  .status-pill.applied { background: rgba(59,130,246,.15); color: var(--blue); }
+  .status-pill.review { background: rgba(245,158,11,.15); color: var(--amber); }
+  .status-pill.interview { background: rgba(139,92,246,.15); color: var(--purple); }
+  .status-pill.offer { background: rgba(16,185,129,.15); color: var(--green); }
+  .status-pill.placed { background: rgba(16,185,129,.25); color: #34d399; }
+  .status-pill.declined { background: rgba(239,68,68,.15); color: var(--red); }
+  .status-pill.active { background: rgba(16,185,129,.15); color: var(--green); }
+  .status-pill.draft { background: var(--surface2); color: var(--muted); }
+  .status-pill.pending { background: rgba(245,158,11,.12); color: var(--amber); }
+  .status-pill.verified { background: rgba(16,185,129,.15); color: var(--green); }
+  .status-pill.new { background: rgba(59,130,246,.15); color: var(--blue); }
+
+  /* ── SCRAPER ── */
+  .scraper-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .scraper-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .scraper-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .scraper-name { font-size: 13px; font-weight: 700; }
+  .scraper-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .scraper-dot.active { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .scraper-dot.idle { background: var(--muted); }
+  .scraper-dot.running { background: var(--amber); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
+  .scraper-meta { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  .scraper-count { font-size: 20px; font-weight: 800; color: var(--amber); }
+  .trigger-btn { margin-top: 10px; width: 100%; background: none; border: 1px solid var(--border); color: var(--muted2); border-radius: 7px; padding: 6px; font-size: 11px; cursor: pointer; transition: all .2s; }
+  .trigger-btn:hover { border-color: var(--amber); color: var(--amber); }
+
+  /* ── DB SCHEMA VIEW ── */
+  .schema-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .schema-table { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .schema-table-header { background: var(--surface2); padding: 12px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); }
+  .schema-table-header .table-icon { font-size: 14px; }
+  .schema-table-header .table-name { font-size: 13px; font-weight: 700; }
+  .schema-table-header .table-desc { font-size: 11px; color: var(--muted); margin-left: auto; }
+  .schema-col { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-bottom: 1px solid rgba(31,45,69,.4); font-size: 12px; }
+  .schema-col:last-child { border-bottom: none; }
+  .col-name { font-weight: 600; color: var(--text); min-width: 160px; font-family: 'Courier New', monospace; font-size: 11px; }
+  .col-type { color: var(--blue); font-size: 10px; font-family: monospace; min-width: 100px; }
+  .col-note { color: var(--muted); font-size: 10px; }
+  .pk { color: var(--amber); font-size: 10px; font-weight: 700; margin-left: auto; }
+
+  /* ── TECH STACK ── */
+  .tech-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .tech-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; text-align: center; }
+  .tech-icon { font-size: 28px; margin-bottom: 8px; }
+  .tech-name { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .tech-desc { font-size: 11px; color: var(--muted); line-height: 1.4; }
+  .tech-layer { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 2px 7px; border-radius: 6px; display: inline-block; margin-bottom: 8px; }
+  .tech-layer.fe { background: rgba(59,130,246,.15); color: var(--blue); }
+  .tech-layer.be { background: rgba(16,185,129,.15); color: var(--green); }
+  .tech-layer.db { background: rgba(245,158,11,.15); color: var(--amber); }
+  .tech-layer.ai { background: rgba(139,92,246,.15); color: var(--purple); }
+  .tech-layer.infra { background: rgba(239,68,68,.15); color: var(--red); }
+
+  /* ── FLOW DIAGRAM ── */
+  .flow { display: flex; align-items: center; gap: 0; overflow-x: auto; padding: 20px 0; }
+  .flow-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; min-width: 130px; text-align: center; flex-shrink: 0; }
+  .flow-box .fb-icon { font-size: 22px; margin-bottom: 6px; }
+  .flow-box .fb-title { font-size: 12px; font-weight: 700; }
+  .flow-box .fb-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .flow-arrow { color: var(--amber); font-size: 20px; padding: 0 8px; flex-shrink: 0; }
+  .flow-box.highlight { border-color: var(--amber); background: rgba(245,158,11,.08); }
+
+  /* ── TOAST ── */
+  #toast { position: fixed; bottom: 24px; right: 24px; background: var(--green); color: white; padding: 12px 20px; border-radius: 10px; font-size: 13px; font-weight: 600; z-index: 9999; transition: opacity .3s; opacity: 0; pointer-events: none; }
+  #toast.show { opacity: 1; }
+
+  /* ── MODAL ── */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; width: 100%; max-width: 540px; max-height: 90vh; overflow-y: auto; }
+  .modal h3 { font-size: 17px; font-weight: 800; margin-bottom: 20px; }
+  .modal-close { float: right; background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; line-height: 1; }
+
+  /* ── TIMELINE ── */
+  .timeline { padding-left: 20px; }
+  .tl-item { position: relative; padding: 0 0 16px 20px; border-left: 2px solid var(--border); }
+  .tl-item:last-child { border-left-color: transparent; padding-bottom: 0; }
+  .tl-dot { position: absolute; left: -7px; top: 0; width: 12px; height: 12px; border-radius: 50%; background: var(--amber); border: 2px solid var(--bg); }
+  .tl-dot.done { background: var(--green); }
+  .tl-stage { font-size: 12px; font-weight: 700; color: var(--text); }
+  .tl-time { font-size: 11px; color: var(--muted); }
+  .tl-note { font-size: 11px; color: var(--muted2); margin-top: 2px; }
+
+  /* ── AI MATCH ── */
+  .match-bar-wrap { margin-bottom: 10px; }
+  .match-bar-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted2); margin-bottom: 4px; }
+  .match-bar { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .match-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--amber), var(--green)); }
+
+  /* ── RECRUITER ── */
+  .job-post-form .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .btn-secondary { background: none; border: 1px solid var(--amber); color: var(--amber); border-radius: 8px; padding: 8px 16px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all .2s; }
+  .btn-secondary:hover { background: rgba(245,158,11,.1); }
+  .btn-sm { padding: 5px 12px; font-size: 11px; border-radius: 6px; font-weight: 600; border: none; cursor: pointer; }
+  .btn-sm.green { background: rgba(16,185,129,.15); color: var(--green); }
+  .btn-sm.red { background: rgba(239,68,68,.15); color: var(--red); }
+  .btn-sm.blue { background: rgba(59,130,246,.15); color: var(--blue); }
+
+  /* ── ADMIN ── */
+  .admin-tabs { display: flex; gap: 4px; margin-bottom: 24px; background: var(--surface2); border-radius: 10px; padding: 4px; border: 1px solid var(--border); }
+  .admin-tab { flex: 1; padding: 8px; text-align: center; border-radius: 7px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--muted); border: none; background: none; transition: all .2s; }
+  .admin-tab.active { background: var(--surface); color: var(--amber); }
+  .alert-row { display: flex; align-items: center; gap: 10px; padding: 12px; background: var(--surface2); border-radius: 8px; margin-bottom: 8px; border-left: 3px solid var(--amber); }
+  .alert-row .ar-icon { font-size: 16px; }
+  .alert-row .ar-text { font-size: 12px; color: var(--muted2); flex: 1; }
+  .alert-row .ar-time { font-size: 11px; color: var(--muted); }
+
+  /* ── PROFILE ── */
+  .profile-header { display: flex; align-items: center; gap: 20px; padding: 20px; background: linear-gradient(135deg, var(--surface) 0%, var(--surface2) 100%); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 20px; }
+  .profile-avatar { width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; border: 3px solid var(--amber); }
+  .profile-name { font-size: 18px; font-weight: 800; }
+  .profile-sub { font-size: 12px; color: var(--muted2); margin-top: 2px; }
+  .profile-badges { display: flex; gap: 6px; margin-top: 8px; }
+  .skill-chip { display: inline-block; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 3px 10px; font-size: 11px; color: var(--muted2); margin: 3px; }
+
+  /* ── RESPONSIVE ── */
+  @media(max-width:900px){ .stats-grid{grid-template-columns:1fr 1fr} .job-grid{grid-template-columns:1fr} .schema-grid{grid-template-columns:1fr} .tech-grid{grid-template-columns:1fr 1fr} .scraper-grid{grid-template-columns:1fr 1fr} }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+     LOGIN PAGE
+══════════════════════════════════════════════════════════ -->
+<div id="login-page">
+  <div class="login-wrap">
+    <div class="login-logo">
+      <div class="badge">
+        <div class="logo-icon">A</div>
+        <span class="logo-name">ArivuPro</span>
+      </div>
+      <p>Finance Career Portal — One stop for Commerce &amp; Finance Students</p>
+    </div>
+    <div class="login-card">
+      <h2>Sign in to your account</h2>
+      <div class="role-tabs">
+        <button class="role-tab active" onclick="selectRole('student',this)">🎓 Student</button>
+        <button class="role-tab" onclick="selectRole('recruiter',this)">🏢 Recruiter</button>
+        <button class="role-tab" onclick="selectRole('admin',this)">⚙️ Admin</button>
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="login-email" placeholder="you@example.com" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="login-pass" placeholder="••••••••" />
+      </div>
+      <button class="btn-primary" onclick="doLogin()">Sign In</button>
+      <div class="login-hint">Prototype demo — no real auth required</div>
+      <div class="demo-creds">
+        <p>Demo Credentials</p>
+        <div class="demo-row"><span>🎓 Student</span><span>student@arivupro.in / any</span></div>
+        <div class="demo-row"><span>🏢 Recruiter</span><span>recruiter@deloitte.com / any</span></div>
+        <div class="demo-row"><span>⚙️ Admin</span><span>admin@arivupro.com / any</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     APP SHELL
+══════════════════════════════════════════════════════════ -->
+<div id="app">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">
+        <div class="logo-icon">A</div>
+        <span>ArivuPro Career Portal</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="user-chip">
+        <div class="user-avatar" id="user-avatar" style="background:#1e3a5f;color:#3b82f6"></div>
+        <span id="user-name">—</span>
+        <span class="role-badge" id="role-badge">—</span>
+      </div>
+      <button class="btn-logout" onclick="doLogout()">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebar"></div>
+
+    <!-- MAIN -->
+    <div class="main" id="main-content"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════
+// STATE
+// ══════════════════════════════════════
+let currentRole = 'student';
+let currentPage = '';
+
+// ── SEED DATA ──
+const JOBS = [
+  { id:'j1', title:'Audit & Assurance Associate', company:'Deloitte India', logo:'D', location:'Bangalore', city:'Bangalore', type:'Full-Time', workplace:'Hybrid', exp:'0-1 yr (Fresher)', salary:'₹7.5–9.5 LPA', salaryMin:7.5, salaryMax:9.5, quals:['ACCA','US_CPA'], skills:['US GAAP','PCAOB','Audit','Excel'], dept:'Audit & Assurance', source:'arivupro_exclusive', exclusive:true, urgent:true, posted:'2026-11-02', applicants:34, matchScore:94, matchGrade:'Excellent', status:'active', desc:'Exclusive campus hiring for ArivuPro ACCA Affiliates and US CPA candidates. Execute statutory audit testing for Fortune 500 US clients.' },
+  { id:'j2', title:'CA Articleship Trainee', company:'BDO India LLP', logo:'BDO', location:'Bangalore / Chennai', city:'Bangalore', type:'Articleship', workplace:'Onsite', exp:'Articleship / 0 yrs', salary:'₹22k–30k/month stipend', salaryMin:2.6, salaryMax:3.6, quals:['CA_INTER'], skills:['Ind AS','Tax Audit','TallyPrime','Excel'], dept:'Articleship Desk', source:'arivupro_exclusive', exclusive:true, urgent:false, posted:'2026-11-01', applicants:52, matchScore:88, matchGrade:'Strong', status:'active', desc:'2-year practical articleship training with structured exposure to listed manufacturing and SaaS audits.' },
+  { id:'j3', title:'Financial Analyst — FP&A', company:'Goldman Sachs Services', logo:'GS', location:'Bangalore', city:'Bangalore', type:'Full-Time', workplace:'Hybrid', exp:'1-3 yrs', salary:'₹14–18.5 LPA', salaryMin:14, salaryMax:18.5, quals:['CA','CFA','US_CMA'], skills:['Financial Modeling','Variance Analysis','DCF','Excel'], dept:'FP&A & Corporate Finance', source:'arivupro_exclusive', exclusive:true, urgent:true, posted:'2026-10-30', applicants:41, matchScore:91, matchGrade:'Excellent', status:'active', desc:'Corporate finance professionals for global business unit budgeting, variance analysis, and board decks.' },
+  { id:'j4', title:'US Corporate Taxation Senior', company:'PwC Acceleration Center', logo:'PwC', location:'Hyderabad', city:'Hyderabad', type:'Full-Time', workplace:'Hybrid', exp:'1-3 yrs', salary:'₹10.5–13 LPA', salaryMin:10.5, salaryMax:13, quals:['US_CPA','CA','ACCA'], skills:['US Form 1120','Form 1065','Federal Tax','OneSource'], dept:'Taxation', source:'big4_portal', exclusive:false, urgent:false, posted:'2026-11-03', applicants:28, matchScore:76, matchGrade:'Strong', status:'active', desc:'Federal, state, and partnership income tax compliance for multinational hedge funds and corporate entities.' },
+  { id:'j5', title:'Investment Banking Analyst — M&A', company:'Avendus Capital', logo:'AC', location:'Mumbai', city:'Mumbai', type:'Full-Time', workplace:'Onsite', exp:'0-1 yr (Fresher)', salary:'₹16–22 LPA + bonus', salaryMin:16, salaryMax:22, quals:['CA','CFA'], skills:['LBO Modeling','M&A Valuation','Pitchbook','Capital IQ'], dept:'Investment Banking & M&A', source:'quintedge', exclusive:false, urgent:false, posted:'2026-11-03', applicants:65, matchScore:72, matchGrade:'Strong', status:'active', desc:'Premier boutique IB seeking Rank-holder CA or CFA L2/L3 for sell-side technology and consumer M&A transactions.' },
+  { id:'j6', title:'Company Secretary & Compliance', company:'Grant Thornton LLP', logo:'GT', location:'Delhi NCR', city:'Delhi', type:'Full-Time', workplace:'Onsite', exp:'0-1 yr (Fresher)', salary:'₹6.5–8.5 LPA', salaryMin:6.5, salaryMax:8.5, quals:['CS'], skills:['Companies Act','MCA V3','SEBI LODR','Secretarial Audit'], dept:'Risk & Compliance', source:'efinancialcareers', exclusive:false, urgent:false, posted:'2026-10-29', applicants:16, matchScore:65, matchGrade:'Moderate', status:'active', desc:'Qualified CS for corporate governance consulting, annual filings, RBI/FDI reporting, and board meeting management.' },
+];
+
+const APPLICATIONS = [
+  { id:'a1', jobId:'j1', jobTitle:'Audit & Assurance Associate', company:'Deloitte India', appliedDate:'2026-11-03', stage:'Technical Round', score:94, grade:'Excellent', counselor:'Priya Sharma', interviewDate:'2026-11-07 11:30 AM IST', timeline:[{s:'Applied',t:'Nov 3, 10:15 AM',n:'Submitted via ArivuPro Exclusive Drive'},{s:'ArivuPro Review',t:'Nov 3, 2:40 PM',n:'Verified by Counselor Priya Sharma (94%)'},{s:'Recruiter Screen',t:'Nov 4, 9:10 AM',n:'Deloitte Talent Acquisition approved profile'},{s:'Technical Round',t:'Nov 4, 2:15 PM',n:'Technical Audit Panel scheduled for Nov 7'}] },
+  { id:'a2', jobId:'j4', jobTitle:'Financial Reporting Specialist', company:'KPMG Global Services', appliedDate:'2026-11-02', stage:'Recruiter Screen', score:89, grade:'Strong', counselor:'Anand Kulkarni', interviewDate:'', timeline:[{s:'Applied',t:'Nov 2, 11:20 AM',n:'Direct submission to KPMG KGS queue'},{s:'ArivuPro Review',t:'Nov 2, 4:00 PM',n:'Internal profile check complete'},{s:'Recruiter Screen',t:'Nov 3, 4:00 PM',n:'Under initial resume screening'}] },
+];
+
+const SCRAPERS = [
+  { id:'caclubindia', name:'CA Club India', focus:'RSS Feed — Articleship & CA Jobs', count:124, status:'active', lastRun:'8 mins ago' },
+  { id:'buddingca', name:'BuddingCA', focus:'WordPress REST API', count:89, status:'active', lastRun:'12 mins ago' },
+  { id:'jsearch', name:'JSearch API', focus:'61 finance-focused search queries', count:312, status:'active', lastRun:'5 mins ago' },
+  { id:'icai_eirc', name:'ICAI EIRC', focus:'Eastern Region — Articleship only', count:47, status:'idle', lastRun:'2 hrs ago' },
+  { id:'icai_sirc', name:'ICAI SIRC', focus:'Southern Region — Articleship only', count:63, status:'active', lastRun:'18 mins ago' },
+  { id:'icmai', name:'ICMAI', focus:'CMA Industrial Trainee + Qualified', count:38, status:'idle', lastRun:'1 hr ago' },
+];
+
+const RECRUITER_JOBS = [
+  { id:'rj1', title:'Audit & Assurance Associate', status:'active', applicants:34, posted:'2026-11-02', deadline:'2026-11-20' },
+  { id:'rj2', title:'US Tax Senior Analyst', status:'active', applicants:19, posted:'2026-11-01', deadline:'2026-11-25' },
+  { id:'rj3', title:'Risk Advisory Associate', status:'draft', applicants:0, posted:'—', deadline:'—' },
+];
+
+const RECRUITER_APPLICANTS = [
+  { name:'Rohan Venkatesh', course:'ACCA + US CPA', score:94, grade:'Excellent', stage:'Technical Round', email:'rohan.v@arivupro.in', applied:'Nov 3' },
+  { name:'Priya Sundaram', course:'CA Final', score:88, grade:'Strong', stage:'Recruiter Screen', email:'priya.s@arivupro.in', applied:'Nov 2' },
+  { name:'Aditya Patel', course:'CFA L2', score:76, grade:'Strong', stage:'Applied', email:'aditya.p@arivupro.in', applied:'Nov 4' },
+];
+
+const ADMIN_ALERTS = [
+  { icon:'🔔', text:'New company registration: EY India — pending verification', time:'2 mins ago' },
+  { icon:'📋', text:'BuddingCA scraper returned 23 new jobs — 4 duplicates filtered', time:'12 mins ago' },
+  { icon:'🎯', text:'Rohan Venkatesh advanced to Technical Round at Deloitte', time:'30 mins ago' },
+  { icon:'🏢', text:'Goldman Sachs MoU renewal due in 15 days', time:'1 hr ago' },
+];
+
+// ══════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════
+function selectRole(role, el) {
+  currentRole = role;
+  document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  const emailMap = { student:'student@arivupro.in', recruiter:'recruiter@deloitte.com', admin:'admin@arivupro.com' };
+  document.getElementById('login-email').value = emailMap[role];
+}
+
+function doLogin() {
+  document.getElementById('login-page').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  setupUser();
+  buildSidebar();
+  const defaults = { student:'jobs', recruiter:'rec-jobs', admin:'admin-overview' };
+  navigate(defaults[currentRole]);
+}
+
+function doLogout() {
+  document.getElementById('login-page').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+
+function setupUser() {
+  const configs = {
+    student: { name:'Rohan Venkatesh', avatar:'RV', bg:'#1e3a5f', color:'#3b82f6', badge:'student', badgeClass:'student' },
+    recruiter: { name:'Meghna Rao', avatar:'MR', bg:'#1a3a2a', color:'#10b981', badge:'recruiter', badgeClass:'recruiter' },
+    admin: { name:'ArivuPro Admin', avatar:'AP', bg:'#3a1a2a', color:'#f472b6', badge:'admin', badgeClass:'admin' },
+  };
+  const c = configs[currentRole];
+  const av = document.getElementById('user-avatar');
+  av.textContent = c.avatar; av.style.background = c.bg; av.style.color = c.color;
+  document.getElementById('user-name').textContent = c.name;
+  const rb = document.getElementById('role-badge');
+  rb.textContent = c.badge; rb.className = 'role-badge ' + c.badgeClass;
+}
+
+// ══════════════════════════════════════
+// SIDEBAR
+// ══════════════════════════════════════
+function buildSidebar() {
+  const menus = {
+    student: [
+      { label:'Main', items:[
+        { icon:'💼', text:'Browse Jobs', page:'jobs', badge:'142' },
+        { icon:'📋', text:'My Applications', page:'applications', badge:'2' },
+        { icon:'🤖', text:'AI Job Match', page:'ai-match' },
+        { icon:'👤', text:'My Profile', page:'profile' },
+      ]},
+    ],
+    recruiter: [
+      { label:'Manage', items:[
+        { icon:'📊', text:'Dashboard', page:'rec-dashboard' },
+        { icon:'💼', text:'My Job Posts', page:'rec-jobs' },
+        { icon:'👥', text:'Applicants', page:'rec-applicants' },
+        { icon:'➕', text:'Post a Job', page:'rec-post' },
+      ]},
+    ],
+    admin: [
+      { label:'Overview', items:[
+        { icon:'📊', text:'Dashboard', page:'admin-overview' },
+        { icon:'👥', text:'All Students', page:'admin-students', badge:'148' },
+        { icon:'🏢', text:'Companies', page:'admin-companies' },
+      ]},
+      { label:'Operations', items:[
+        { icon:'🔄', text:'Job Scraper', page:'admin-scraper' },
+        { icon:'💼', text:'All Jobs', page:'admin-jobs' },
+        { icon:'🗄️', text:'DB Schema', page:'admin-schema' },
+        { icon:'⚙️', text:'Tech Stack', page:'admin-tech' },
+      ]},
+    ],
+  };
+
+  const sidebar = document.getElementById('sidebar');
+  sidebar.innerHTML = '';
+  (menus[currentRole] || []).forEach(section => {
+    const sec = document.createElement('div');
+    sec.className = 'sidebar-section';
+    sec.innerHTML = `<div class="sidebar-label">${section.label}</div>`;
+    section.items.forEach(item => {
+      const btn = document.createElement('button');
+      btn.className = 'nav-item';
+      btn.dataset.page = item.page;
+      btn.innerHTML = `<span class="icon">${item.icon}</span>${item.text}${item.badge ? `<span class="nav-badge">${item.badge}</span>` : ''}`;
+      btn.onclick = () => navigate(item.page);
+      sec.appendChild(btn);
+    });
+    sidebar.appendChild(sec);
+  });
+}
+
+function navigate(page) {
+  currentPage = page;
+  document.querySelectorAll('.nav-item').forEach(n => {
+    n.classList.toggle('active', n.dataset.page === page);
+  });
+  const main = document.getElementById('main-content');
+  const renders = {
+    'jobs': renderJobs,
+    'applications': renderApplications,
+    'ai-match': renderAiMatch,
+    'profile': renderProfile,
+    'rec-dashboard': renderRecDashboard,
+    'rec-jobs': renderRecJobs,
+    'rec-applicants': renderRecApplicants,
+    'rec-post': renderRecPost,
+    'admin-overview': renderAdminOverview,
+    'admin-students': renderAdminStudents,
+    'admin-companies': renderAdminCompanies,
+    'admin-scraper': renderAdminScraper,
+    'admin-jobs': renderAdminJobs,
+    'admin-schema': renderDbSchema,
+    'admin-tech': renderTechStack,
+  };
+  if (renders[page]) main.innerHTML = renders[page]();
+  else main.innerHTML = `<div class="page-header"><h1>${page}</h1></div>`;
+  attachEvents(page);
+}
+
+// ══════════════════════════════════════
+// ── STUDENT PAGES ──
+// ══════════════════════════════════════
+function renderJobs() {
+  return `
+  <div class="page-header">
+    <div class="page-title-row">
+      <div><h1>Browse Jobs</h1><p>Finance, Articleship, Internship &amp; Trainee roles curated for commerce students</p></div>
+    </div>
+  </div>
+  <div class="filter-bar">
+    <input class="search-input" placeholder="🔍  Search jobs, companies, skills…" id="job-search" oninput="filterJobs()" />
+    <select class="filter-select" id="f-type" onchange="filterJobs()">
+      <option value="">All Types</option>
+      <option>Full-Time</option><option>Articleship</option><option>Internship</option><option>Trainee</option>
+    </select>
+    <select class="filter-select" id="f-city" onchange="filterJobs()">
+      <option value="">All Cities</option>
+      <option>Bangalore</option><option>Mumbai</option><option>Hyderabad</option><option>Delhi</option>
+    </select>
+    <select class="filter-select" id="f-qual" onchange="filterJobs()">
+      <option value="">All Qualifications</option>
+      <option>CA</option><option>CA_INTER</option><option>ACCA</option><option>US_CPA</option><option>CFA</option><option>CS</option><option>CMA_INDIA</option>
+    </select>
+  </div>
+  <div class="job-grid" id="job-grid">${renderJobCards(JOBS)}</div>`;
+}
+
+function renderJobCards(jobs) {
+  return jobs.map(j => `
+  <div class="job-card" onclick="openJobModal('${j.id}')">
+    <div class="job-card-top">
+      <div class="co-logo">${j.logo}</div>
+      <div>
+        <div class="job-title">${j.title}</div>
+        <div class="job-company">${j.company}</div>
+      </div>
+    </div>
+    <div class="tags">
+      ${j.exclusive ? '<span class="tag exclusive">⭐ ArivuPro Exclusive</span>' : ''}
+      ${j.urgent ? '<span class="tag urgent">🔥 Urgent</span>' : ''}
+      <span class="tag type">${j.type}</span>
+      <span class="tag loc">📍 ${j.location}</span>
+      <span class="tag loc">🏠 ${j.workplace}</span>
+      ${j.quals.map(q => `<span class="tag qual">${q}</span>`).join('')}
+    </div>
+    <div class="job-salary">${j.salary}</div>
+    <div class="job-meta">
+      <span class="job-meta-info">👥 ${j.applicants} applicants · 📅 ${j.posted}</span>
+      <span class="match-pill ${j.matchGrade.toLowerCase()}">${j.matchScore}% Match</span>
+    </div>
+    <button class="apply-btn" onclick="event.stopPropagation();applyJob('${j.id}')">Apply via ArivuPro →</button>
+  </div>`).join('');
+}
+
+function filterJobs() {
+  const q = document.getElementById('job-search')?.value.toLowerCase() || '';
+  const type = document.getElementById('f-type')?.value || '';
+  const city = document.getElementById('f-city')?.value || '';
+  const qual = document.getElementById('f-qual')?.value || '';
+  const filtered = JOBS.filter(j =>
+    (!q || j.title.toLowerCase().includes(q) || j.company.toLowerCase().includes(q) || j.skills.some(s => s.toLowerCase().includes(q))) &&
+    (!type || j.type.includes(type)) &&
+    (!city || j.city === city) &&
+    (!qual || j.quals.includes(qual))
+  );
+  const grid = document.getElementById('job-grid');
+  if (grid) grid.innerHTML = filtered.length ? renderJobCards(filtered) : '<p style="color:var(--muted);padding:40px;text-align:center">No jobs match your filters.</p>';
+}
+
+function applyJob(jobId) {
+  const job = JOBS.find(j => j.id === jobId);
+  if (!job) return;
+  APPLICATIONS.push({ id:'a'+Date.now(), jobId, jobTitle:job.title, company:job.company, appliedDate:'Today', stage:'Applied', score:job.matchScore, grade:job.matchGrade, counselor:'ArivuPro Placement Desk', interviewDate:'', timeline:[{s:'Applied',t:'Just now',n:'Submitted via ArivuPro Portal'}] });
+  showToast(`✅ Applied to ${job.title} at ${job.company}`);
+}
+
+function renderApplications() {
+  const stages = ['Applied','ArivuPro Review','Recruiter Screen','Technical Round','Partner Interview','Offer Released','Placed'];
+  return `
+  <div class="page-header"><h1>My Applications</h1><p>Track your placement pipeline in real-time</p></div>
+  <div class="card">
+    <div class="card-title">Application Pipeline <span>${APPLICATIONS.length} active</span></div>
+    <div class="pipeline">
+      ${stages.map((s,i) => {
+        const hasApp = APPLICATIONS.some(a => a.stage === s);
+        const done = APPLICATIONS.some(a => stages.indexOf(a.stage) > i);
+        const cls = hasApp ? 'active' : done ? 'done' : 'pending';
+        return `<div class="pipeline-stage"><div class="ps-dot ${cls}">${hasApp?'●':done?'✓':'○'}</div><div class="ps-label">${s}</div></div>`;
+      }).join('')}
+    </div>
+  </div>
+  ${APPLICATIONS.map(a => `
+  <div class="card">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px">
+      <div>
+        <div style="font-size:15px;font-weight:700">${a.jobTitle}</div>
+        <div style="font-size:12px;color:var(--muted2);margin-top:2px">${a.company} · Applied ${a.appliedDate}</div>
+      </div>
+      <div>
+        <span class="match-pill ${a.grade.toLowerCase()}" style="margin-right:8px">${a.score}% ${a.grade}</span>
+        <span class="status-pill ${a.stage.toLowerCase().replace(/ /g,'-').replace('arivupro-review','review').replace('recruiter-screen','review').replace('technical-round','interview').replace('partner-interview','interview').replace('offer-released','offer')}">${a.stage}</span>
+      </div>
+    </div>
+    ${a.interviewDate ? `<div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--green);margin-bottom:14px">📅 Interview scheduled: <strong>${a.interviewDate}</strong> · Counselor: ${a.counselor}</div>` : ''}
+    <div class="timeline">${a.timeline.map((t,i) => `
+      <div class="tl-item">
+        <div class="tl-dot ${i < a.timeline.length-1 ? 'done' : ''}"></div>
+        <div class="tl-stage">${t.s}</div>
+        <div class="tl-time">${t.t}</div>
+        <div class="tl-note">${t.n}</div>
+      </div>`).join('')}
+    </div>
+  </div>`).join('')}`;
+}
+
+function renderAiMatch() {
+  return `
+  <div class="page-header"><h1>AI Job Match</h1><p>Gemini 2.0 Flash evaluates your fit for every role</p></div>
+  <div class="card">
+    <div class="card-title">Select a job to get your AI match score</div>
+    ${JOBS.slice(0,4).map(j => `
+    <div style="display:flex;align-items:center;gap:14px;padding:14px;background:var(--surface2);border-radius:10px;margin-bottom:10px;cursor:pointer" onclick="showAiResult('${j.id}')">
+      <div class="co-logo">${j.logo}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700">${j.title}</div>
+        <div style="font-size:11px;color:var(--muted2)">${j.company} · ${j.quals.join(', ')}</div>
+      </div>
+      <button class="btn-secondary" style="font-size:11px;padding:6px 14px">Analyse →</button>
+    </div>`).join('')}
+  </div>
+  <div id="ai-result-box"></div>`;
+}
+
+function showAiResult(jobId) {
+  const job = JOBS.find(j => j.id === jobId);
+  if (!job) return;
+  document.getElementById('ai-result-box').innerHTML = `
+  <div class="card">
+    <div class="card-title">AI Match Analysis — ${job.title} @ ${job.company} <span>Powered by Gemini 2.0 Flash</span></div>
+    <div style="text-align:center;padding:20px 0 24px">
+      <div style="font-size:48px;font-weight:900;color:var(--${job.matchGrade==='Excellent'?'green':'amber'})">${job.matchScore}%</div>
+      <div class="match-pill ${job.matchGrade.toLowerCase()}" style="font-size:13px;padding:5px 16px">${job.matchGrade} Match</div>
+    </div>
+    <div class="match-bar-wrap"><div class="match-bar-label"><span>Qualification Fit</span><span>96%</span></div><div class="match-bar"><div class="match-bar-fill" style="width:96%"></div></div></div>
+    <div class="match-bar-wrap"><div class="match-bar-label"><span>Skills Match</span><span>92%</span></div><div class="match-bar"><div class="match-bar-fill" style="width:92%"></div></div></div>
+    <div class="match-bar-wrap"><div class="match-bar-label"><span>Experience Fit</span><span>94%</span></div><div class="match-bar"><div class="match-bar-fill" style="width:94%"></div></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;margin-bottom:8px">✅ Strengths</div>
+        <div style="font-size:12px;color:var(--muted2);line-height:1.6">• Strong ACCA + US CPA dual qualification alignment<br>• 18 months audit articleship verified<br>• US GAAP &amp; PCAOB framework knowledge</div>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--amber);text-transform:uppercase;margin-bottom:8px">⚠️ Gap Alerts</div>
+        <div style="font-size:12px;color:var(--muted2);line-height:1.6">• Brush up on Alteryx workflows before interview<br>• SAP ERP hands-on exposure recommended</div>
+      </div>
+    </div>
+    <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:12px;margin-top:16px;font-size:12px;color:var(--green)">
+      💬 <strong>Counselor Recommendation:</strong> Priority Candidate — high probability of offer. Fast-track to ${job.company} campus hiring pool.
+    </div>
+  </div>`;
+}
+
+function renderProfile() {
+  return `
+  <div class="page-header"><h1>My Profile</h1><p>Your ArivuPro student profile &amp; placement readiness</p></div>
+  <div class="profile-header">
+    <div class="profile-avatar" style="background:#1e3a5f">RV</div>
+    <div>
+      <div class="profile-name">Rohan Venkatesh <span style="font-size:12px;color:var(--green)">✓ Verified Student</span></div>
+      <div class="profile-sub">ARV-2024-ACCA-882 · ACCA &amp; US CPA Dual Track · Batch 2024-BLR</div>
+      <div class="profile-sub" style="margin-top:4px">ACCA 11/13 Papers Cleared · US CPA 2/4 Passed · 18 months Articleship</div>
+      <div class="profile-badges">
+        <span class="tag qual">ACCA</span><span class="tag qual">US_CPA</span><span class="tag qual">CA_INTER</span><span class="tag qual">FINANCIAL_MODELING</span>
+      </div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div class="card">
+      <div class="card-title">Key Skills</div>
+      <div>IFRS · US GAAP · Statutory Audit · Financial Modeling · Ind AS · Advanced Excel · SAP FICO</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Placement Preferences</div>
+      <div style="font-size:13px;line-height:1.8;color:var(--muted2)">
+        <div>📍 Preferred Locations: <strong style="color:var(--text)">Bangalore, Hyderabad, Remote</strong></div>
+        <div>💰 Expected CTC: <strong style="color:var(--green)">₹8.5 – 11 LPA</strong></div>
+        <div>🎯 Target Roles: <strong style="color:var(--text)">Audit Senior, FP&A Analyst, Fin. Reporting</strong></div>
+      </div>
+    </div>
+    <div class="card" style="grid-column:1/-1">
+      <div class="card-title">About</div>
+      <div style="font-size:13px;color:var(--muted2);line-height:1.6">Passionate finance scholar at ArivuPro Academy with strong foundation in IFRS and US GAAP. Completed 18 months of intensive audit articleship handling manufacturing and IT services audits. Looking for high-impact roles in Big 4 or Global GCCs.</div>
+    </div>
+  </div>`;
+}
+
+// ══════════════════════════════════════
+// ── RECRUITER PAGES ──
+// ══════════════════════════════════════
+function renderRecDashboard() {
+  return `
+  <div class="page-header"><h1>Recruiter Dashboard</h1><p>Deloitte India — Campus Recruitment</p></div>
+  <div class="stats-grid">
+    <div class="stat-card amber"><div class="stat-label">Active Job Posts</div><div class="stat-value">3</div><div class="stat-sub">2 receiving applications</div></div>
+    <div class="stat-card green"><div class="stat-label">Total Applicants</div><div class="stat-value">53</div><div class="stat-sub">This month</div></div>
+    <div class="stat-card blue"><div class="stat-label">In Interview Stage</div><div class="stat-value">8</div><div class="stat-sub">Scheduled this week</div></div>
+    <div class="stat-card purple"><div class="stat-label">Offers Extended</div><div class="stat-value">2</div><div class="stat-sub">Awaiting acceptance</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Recent Applicants</div>
+    <div class="table-wrap"><table>
+      <tr><th>Candidate</th><th>Course</th><th>AI Match</th><th>Stage</th><th>Applied</th><th>Action</th></tr>
+      ${RECRUITER_APPLICANTS.map(a => `<tr>
+        <td><strong>${a.name}</strong><br><span style="font-size:11px;color:var(--muted)">${a.email}</span></td>
+        <td>${a.course}</td>
+        <td><span class="match-pill ${a.grade.toLowerCase()}">${a.score}%</span></td>
+        <td><span class="status-pill ${a.stage.toLowerCase().includes('technical')?'interview':a.stage.toLowerCase().includes('screen')?'review':'applied'}">${a.stage}</span></td>
+        <td>${a.applied}</td>
+        <td><button class="btn-sm green">View</button> <button class="btn-sm blue">Schedule</button></td>
+      </tr>`).join('')}
+    </table></div>
+  </div>`;
+}
+
+function renderRecJobs() {
+  return `
+  <div class="page-header">
+    <div class="page-title-row">
+      <div><h1>My Job Posts</h1><p>Manage your active listings</p></div>
+      <button class="btn-secondary" onclick="navigate('rec-post')">+ Post New Job</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="table-wrap"><table>
+      <tr><th>Job Title</th><th>Status</th><th>Applicants</th><th>Posted</th><th>Deadline</th><th>Actions</th></tr>
+      ${RECRUITER_JOBS.map(j => `<tr>
+        <td><strong>${j.title}</strong></td>
+        <td><span class="status-pill ${j.status}">${j.status}</span></td>
+        <td>${j.applicants}</td>
+        <td>${j.posted}</td>
+        <td>${j.deadline}</td>
+        <td><button class="btn-sm blue" onclick="showToast('Viewing applicants for: ${j.title}')">View Apps</button> <button class="btn-sm red" onclick="showToast('Job closed.')">Close</button></td>
+      </tr>`).join('')}
+    </table></div>
+  </div>`;
+}
+
+function renderRecApplicants() {
+  return `
+  <div class="page-header"><h1>All Applicants</h1><p>Candidates who applied to your job posts</p></div>
+  <div class="card">
+    <div class="table-wrap"><table>
+      <tr><th>Candidate</th><th>Course</th><th>AI Match</th><th>Stage</th><th>Applied</th><th>Action</th></tr>
+      ${RECRUITER_APPLICANTS.map(a => `<tr>
+        <td><strong>${a.name}</strong><br><span style="font-size:11px;color:var(--muted)">${a.email}</span></td>
+        <td>${a.course}</td>
+        <td><span class="match-pill ${a.grade.toLowerCase()}">${a.score}%</span></td>
+        <td><span class="status-pill ${a.stage.toLowerCase().includes('technical')?'interview':a.stage.toLowerCase().includes('screen')?'review':'applied'}">${a.stage}</span></td>
+        <td>${a.applied}</td>
+        <td>
+          <button class="btn-sm green" onclick="showToast('Moving ${a.name} to next stage')">Advance</button>
+          <button class="btn-sm red" onclick="showToast('${a.name} declined')">Decline</button>
+        </td>
+      </tr>`).join('')}
+    </table></div>
+  </div>`;
+}
+
+function renderRecPost() {
+  return `
+  <div class="page-header"><h1>Post a New Job</h1><p>Fill in the details and publish to ArivuPro Portal</p></div>
+  <div class="card">
+    <div class="job-post-form">
+      <div class="form-row">
+        <div class="form-group"><label>Job Title *</label><input type="text" placeholder="e.g. Audit Associate" id="rp-title"/></div>
+        <div class="form-group"><label>Company Name</label><input type="text" value="Deloitte India" id="rp-company"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Job Type</label><select id="rp-type"><option>Full-Time</option><option>Articleship</option><option>Internship</option><option>Trainee</option></select></div>
+        <div class="form-group"><label>Workplace</label><select><option>Hybrid</option><option>Onsite</option><option>Remote</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Location</label><input type="text" placeholder="City, State" /></div>
+        <div class="form-group"><label>Salary / Stipend</label><input type="text" placeholder="e.g. ₹7.5–9.5 LPA" /></div>
+      </div>
+      <div class="form-group"><label>Required Qualifications</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
+          ${['CA','CA_INTER','ACCA','US_CPA','US_CMA','CFA','CS','CMA_INDIA'].map(q => `<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="checkbox" /> ${q}</label>`).join('')}
+        </div>
+      </div>
+      <div class="form-group"><label>Job Description</label><textarea rows="4" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:13px;outline:none;resize:vertical" placeholder="Describe the role, responsibilities, and what you're looking for…"></textarea></div>
+      <div style="display:flex;gap:12px;margin-top:4px">
+        <button class="btn-primary" style="max-width:200px" onclick="showToast('✅ Job published to ArivuPro Portal!')">Publish Job</button>
+        <button class="btn-secondary" onclick="showToast('Saved as draft')">Save Draft</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ══════════════════════════════════════
+// ── ADMIN PAGES ──
+// ══════════════════════════════════════
+function renderAdminOverview() {
+  return `
+  <div class="page-header"><h1>Admin Dashboard</h1><p>ArivuPro Placement Operations — Live Overview</p></div>
+  <div class="stats-grid">
+    <div class="stat-card amber"><div class="stat-label">Total Jobs (Live)</div><div class="stat-value">673</div><div class="stat-sub">142 exclusive · 531 scraped</div></div>
+    <div class="stat-card green"><div class="stat-label">Total Placed</div><div class="stat-value">87</div><div class="stat-sub">Avg ₹9.8 LPA · Highest ₹24.5 LPA</div></div>
+    <div class="stat-card blue"><div class="stat-label">Active Interviews</div><div class="stat-value">26</div><div class="stat-sub">8 scheduled this week</div></div>
+    <div class="stat-card purple"><div class="stat-label">Student Applicants</div><div class="stat-value">148</div><div class="stat-sub">19 offers released</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div class="card">
+      <div class="card-title">Live Alerts <span>last 2 hours</span></div>
+      ${ADMIN_ALERTS.map(a => `<div class="alert-row"><span class="ar-icon">${a.icon}</span><span class="ar-text">${a.text}</span><span class="ar-time">${a.time}</span></div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="card-title">Placement Pipeline</div>
+      ${[['Applied','148'],['ArivuPro Review','112'],['Recruiter Screen','64'],['Interview Stages','26'],['Offers Released','19'],['Placed','87']].map(([s,n]) => `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div style="font-size:12px;color:var(--muted2);min-width:140px">${s}</div>
+        <div style="flex:1;height:6px;background:var(--surface2);border-radius:3px"><div style="width:${Math.round(parseInt(n)/148*100)}%;height:100%;background:linear-gradient(90deg,var(--amber),var(--green));border-radius:3px"></div></div>
+        <div style="font-size:12px;font-weight:700;min-width:28px;text-align:right">${n}</div>
+      </div>`).join('')}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Course-wise Salary Benchmarks</div>
+    <div class="table-wrap"><table>
+      <tr><th>Qualification</th><th>Fresher Avg LPA</th><th>Top Offer LPA</th><th>Big 4 Share</th></tr>
+      ${[['Qualified CA','₹11.5','₹24.0','42%'],['ACCA (Affiliate)','₹8.5','₹16.5','36%'],['US CPA','₹9.5','₹18.0','38%'],['CFA L2/L3','₹12.0','₹22.0','18%'],['US CMA / CMA India','₹8.0','₹14.5','22%'],['CA Articleship','₹3.2','₹4.8','50%']].map(([c,a,t,b]) => `
+      <tr><td>${c}</td><td style="color:var(--green);font-weight:700">${a}</td><td style="color:var(--amber);font-weight:700">${t}</td><td>${b}</td></tr>`).join('')}
+    </table></div>
+  </div>`;
+}
+
+function renderAdminStudents() {
+  const students = [
+    {name:'Rohan Venkatesh',id:'ARV-2024-ACCA-882',course:'ACCA + US CPA',stage:'Technical Round',score:94,counselor:'Priya Sharma',sync:'Synced'},
+    {name:'Priya Sundaram',id:'ARV-2024-CA-441',course:'CA Final',stage:'Recruiter Screen',score:88,counselor:'Anand Kulkarni',sync:'Synced'},
+    {name:'Aditya Patel',id:'ARV-2024-CFA-219',course:'CFA L2',stage:'Applied',score:76,counselor:'—',sync:'Pending'},
+    {name:'Meera Krishnan',id:'ARV-2024-CS-108',course:'CS + B.Com',stage:'ArivuPro Review',score:70,counselor:'Ravi Nair',sync:'Synced'},
+    {name:'Suresh Babu',id:'ARV-2024-CMA-334',course:'CMA India',stage:'Placed',score:85,counselor:'Priya Sharma',sync:'Synced'},
+  ];
+  return `
+  <div class="page-header"><h1>All Student Applications</h1><p>Monitor and manage every candidate in the pipeline</p></div>
+  <div class="filter-bar">
+    <input class="search-input" placeholder="🔍 Search by name, ID, course…" style="max-width:280px"/>
+    <select class="filter-select"><option>All Stages</option><option>Applied</option><option>ArivuPro Review</option><option>Technical Round</option><option>Placed</option></select>
+    <button class="btn-secondary" onclick="showToast('📥 CSV exported!')">Export CSV</button>
+    <button class="btn-primary" style="max-width:160px" onclick="showToast('🔄 All synced to CRM!')">Sync All to CRM</button>
+  </div>
+  <div class="card">
+    <div class="table-wrap"><table>
+      <tr><th>Student</th><th>Course</th><th>Stage</th><th>AI Score</th><th>Counselor</th><th>CRM Sync</th><th>Action</th></tr>
+      ${students.map(s => `<tr>
+        <td><strong>${s.name}</strong><br><span style="font-size:11px;color:var(--muted)">${s.id}</span></td>
+        <td>${s.course}</td>
+        <td><span class="status-pill ${s.stage==='Placed'?'placed':s.stage==='Technical Round'?'interview':s.stage==='Applied'?'applied':'review'}">${s.stage}</span></td>
+        <td><span class="match-pill ${s.score>=90?'excellent':'strong'}">${s.score}%</span></td>
+        <td>${s.counselor}</td>
+        <td><span class="status-pill ${s.sync==='Synced'?'active':'pending'}">${s.sync}</span></td>
+        <td><button class="btn-sm blue" onclick="showToast('Viewing ${s.name}')">View</button> <button class="btn-sm green" onclick="showToast('Stage advanced for ${s.name}')">Advance</button></td>
+      </tr>`).join('')}
+    </table></div>
+  </div>`;
+}
+
+function renderAdminCompanies() {
+  const cos = [
+    {name:'Deloitte India',status:'mou_partner',industry:'Big 4 Audit',jobs:3,contact:'Meghna Rao',email:'campus@deloitte.com'},
+    {name:'BDO India LLP',status:'verified',industry:'Accounting',jobs:2,contact:'Suresh Menon',email:'careers@bdo.in'},
+    {name:'Goldman Sachs',status:'mou_partner',industry:'Investment Banking',jobs:1,contact:'Aditi Nair',email:'talent@gs.com'},
+    {name:'EY India',status:'pending',industry:'Big 4 Advisory',jobs:0,contact:'—',email:'campus@ey.com'},
+  ];
+  return `
+  <div class="page-header"><h1>Registered Companies</h1><p>Recruiter partners and MoU holders</p></div>
+  <div class="card">
+    <div class="table-wrap"><table>
+      <tr><th>Company</th><th>Status</th><th>Industry</th><th>Active Jobs</th><th>Contact</th><th>Action</th></tr>
+      ${cos.map(c => `<tr>
+        <td><strong>${c.name}</strong><br><span style="font-size:11px;color:var(--muted)">${c.email}</span></td>
+        <td><span class="status-pill ${c.status==='mou_partner'?'placed':c.status}">${c.status.replace('_',' ')}</span></td>
+        <td>${c.industry}</td>
+        <td>${c.jobs}</td>
+        <td>${c.contact}</td>
+        <td><button class="btn-sm blue" onclick="showToast('Viewing ${c.name}')">View</button> ${c.status==='pending'?`<button class="btn-sm green" onclick="showToast('${c.name} verified!')">Verify</button>`:''}
+        </td>
+      </tr>`).join('')}
+    </table></div>
+  </div>`;
+}
+
+function renderAdminJobs() {
+  return `
+  <div class="page-header">
+    <div class="page-title-row">
+      <div><h1>All Jobs</h1><p>Manage every listing in the portal</p></div>
+      <button class="btn-secondary" onclick="showToast('Create job form coming soon')">+ New Job</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="table-wrap"><table>
+      <tr><th>Title</th><th>Company</th><th>Type</th><th>Source</th><th>Applicants</th><th>Status</th><th>Action</th></tr>
+      ${JOBS.map(j => `<tr>
+        <td><strong>${j.title}</strong>${j.exclusive?' <span class="tag exclusive" style="font-size:9px">Exclusive</span>':''}</td>
+        <td>${j.company}</td>
+        <td>${j.type}</td>
+        <td style="font-size:11px;color:var(--muted)">${j.source}</td>
+        <td>${j.applicants}</td>
+        <td><span class="status-pill active">active</span></td>
+        <td><button class="btn-sm blue" onclick="showToast('Editing: ${j.title}')">Edit</button> <button class="btn-sm red" onclick="showToast('Closed: ${j.title}')">Close</button></td>
+      </tr>`).join('')}
+    </table></div>
+  </div>`;
+}
+
+function renderAdminScraper() {
+  return `
+  <div class="page-header"><h1>Job Scraper Engine</h1><p>Automated multi-source job discovery pipeline</p></div>
+  <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+    <div class="stat-card amber"><div class="stat-label">Total Scraped Jobs</div><div class="stat-value">673</div><div class="stat-sub">Across all active sources</div></div>
+    <div class="stat-card green"><div class="stat-label">Last Sync</div><div class="stat-value">5m</div><div class="stat-sub">JSearch API · 23 new jobs</div></div>
+    <div class="stat-card blue"><div class="stat-label">Deduplication Engine</div><div class="stat-value">SHA256</div><div class="stat-sub">Fingerprint-based cross-source dedup</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Data Flow — How Jobs Enter the Portal</div>
+    <div class="flow">
+      <div class="flow-box"><div class="fb-icon">🌐</div><div class="fb-title">External Sources</div><div class="fb-sub">LinkedIn, Naukri, ICAI, BuddingCA…</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box highlight"><div class="fb-icon">🤖</div><div class="fb-title">Scraper Engine</div><div class="fb-sub">Cheerio · RSS · REST API · Apify</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box"><div class="fb-icon">🔍</div><div class="fb-title">Course Detection</div><div class="fb-sub">Keyword regex → Gemini fallback</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box"><div class="fb-icon">🔐</div><div class="fb-title">Dedup Check</div><div class="fb-sub">SHA256 fingerprint · source+id unique</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box highlight"><div class="fb-icon">🗄️</div><div class="fb-title">Supabase DB</div><div class="fb-sub">jobs table · sync_runs audit log</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box"><div class="fb-icon">🎯</div><div class="fb-title">Student Feed</div><div class="fb-sub">Filtered · AI-matched · Live</div></div>
+    </div>
+  </div>
+
+  <div class="scraper-grid">
+    ${SCRAPERS.map(s => `
+    <div class="scraper-card">
+      <div class="scraper-card-top">
+        <div class="scraper-name">${s.name}</div>
+        <div class="scraper-dot ${s.status}"></div>
+      </div>
+      <div class="scraper-meta">${s.focus}</div>
+      <div class="scraper-meta">Last run: ${s.lastRun}</div>
+      <div class="scraper-count">${s.count} <span style="font-size:12px;color:var(--muted)">jobs</span></div>
+      <button class="trigger-btn" onclick="triggerScraper('${s.id}','${s.name}')">▶ Trigger Sync</button>
+    </div>`).join('')}
+  </div>`;
+}
+
+function triggerScraper(id, name) {
+  showToast(`🔄 Syncing ${name}…`);
+  setTimeout(() => showToast(`✅ ${name} sync complete — 12 new jobs found`), 1800);
+}
+
+// ══════════════════════════════════════
+// ── DB SCHEMA ──
+// ══════════════════════════════════════
+function renderDbSchema() {
+  const tables = [
+    {
+      icon:'💼', name:'jobs', desc:'All job listings (scraped + exclusive)',
+      cols:[
+        {n:'id',t:'uuid',note:'',pk:true},{n:'title',t:'text',note:'NOT NULL'},{n:'company',t:'text',note:'NOT NULL'},
+        {n:'job_type',t:'enum',note:'full-time | internship | articleship | trainee'},{n:'workplace_type',t:'enum',note:'onsite | hybrid | remote'},
+        {n:'status',t:'enum',note:'draft | active | closed | expired'},{n:'qualifications',t:'text[]',note:'Array of course tags'},
+        {n:'mandatory_skills',t:'text[]',note:'Required skills'},{n:'salary_min_lpa',t:'numeric(6,2)',note:'Annual CTC'},
+        {n:'stipend_monthly',t:'int',note:'For articleship/internship (₹)'},{n:'source',t:'text',note:'caclubindia | jsearch | linkedin…'},
+        {n:'external_id',t:'text',note:'ID from source'},{n:'content_fingerprint',t:'text',note:'SHA256 for dedup'},
+        {n:'arivupro_exclusive',t:'boolean',note:'Campus MoU drive'},{n:'is_urgent',t:'boolean',note:''},
+        {n:'applicants_count',t:'int',note:'Auto-incremented on apply'},{n:'posted_date',t:'timestamptz',note:''},
+      ]
+    },
+    {
+      icon:'🎓', name:'student_leads', desc:'Applications submitted by students',
+      cols:[
+        {n:'id',t:'uuid',note:'',pk:true},{n:'job_id',t:'uuid',note:'FK → jobs(id)'},{n:'student_name',t:'text',note:'NOT NULL'},
+        {n:'student_email',t:'text',note:'NOT NULL'},{n:'student_phone',t:'text',note:'NOT NULL'},
+        {n:'student_id',t:'text',note:'ARV-XXXX-COURSE-NNN'},{n:'primary_course',t:'text',note:''},
+        {n:'resume_url',t:'text',note:'Supabase Storage bucket: resumes'},
+        {n:'ai_match_score',t:'int',note:'0–100 Gemini score'},{n:'match_grade',t:'text',note:'Excellent | Strong | Moderate | Low'},
+        {n:'stage',t:'enum',note:'applied → arivupro_review → … → placed'},
+        {n:'status',t:'enum',note:'new | contacted | qualified | converted | rejected'},
+        {n:'crm_sync_status',t:'enum',note:'synced | pending | syncing'},
+        {n:'assigned_counselor',t:'text',note:''},{n:'interview_date',t:'timestamptz',note:''},
+        {n:'timeline',t:'jsonb',note:'Array of stage transition events'},
+      ]
+    },
+    {
+      icon:'🏢', name:'company_leads', desc:'Registered recruiters & employers',
+      cols:[
+        {n:'id',t:'uuid',note:'',pk:true},{n:'company_name',t:'text',note:'NOT NULL'},{n:'legal_name',t:'text',note:''},
+        {n:'work_email',t:'text',note:'NOT NULL'},{n:'contact_person',t:'text',note:''},
+        {n:'cin_or_gstin',t:'text',note:'15-char GSTIN or 21-char CIN'},
+        {n:'verification_status',t:'enum',note:'verified | pending | mou_partner'},
+        {n:'active_jobs_count',t:'int',note:'Auto-managed'},{n:'status',t:'enum',note:'new | qualified | converted'},
+        {n:'industry',t:'text',note:''},{n:'notes',t:'text',note:'Admin notes'},
+      ]
+    },
+    {
+      icon:'🔄', name:'sync_runs', desc:'Scraper audit log per source',
+      cols:[
+        {n:'id',t:'uuid',note:'',pk:true},{n:'source',t:'text',note:'caclubindia | jsearch | icai_eirc…'},
+        {n:'started_at',t:'timestamptz',note:''},{n:'finished_at',t:'timestamptz',note:''},
+        {n:'status',t:'enum',note:'running | ok | error'},{n:'fetched',t:'int',note:'Total rows from source'},
+        {n:'created',t:'int',note:'New records inserted'},{n:'updated',t:'int',note:'Existing records refreshed'},
+        {n:'duplicates',t:'int',note:'Fingerprint matches skipped'},{n:'error_msg',t:'text',note:''},
+      ]
+    },
+    {
+      icon:'👤', name:'auth.users', desc:'Supabase managed auth table',
+      cols:[
+        {n:'id',t:'uuid',note:'',pk:true},{n:'email',t:'text',note:'Unique'},{n:'role',t:'text',note:'authenticated | anon'},
+        {n:'created_at',t:'timestamptz',note:''},{n:'last_sign_in_at',t:'timestamptz',note:''},
+      ]
+    },
+    {
+      icon:'⚙️', name:'admin_users', desc:'Admin & counselor roles',
+      cols:[
+        {n:'id',t:'uuid',note:'FK → auth.users(id)',pk:true},{n:'email',t:'text',note:'Unique'},
+        {n:'name',t:'text',note:''},{n:'role',t:'enum',note:'super_admin | admin | counselor'},
+        {n:'created_at',t:'timestamptz',note:''},
+      ]
+    },
+  ];
+
+  return `
+  <div class="page-header"><h1>Database Schema</h1><p>PostgreSQL via Supabase — 6 tables with RLS enabled</p></div>
+
+  <div class="card">
+    <div class="card-title">Entity Relationships</div>
+    <div class="flow" style="flex-wrap:wrap;gap:12px;padding:12px 0">
+      <div class="flow-box"><div class="fb-icon">👤</div><div class="fb-title">auth.users</div><div class="fb-sub">Supabase Auth</div></div>
+      <div class="flow-arrow">1:1</div>
+      <div class="flow-box"><div class="fb-icon">⚙️</div><div class="fb-title">admin_users</div><div class="fb-sub">Role: admin/counselor</div></div>
+      <div style="width:100%;height:0"></div>
+      <div class="flow-box highlight"><div class="fb-icon">💼</div><div class="fb-title">jobs</div><div class="fb-sub">All listings</div></div>
+      <div class="flow-arrow">1:N</div>
+      <div class="flow-box"><div class="fb-icon">🎓</div><div class="fb-title">student_leads</div><div class="fb-sub">Applications</div></div>
+      <div class="flow-arrow" style="color:var(--muted)">·</div>
+      <div class="flow-box"><div class="fb-icon">🏢</div><div class="fb-title">company_leads</div><div class="fb-sub">Recruiters</div></div>
+      <div class="flow-arrow" style="color:var(--muted)">·</div>
+      <div class="flow-box"><div class="fb-icon">🔄</div><div class="fb-title">sync_runs</div><div class="fb-sub">Scraper audit</div></div>
+    </div>
+  </div>
+
+  <div class="schema-grid">
+    ${tables.map(t => `
+    <div class="schema-table">
+      <div class="schema-table-header">
+        <span class="table-icon">${t.icon}</span>
+        <span class="table-name">${t.name}</span>
+        <span class="table-desc">${t.desc}</span>
+      </div>
+      ${t.cols.map(c => `
+      <div class="schema-col">
+        <span class="col-name">${c.n}</span>
+        <span class="col-type">${c.t}</span>
+        <span class="col-note">${c.note}</span>
+        ${c.pk ? '<span class="pk">PK</span>' : ''}
+      </div>`).join('')}
+    </div>`).join('')}
+  </div>`;
+}
+
+// ══════════════════════════════════════
+// ── TECH STACK ──
+// ══════════════════════════════════════
+function renderTechStack() {
+  const stack = [
+    {layer:'fe',icon:'⚛️',name:'React 19',desc:'SPA with hooks, context, and tab-based routing'},
+    {layer:'fe',icon:'🎨',name:'Tailwind CSS v4',desc:'Utility-first styling with custom design tokens'},
+    {layer:'fe',icon:'📦',name:'Vite 8',desc:'Build tool + dev server with HMR & API proxy'},
+    {layer:'fe',icon:'🔷',name:'TypeScript 7',desc:'End-to-end type safety across components & API'},
+    {layer:'be',icon:'🐍',name:'Python / FastAPI',desc:'Async REST API, Pydantic validation, auto Swagger docs'},
+    {layer:'be',icon:'🦄',name:'Uvicorn',desc:'ASGI server — production-grade Python web runtime'},
+    {layer:'be',icon:'🔌',name:'Supabase SDK',desc:'Python client for DB queries & Storage uploads'},
+    {layer:'db',icon:'🐘',name:'PostgreSQL',desc:'Primary database via Supabase — 6 tables, RLS enabled'},
+    {layer:'db',icon:'🔐',name:'Row Level Security',desc:'Policy-based access: public read active jobs only'},
+    {layer:'db',icon:'🪣',name:'Supabase Storage',desc:'3 buckets: resumes (private), job-logos, job-docs'},
+    {layer:'ai',icon:'✨',name:'Gemini 2.0 Flash',desc:'Candidate-job match scoring + interview prep generation'},
+    {layer:'ai',icon:'🧠',name:'Course Detection',desc:'Keyword regex (80+ patterns) → Gemini fallback for NLP'},
+    {layer:'infra',icon:'🌊',name:'Supabase Auth',desc:'JWT-based auth with httpOnly sessions + admin_users table'},
+    {layer:'infra',icon:'🔄',name:'Scraper Pipeline',desc:'CA Club India · BuddingCA · JSearch · ICAI regional · ICMAI'},
+    {layer:'infra',icon:'🔑',name:'SHA256 Dedup',desc:'Content fingerprinting prevents duplicate job entries'},
+    {layer:'infra',icon:'📧',name:'Resend Email',desc:'Transactional emails: applications, verifications, alerts'},
+  ];
+
+  const layerLabels = {fe:'Frontend',be:'Backend',db:'Database',ai:'AI / ML',infra:'Infrastructure'};
+  const layers = ['fe','be','db','ai','infra'];
+
+  return `
+  <div class="page-header"><h1>Tech Stack</h1><p>Full architecture overview — ArivuPro Finance Career Portal</p></div>
+  ${layers.map(l => `
+  <div class="card">
+    <div class="card-title">${layerLabels[l]}</div>
+    <div class="tech-grid">
+      ${stack.filter(s => s.layer===l).map(s => `
+      <div class="tech-card">
+        <div class="tech-layer ${s.layer}">${layerLabels[s.layer]}</div>
+        <div class="tech-icon">${s.icon}</div>
+        <div class="tech-name">${s.name}</div>
+        <div class="tech-desc">${s.desc}</div>
+      </div>`).join('')}
+    </div>
+  </div>`).join('')}`;
+}
+
+// ══════════════════════════════════════
+// MODALS / EVENTS / UTILS
+// ══════════════════════════════════════
+function openJobModal(jobId) {
+  const job = JOBS.find(j => j.id === jobId);
+  if (!job) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+  <div class="modal">
+    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button>
+    <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:20px">
+      <div class="co-logo" style="width:52px;height:52px;font-size:16px">${job.logo}</div>
+      <div>
+        <h3 style="margin-bottom:4px">${job.title}</h3>
+        <div style="font-size:13px;color:var(--muted2)">${job.company} · ${job.location} · ${job.workplace}</div>
+        <div class="tags" style="margin-top:8px">
+          ${job.exclusive?'<span class="tag exclusive">⭐ ArivuPro Exclusive</span>':''}
+          <span class="tag type">${job.type}</span>
+          ${job.quals.map(q=>`<span class="tag qual">${q}</span>`).join('')}
+        </div>
+      </div>
+    </div>
+    <div style="font-size:22px;font-weight:800;color:var(--green);margin-bottom:16px">${job.salary}</div>
+    <p style="font-size:13px;color:var(--muted2);line-height:1.6;margin-bottom:20px">${job.desc}</p>
+    <div style="margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Required Skills</div>
+      <div>${job.skills.map(s=>`<span class="skill-chip">${s}</span>`).join('')}</div>
+    </div>
+    <div class="card-title" style="margin-bottom:12px">Your AI Match Score</div>
+    <div style="text-align:center;padding:12px 0 16px">
+      <div style="font-size:40px;font-weight:900;color:var(--${job.matchGrade==='Excellent'?'green':'amber'})">${job.matchScore}%</div>
+      <span class="match-pill ${job.matchGrade.toLowerCase()}" style="font-size:12px">${job.matchGrade}</span>
+    </div>
+    <button class="btn-primary" onclick="applyJob('${job.id}');this.closest('.modal-overlay').remove()">Apply via ArivuPro →</button>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+}
+
+function attachEvents(page) {
+  // Additional event wiring per page if needed
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// Pre-select student role on load
+selectRole('student', document.querySelectorAll('.role-tab')[0]);
+</script>
+</body>
+</html>

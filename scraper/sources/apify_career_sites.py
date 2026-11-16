@@ -10,6 +10,7 @@ These post on Workday/Greenhouse/Lever — not on Naukri/Indeed — so this is u
 """
 import os
 import re
+import hashlib
 import httpx
 import logging
 import asyncio
@@ -46,7 +47,7 @@ TARGET_EMPLOYERS = [
     {"name": "RSM India",              "url": "https://rsm.in/careers",            "ats": "lever"},
     {"name": "Mazars India",           "url": "https://mazars.in/careers",         "ats": "greenhouse"},
     # Banks / BFSI
-    {"name": "HDFC Bank",              "url": "https://www.hdfcbank.com/personal/about-us/careers", "ats": "workday"},
+    {"name": "HSBC India",             "url": "https://mycareer.hsbc.com/en_GB/ext/",             "ats": "workday"},
     {"name": "Axis Bank",              "url": "https://careers.axisbank.com",      "ats": "workday"},
     {"name": "ICICI Bank",             "url": "https://careers.icicibank.com",     "ats": "workday"},
     # GCCs / MNCs
@@ -54,6 +55,29 @@ TARGET_EMPLOYERS = [
     {"name": "JP Morgan India",        "url": "https://careers.jpmorgan.com",      "ats": "workday"},
     {"name": "Barclays India",         "url": "https://home.barclays/careers",     "ats": "workday"},
     {"name": "Morgan Stanley India",   "url": "https://careers.morganstanley.com", "ats": "workday"},
+    # Indian IT / GCCs
+    {"name": "Accenture India",          "url": "https://www.accenture.com/in-en/careers", "ats": "workday"},
+    {"name": "Infosys BPM",              "url": "https://www.infosys.com/careers/",        "ats": "workday"},
+    {"name": "Wipro",                    "url": "https://careers.wipro.com",               "ats": "workday"},
+    # BPO / Finance outsourcing
+    {"name": "Genpact",                  "url": "https://www.genpact.com/careers",         "ats": "workday"},
+    {"name": "EXL Service",              "url": "https://www.exlservice.com/careers",      "ats": "workday"},
+    {"name": "WNS Global Services",      "url": "https://www.wns.com/careers",             "ats": "workday"},
+    # Banks
+    {"name": "Kotak Mahindra Bank",      "url": "https://careers.kotak.com",              "ats": "workday"},
+    {"name": "Deutsche Bank India",      "url": "https://careers.db.com",                 "ats": "workday"},
+    {"name": "Standard Chartered India", "url": "https://www.sc.com/en/careers",          "ats": "workday"},
+    # Fintech / Startups
+    {"name": "Zerodha",                  "url": "https://zerodha.com/careers",             "ats": "greenhouse"},
+    {"name": "Groww",                    "url": "https://jobs.lever.co/groww",             "ats": "lever"},
+    {"name": "Razorpay",                 "url": "https://jobs.lever.co/razorpay",          "ats": "lever"},
+    {"name": "PhonePe",                  "url": "https://jobs.lever.co/phonepe",           "ats": "lever"},
+    # Additional high-value employers
+    {"name": "Citi India",               "url": "https://jobs.citi.com",                   "ats": "workday"},
+    {"name": "ICICI Prudential",         "url": "https://www.iciciprulife.com/careers",    "ats": "workday"},
+    {"name": "Bajaj Finserv",            "url": "https://www.bajajfinserv.in/careers",     "ats": "workday"},
+    {"name": "Cognizant",                "url": "https://careers.cognizant.com",           "ats": "workday"},
+    {"name": "Capgemini India",          "url": "https://www.capgemini.com/in-en/careers", "ats": "workday"},
 ]
 
 SENIOR_RE = re.compile(
@@ -121,12 +145,26 @@ async def _run_actor(api_token: str, payload: dict, timeout_secs: int = 120) -> 
         return items_resp.json() or []
 
 
+async def _fetch_employer(api_token: str, employer: dict) -> tuple[dict, list[dict]]:
+    payload = {
+        "urls": [employer["url"]],
+        "atsType": employer.get("ats", "workday"),
+        "maxItems": int(os.getenv("APIFY_CAREER_MAX_PER_EMPLOYER", "50")),
+        "includeDescription": True,
+    }
+    try:
+        items = await _run_actor(api_token, payload)
+        return employer, items
+    except Exception as e:
+        logger.warning(f"[apify_career] {employer['name']} failed: {e}")
+        return employer, []
+
+
 async def fetch() -> list[NormalizedJob]:
     api_token = os.getenv("APIFY_API_TOKEN")
     if not api_token or api_token == "your-apify-api-token":
         raise RuntimeError("APIFY_API_TOKEN not set")
 
-    # Allow restricting targets via env (comma-separated company names)
     targets_env = os.getenv("APIFY_CAREER_TARGETS", "")
     if targets_env:
         allowed = {t.strip().lower() for t in targets_env.split(",")}
@@ -134,25 +172,22 @@ async def fetch() -> list[NormalizedJob]:
     else:
         targets = TARGET_EMPLOYERS
 
+    # Concurrency capped so we don't exceed Apify's parallel run limit on the free plan
+    sem = asyncio.Semaphore(int(os.getenv("APIFY_CONCURRENCY", "5")))
+
+    async def _bounded(employer: dict) -> tuple[dict, list[dict]]:
+        async with sem:
+            return await _fetch_employer(api_token, employer)
+
+    all_results = await asyncio.gather(*[_bounded(e) for e in targets])
+
     seen: set[str] = set()
     jobs: list[NormalizedJob] = []
 
-    for employer in targets:
-        payload = {
-            "urls": [employer["url"]],
-            "atsType": employer.get("ats", "workday"),
-            "maxItems": int(os.getenv("APIFY_CAREER_MAX_PER_EMPLOYER", "50")),
-            "includeDescription": True,
-        }
-
-        try:
-            items = await _run_actor(api_token, payload)
-        except Exception as e:
-            logger.warning(f"[apify_career] {employer['name']} failed: {e}")
-            continue
-
+    for employer, items in all_results:
         for item in items:
-            uid = str(item.get("id") or item.get("jobId") or item.get("url") or "")[-50:]
+            raw_id = str(item.get("id") or item.get("jobId") or item.get("url") or "")
+            uid = hashlib.md5(raw_id.encode()).hexdigest()[:32] if raw_id else ""
             if not uid or uid in seen:
                 continue
             seen.add(uid)
@@ -173,11 +208,15 @@ async def fetch() -> list[NormalizedJob]:
             apply_url = str(item.get("url") or item.get("applyUrl") or item.get("jobUrl") or "")
 
             courses = await detect_courses(title, desc[:400]) or ["CA"]
-            job_type = (
-                "articleship"
-                if re.search(r"article|articleship|industrial train|trainee", f"{title} {desc}", re.I)
-                else "job"
-            )
+            text = f"{title} {desc[:300]}"
+            if re.search(r"\b(article|articleship|industrial\s+train)\b", text, re.I):
+                job_type = "articleship"
+            elif re.search(r"\b(intern(ship)?)\b", text, re.I):
+                job_type = "internship"
+            elif re.search(r"\b(trainee|graduate\s+trainee|management\s+trainee)\b", text, re.I):
+                job_type = "trainee"
+            else:
+                job_type = "job"
 
             stipend = extract_stipend(str(item.get("salary") or ""))
 
@@ -197,8 +236,6 @@ async def fetch() -> list[NormalizedJob]:
                 posted_at=_parse_date(item.get("postedAt") or item.get("datePosted")),
                 raw_data=f'{{"employer":"{employer["name"][:40]}","ats":"{employer["ats"]}"}}'
             ))
-
-        await asyncio.sleep(3)
 
     logger.info(f"[apify_career] Total fetched: {len(jobs)} jobs from {len(targets)} employers")
     return jobs

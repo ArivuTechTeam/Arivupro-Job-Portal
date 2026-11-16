@@ -5,6 +5,13 @@ interface AIJobMatchProps {
   jobs: JobListing[];
   studentName: string;
   studentCourse: string;
+  studentQualifications?: string[];
+  studentSkills?: string[];
+  studentArticleshipMonths?: number;
+  studentExpectedSalary?: string;
+  studentBio?: string;
+  studentEnrollmentCohort?: string;
+  studentCurrentLevel?: string;
 }
 
 interface AnalysisPreset {
@@ -160,26 +167,71 @@ function ProgressBar({ label, value }: { label: string; value: number }) {
   );
 }
 
-export const AIJobMatch: React.FC<AIJobMatchProps> = ({ jobs, studentName, studentCourse }) => {
+export const AIJobMatch: React.FC<AIJobMatchProps> = ({
+  jobs, studentName, studentCourse,
+  studentQualifications = [],
+  studentSkills = [],
+  studentArticleshipMonths = 0,
+  studentExpectedSalary = '',
+  studentBio = '',
+  studentEnrollmentCohort = '',
+  studentCurrentLevel = '',
+}) => {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [loadingJobId, setLoadingJobId] = useState<string | null>(null);
   const [visibleAnalysisJobId, setVisibleAnalysisJobId] = useState<string | null>(null);
+  const [apiAnalysis, setApiAnalysis] = useState<AnalysisPreset | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const selectedJob = jobs.find((j) => j.id === selectedJobId) ?? null;
-  const analysis = visibleAnalysisJobId ? getAnalysis(visibleAnalysisJobId) : null;
+  const analysis = visibleAnalysisJobId ? (apiAnalysis ?? getAnalysis(visibleAnalysisJobId)) : null;
   const displayJob = visibleAnalysisJobId
     ? jobs.find((j) => j.id === visibleAnalysisJobId) ?? null
     : null;
 
-  function handleAnalyse(job: JobListing) {
+  async function handleAnalyse(job: JobListing) {
     if (loadingJobId) return;
     setSelectedJobId(job.id);
     setLoadingJobId(job.id);
     setVisibleAnalysisJobId(null);
-    setTimeout(() => {
+    setApiAnalysis(null);
+    setApiError(null);
+    try {
+      const res = await fetch('/api/ai/match', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          job_id: job.id,
+          student_name: studentName,
+          qualifications_completed: studentQualifications,
+          key_skills: studentSkills,
+          articleship_months: studentArticleshipMonths,
+          enrollment_cohort: studentEnrollmentCohort,
+          current_level: studentCurrentLevel,
+          expected_salary: studentExpectedSalary,
+          about_bio: studentBio,
+        }),
+      });
+      if (!res.ok) throw new Error('API error');
+      const data = await res.json();
+      const m = data.match ?? data;
+      setApiAnalysis({
+        score: m.overall_score ?? m.score ?? 75,
+        qualificationFit: m.qualification_fit ?? 75,
+        skillsMatch: m.skills_fit ?? m.skills_match ?? 75,
+        experienceFit: m.experience_fit ?? 75,
+        strengths: m.strengths ?? [],
+        gapAlerts: m.gap_alerts ?? [],
+        counselorNote: m.counselor_recommendation ?? m.counselor_note ?? '',
+      });
+    } catch {
+      // Fall back to preset if API unavailable
+      setApiAnalysis(getAnalysis(job.id));
+      setApiError('Using cached analysis — live AI unavailable');
+    } finally {
       setLoadingJobId(null);
       setVisibleAnalysisJobId(job.id);
-    }, 1200);
+    }
   }
 
   const matchGrade = analysis ? getMatchGrade(analysis.score) : null;
@@ -697,6 +749,11 @@ export const AIJobMatch: React.FC<AIJobMatchProps> = ({ jobs, studentName, stude
                   {analysis.counselorNote}
                 </p>
               </div>
+              {apiError && (
+                <div style={{ marginTop: 10, fontSize: 11, color: '#9ca3af', textAlign: 'center' }}>
+                  {apiError}
+                </div>
+              )}
             </div>
           )}
         </div>

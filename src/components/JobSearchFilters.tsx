@@ -8,6 +8,7 @@ interface Filters {
   qualification: string;
   workplace: string;
   salary: string;
+  department: string;
 }
 
 interface JobSearchFiltersProps {
@@ -21,6 +22,19 @@ const CITIES = ['All Cities', 'Bangalore', 'Mumbai', 'Hyderabad', 'Delhi NCR', '
 const QUALIFICATIONS = ['All Qualifications', 'CA', 'ACCA', 'US CPA', 'CFA', 'CS', 'CMA India', 'US CMA', 'B.Com / M.Com'];
 const WORKPLACES = ['All Modes', 'Onsite', 'Hybrid', 'Remote'];
 const SALARY_RANGES = ['Any Salary', 'Stipend / Training', '0–4 LPA', '4–8 LPA', '8–15 LPA', '15+ LPA'];
+const DEPARTMENTS = [
+  'All Categories',
+  'Audit & Assurance',
+  'Taxation',
+  'FP&A & Corporate Finance',
+  'Investment Banking & M&A',
+  'Global Accounting (US GAAP/IFRS)',
+  'Risk & Compliance',
+  'Banking & Financial Services',
+  'Consulting & Advisory',
+  'Finance Operations & GCCs',
+  'Articleship Desk',
+];
 const JOB_TYPES = ['All Types', 'Full-Time', 'Articleship / Industrial Training', 'Internship', 'Contract'];
 
 export const JobSearchFilters: React.FC<JobSearchFiltersProps> = ({
@@ -38,10 +52,10 @@ export const JobSearchFilters: React.FC<JobSearchFiltersProps> = ({
     filters.city !== '' ||
     filters.qualification !== '' ||
     filters.workplace !== '' ||
-    filters.salary !== '';
+    filters.salary !== '' || filters.department !== '';
 
   const clearAll = () =>
-    onFiltersChange({ search: '', type: '', city: '', qualification: '', workplace: '', salary: '' });
+    onFiltersChange({ search: '', type: '', city: '', qualification: '', workplace: '', salary: '', department: '' });
 
   return (
     <div
@@ -171,6 +185,19 @@ export const JobSearchFilters: React.FC<JobSearchFiltersProps> = ({
             {SALARY_RANGES.map((s) => (
               <option key={s} value={s === 'Any Salary' ? '' : s}>
                 {s}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="input-field"
+            style={{ width: 'auto', paddingRight: 32 }}
+            value={filters.department}
+            onChange={(e) => set('department', e.target.value)}
+          >
+            {DEPARTMENTS.map((d) => (
+              <option key={d} value={d === 'All Categories' ? '' : d}>
+                {d}
               </option>
             ))}
           </select>

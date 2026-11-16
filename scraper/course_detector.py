@@ -60,6 +60,18 @@ KEYWORD_MAP: list[tuple[re.Pattern, str]] = [
     (re.compile(r'icmai', re.I), 'CMA India'),
     (re.compile(r'industrial trainee', re.I), 'CMA India'),
     (re.compile(r'cost.*management.*account', re.I), 'CMA India'),
+    # CMA USA / US CMA
+    (re.compile(r'\bus\s*cma\b', re.I), 'US CMA'),
+    (re.compile(r'\bcma\s*us\b', re.I), 'US CMA'),
+    (re.compile(r'\bcma\s*usa\b', re.I), 'US CMA'),
+    (re.compile(r'ima.*certified', re.I), 'US CMA'),
+    (re.compile(r'certified.*management.*accountant.*ima', re.I), 'US CMA'),
+    (re.compile(r'institute.*management.*accountant', re.I), 'US CMA'),
+    # B.Com / M.Com
+    (re.compile(r'\bb\.?com\b', re.I), 'B.Com'),
+    (re.compile(r'\bm\.?com\b', re.I), 'M.Com'),
+    (re.compile(r'bachelor.*commerce', re.I), 'B.Com'),
+    (re.compile(r'master.*commerce', re.I), 'M.Com'),
     # ACCA
     (re.compile(r'\bacca\b', re.I), 'ACCA'),
     (re.compile(r'acca affiliate', re.I), 'ACCA'),
@@ -105,7 +117,7 @@ async def detect_courses_gemini(title: str, description: str) -> list[str]:
         client = google_genai.Client(api_key=api_key)
         prompt = (
             'Given this Indian job posting, return a JSON array of applicable professional courses from: '
-            'CA, CS, CMA India, ACCA, CPA US, CIA, FRM, CFA. Finance/accounting/audit/tax roles typically suit CA. '
+            'CA, CS, CMA India, US CMA, ACCA, CPA US, CIA, FRM, CFA, B.Com. Finance/accounting/audit/tax roles typically suit CA. '
             'Secretarial/compliance roles suit CS. Cost/management accounting roles suit CMA India. '
             'Return ONLY the JSON array, nothing else.\n'
             f'Title: {title}\nDescription: {description[:400]}'

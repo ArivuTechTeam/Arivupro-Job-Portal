@@ -7,7 +7,8 @@ from scraper.types import NormalizedJob
 from scraper.parse_utils import extract_stipend, extract_duration, extract_articleship_duration
 from scraper.course_detector import detect_courses
 
-RSS_URL = "https://feeds2.feedburner.com/CaclubindiacomJobs"
+RSS_URL = "https://www.caclubindia.com/feed/"
+RSS_URL_FALLBACK = "https://www.caclubindia.com/jobs/rss/"
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; ArivuPro/1.0; +https://arivupro.com)"}
 
 FINANCE_RE = re.compile(r'article|articleship|audit|tax|account|finance|\bca\b|\bcs\b|\bcma\b|gst|income tax|\bmis\b|compliance|secretary', re.I)
@@ -21,8 +22,13 @@ def _slug_to_id(url: str) -> str:
 
 async def fetch() -> list[NormalizedJob]:
     async with httpx.AsyncClient(timeout=15, headers=HEADERS) as client:
-        resp = await client.get(RSS_URL)
-        resp.raise_for_status()
+        try:
+            resp = await client.get(RSS_URL)
+            if resp.status_code != 200:
+                raise ValueError(f'status {resp.status_code}')
+        except Exception:
+            resp = await client.get(RSS_URL_FALLBACK)
+            resp.raise_for_status()
 
     soup = BeautifulSoup(resp.text, 'lxml-xml')
     jobs: list[NormalizedJob] = []

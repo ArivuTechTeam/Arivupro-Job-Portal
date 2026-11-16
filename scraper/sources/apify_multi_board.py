@@ -7,6 +7,7 @@ Docs: https://apify.com/vero-api/multi-job-board-scraper-linkedin-indeed-glassdo
 """
 import os
 import re
+import hashlib
 import httpx
 import logging
 import asyncio
@@ -22,16 +23,36 @@ APIFY_BASE = "https://api.apify.com/v2"
 
 # Finance queries tuned for India — keep count low to control cost
 SEARCH_QUERIES = [
-    {"query": "CA articleship vacancy",          "courses": ["CA"]},
-    {"query": "article assistant CA firm India", "courses": ["CA"]},
-    {"query": "audit associate fresher India",   "courses": ["CA"]},
-    {"query": "CMA industrial training ICMAI",   "courses": ["CMA India"]},
-    {"query": "CS executive trainee ICSI",       "courses": ["CS"]},
-    {"query": "ACCA fresher jobs India",         "courses": ["ACCA"]},
-    {"query": "CFA analyst fresher India",       "courses": ["CFA"]},
-    {"query": "US CPA accounting India",         "courses": ["CPA US"]},
-    {"query": "GST taxation fresher accountant", "courses": ["CA"]},
-    {"query": "internal audit fresher India",    "courses": ["CA"]},
+    # ── Full-time jobs 0–2 yrs (80%) ─────────────────────────────────────────
+    {"query": "audit associate fresher India",             "courses": ["CA"]},
+    {"query": "accounts executive fresher India",          "courses": ["CA"]},
+    {"query": "financial analyst fresher India",           "courses": ["CA", "CFA"]},
+    {"query": "tax associate fresher India",               "courses": ["CA"]},
+    {"query": "GST executive fresher India",               "courses": ["CA"]},
+    {"query": "internal audit associate fresher India",    "courses": ["CA"]},
+    {"query": "FP&A analyst fresher India",                "courses": ["CA", "CMA India"]},
+    {"query": "credit analyst fresher India",              "courses": ["CA", "CFA"]},
+    {"query": "cost accountant fresher India",             "courses": ["CMA India"]},
+    {"query": "ACCA fresher jobs India",                   "courses": ["ACCA"]},
+    {"query": "CFA level 1 fresher analyst India",         "courses": ["CFA"]},
+    {"query": "US CPA fresher accounting India",           "courses": ["CPA US"]},
+    {"query": "company secretary fresher jobs India",      "courses": ["CS"]},
+    {"query": "B.Com finance fresher jobs India",          "courses": ["B.Com", "M.Com"]},
+    {"query": "M.Com finance fresher jobs India",           "courses": ["M.Com"]},
+    {"query": "compliance officer fresher India",          "courses": ["CS", "CA"]},
+    {"query": "equity research analyst fresher India",     "courses": ["CFA"]},
+    {"query": "US CMA fresher management accountant India",      "courses": ["US CMA"]},
+    {"query": "IMA certified management accountant fresher India", "courses": ["US CMA"]},
+    {"query": "B.Com finance fresher accounts executive India",  "courses": ["B.Com"]},
+    {"query": "banking operations fresher HDFC ICICI Axis India", "courses": ["CA", "B.Com"]},
+    {"query": "risk analyst fresher bank NBFC India",            "courses": ["CA", "CFA"]},
+    {"query": "P2P O2C R2R analyst fresher GCC India",           "courses": ["CA", "CMA India"]},
+    {"query": "shared services finance analyst fresher Genpact EXL India", "courses": ["CA", "CMA India", "B.Com"]},
+    # ── Articleship + Internship + Trainee (20%) ──────────────────────────────
+    {"query": "CA articleship vacancy India",              "courses": ["CA"]},
+    {"query": "CMA industrial training India",             "courses": ["CMA India"]},
+    {"query": "finance internship fresher India",          "courses": ["CA", "CMA India", "ACCA", "B.Com"]},
+    {"query": "management trainee finance India",          "courses": ["CA", "CMA India"]},
 ]
 
 SENIOR_RE = re.compile(
@@ -71,17 +92,15 @@ def _salary(item: dict) -> int:
         elif "hour" in interval:
             mid = mid * 8 * 22
         if currency == "USD":
-            mid *= 83
+            mid *= float(os.getenv("USD_INR_RATE", "85"))
         return round(mid)
     except Exception:
         return extract_stipend(str(item.get("salary") or ""))
 
 
 async def _run_actor(api_token: str, payload: dict, timeout_secs: int = 120) -> list[dict]:
-    """Start actor run and poll for results."""
     headers = {"Authorization": f"Bearer {api_token}", "Content-Type": "application/json"}
     async with httpx.AsyncClient(timeout=30) as client:
-        # Start run
         run_resp = await client.post(
             f"{APIFY_BASE}/acts/{ACTOR_ID}/runs",
             headers=headers,
@@ -96,7 +115,6 @@ async def _run_actor(api_token: str, payload: dict, timeout_secs: int = 120) -> 
 
         logger.info(f"[apify_multi] Run {run_id} started, polling…")
 
-        # Poll until finished
         for _ in range(timeout_secs // 5):
             await asyncio.sleep(5)
             status_resp = await client.get(
@@ -112,7 +130,6 @@ async def _run_actor(api_token: str, payload: dict, timeout_secs: int = 120) -> 
             logger.warning(f"[apify_multi] Run {run_id} ended with status: {status}")
             return []
 
-        # Fetch results
         items_resp = await client.get(
             f"{APIFY_BASE}/datasets/{dataset_id}/items",
             headers=headers,
@@ -120,6 +137,23 @@ async def _run_actor(api_token: str, payload: dict, timeout_secs: int = 120) -> 
         )
         items_resp.raise_for_status()
         return items_resp.json() or []
+
+
+async def _fetch_query(api_token: str, q: dict, boards: list, max_per_board: int):
+    payload = {
+        "searchQueries": [q["query"]],
+        "location": "India",
+        "boards": boards,
+        "maxResultsPerBoard": max_per_board,
+        "includeFullDescription": True,
+    }
+    try:
+        items = await _run_actor(api_token, payload)
+    except Exception as e:
+        logger.warning(f"[apify_multi] Query '{q['query']}' failed: {e}")
+        return (q, [])
+    await asyncio.sleep(2)
+    return (q, items)
 
 
 async def fetch() -> list[NormalizedJob]:
@@ -134,23 +168,18 @@ async def fetch() -> list[NormalizedJob]:
     seen: set[str] = set()
     jobs: list[NormalizedJob] = []
 
-    for q in SEARCH_QUERIES:
-        payload = {
-            "searchQueries": [q["query"]],
-            "location": "India",
-            "boards": boards,
-            "maxResultsPerBoard": max_per_board,
-            "includeFullDescription": True,
-        }
+    sem = asyncio.Semaphore(int(os.getenv("APIFY_CONCURRENCY", "5")))
 
-        try:
-            items = await _run_actor(api_token, payload)
-        except Exception as e:
-            logger.warning(f"[apify_multi] Query '{q['query']}' failed: {e}")
-            continue
+    async def _bounded(q):
+        async with sem:
+            return await _fetch_query(api_token, q, boards, max_per_board)
 
+    all_results = await asyncio.gather(*[_bounded(q) for q in SEARCH_QUERIES])
+
+    for q, items in all_results:
         for item in items:
-            uid = str(item.get("id") or item.get("jobId") or item.get("url") or "")[-50:]
+            raw_id = str(item.get("id") or item.get("jobId") or item.get("url") or "")
+            uid = hashlib.md5(raw_id.encode()).hexdigest()[:32] if raw_id else ""
             if not uid or uid in seen:
                 continue
             seen.add(uid)
@@ -166,18 +195,19 @@ async def fetch() -> list[NormalizedJob]:
             location_parts = [item.get("location"), item.get("city"), item.get("state"), item.get("country")]
             location_str = next((str(x) for x in location_parts if x), "India")
 
-            board = str(item.get("source") or item.get("board") or "multi")
-            source_key = f"apify_{board.lower().replace(' ', '_')}"
-
             courses = await detect_courses(title, desc[:400]) or q["courses"]
-            job_type = (
-                "articleship"
-                if re.search(r"article|articleship|industrial train|trainee", f"{title} {desc}", re.I)
-                else "job"
-            )
+            text = f"{title} {desc[:300]}"
+            if re.search(r"\b(article|articleship|industrial\s+train)\b", text, re.I):
+                job_type = "articleship"
+            elif re.search(r"\b(intern(ship)?)\b", text, re.I):
+                job_type = "internship"
+            elif re.search(r"\b(trainee|graduate\s+trainee|management\s+trainee)\b", text, re.I):
+                job_type = "trainee"
+            else:
+                job_type = "job"
 
             jobs.append(NormalizedJob(
-                source=source_key,
+                source="apify_multi_board",
                 external_id=f"apify-multi-{uid}",
                 title=title,
                 company=company,
@@ -190,11 +220,8 @@ async def fetch() -> list[NormalizedJob]:
                 description=desc[:2000] if desc else None,
                 is_remote=bool(item.get("isRemote") or item.get("remote")),
                 posted_at=_parse_date(item.get("postedAt") or item.get("datePosted")),
-                raw_data=f'{{"board":"{board}","id":"{uid[:40]}"}}'
+                raw_data=f'{{"source":"apify_multi_board","id":"{uid}"}}'
             ))
-
-        # Polite delay between actor runs to avoid hammering Apify
-        await asyncio.sleep(3)
 
     logger.info(f"[apify_multi] Total fetched: {len(jobs)} jobs")
     return jobs

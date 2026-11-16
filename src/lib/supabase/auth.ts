@@ -32,6 +32,14 @@ export async function signOut() {
   await supabase.auth.signOut();
 }
 
+/** fetch() wrapper that attaches the admin's Supabase access token. Use for admin-only API calls. */
+export async function adminFetch(input: string, init: RequestInit = {}): Promise<Response> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const headers = new Headers(init.headers);
+  if (session?.access_token) headers.set('Authorization', `Bearer ${session.access_token}`);
+  return fetch(input, { ...init, headers });
+}
+
 export async function getSession() {
   const { data: { session } } = await supabase.auth.getSession();
   return session;

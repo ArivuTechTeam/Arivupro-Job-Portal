@@ -12,8 +12,10 @@ export type NavTab =
   | 'crm'
   | 'scraper'
   | 'admin-dashboard'
-  | 'db-schema'
-  | 'tech-stack'
+  | 'admin-students'
+  | 'admin-jobs'
+  | 'admin-companies'
+  | 'admin-recruiters'
   | 'recruiter-jobs'
   | 'recruiter-applicants'
   | 'recruiter-post';
@@ -83,8 +85,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'admin-dashboard', label: 'Dashboard' },
     { id: 'crm', label: 'Placement CRM' },
     { id: 'scraper', label: 'Scraper' },
-    { id: 'db-schema', label: 'DB Schema' },
-    { id: 'tech-stack', label: 'Tech Stack' },
   ];
 
   const tabs =
@@ -262,7 +262,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }}
                 >
                   <button
-                    onClick={() => { onTabChange('applications'); setDropdownOpen(false); }}
+                    onClick={() => { onTabChange('profile'); setDropdownOpen(false); }}
                     style={{
                       width: '100%',
                       display: 'flex',
@@ -322,36 +322,38 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      {/* Tab nav row */}
-      <div
-        style={{
-          borderTop: '1px solid #f3f4f6',
-          borderBottom: '1px solid #e5e7eb',
-          overflowX: 'auto',
-          scrollbarWidth: 'none',
-        }}
-      >
+      {/* Tab nav row — hidden for admin (sidebar used instead) */}
+      {userRole !== 'admin' && (
         <div
           style={{
-            maxWidth: 1180,
-            margin: '0 auto',
-            padding: '0 20px',
-            display: 'flex',
-            gap: 2,
-            alignItems: 'center',
+            borderTop: '1px solid #f3f4f6',
+            borderBottom: '1px solid #e5e7eb',
+            overflowX: 'auto',
+            scrollbarWidth: 'none',
           }}
         >
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => { onTabChange(tab.id); setMobileOpen(false); }}
-              className={`tab-link${currentTab === tab.id ? ' active' : ''}`}
-            >
-              {tab.label}
-            </button>
-          ))}
+          <div
+            style={{
+              maxWidth: 1180,
+              margin: '0 auto',
+              padding: '0 20px',
+              display: 'flex',
+              gap: 2,
+              alignItems: 'center',
+            }}
+          >
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => { onTabChange(tab.id); setMobileOpen(false); }}
+                className={`tab-link${currentTab === tab.id ? ' active' : ''}`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Mobile drawer */}
       {mobileOpen && (

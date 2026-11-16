@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { X, Eye, EyeOff, CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react';
+import { supabase } from '../lib/supabase/client';
 
 interface AuthModalProps {
   mode: 'login' | 'signup';
   onClose: () => void;
-  onSuccess: (user: { name: string; email: string; role: 'student' | 'admin' | 'recruiter' }) => void;
+  onSuccess: (user: { name: string; email: string; role: 'student' | 'admin' | 'recruiter'; course?: string }) => void;
   onSwitchMode: (mode: 'login' | 'signup') => void;
-  // keep these in props signature for compatibility but unused
   role?: 'student' | 'recruiter';
   onSwitchRole?: (role: 'student' | 'recruiter') => void;
 }
@@ -24,18 +24,6 @@ const COURSES = [
   { value: 'MBA_FINANCE', label: 'MBA (Finance)' },
 ];
 
-// Fake registered accounts for demo
-const REGISTERED: Record<string, { name: string; password: string; course: string; role?: 'student' | 'admin' | 'recruiter' }> = {
-  'rohan@arivupro.in': { name: 'Rohan Venkatesh', password: 'Demo@123', course: 'ACCA' },
-  'admin@arivupro.com': { name: 'Admin User', password: 'Admin@123', course: '', role: 'admin' },
-  'recruiter@deloitte.com': { name: 'Meghna Rao', password: 'Recruiter@123', course: '', role: 'recruiter' },
-};
-
-const DEMO_CREDENTIALS = [
-  { role: 'Student', email: 'rohan@arivupro.in', password: 'Demo@123' },
-  { role: 'Admin', email: 'admin@arivupro.com', password: 'Admin@123' },
-  { role: 'Recruiter', email: 'recruiter@deloitte.com', password: 'Recruiter@123' },
-];
 
 function validate(email: string, pass: string): string | null {
   if (!email) return 'Email is required.';
@@ -68,7 +56,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, onSuccess, 
     return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', onKey); };
   }, [onClose]);
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     const err = validate(email, pass);
@@ -77,38 +65,34 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, onSuccess, 
     if (!course) { setError('Please select your course.'); return; }
 
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      // Register the user in our demo store
-      REGISTERED[email.toLowerCase()] = { name: name.trim(), password: pass, course };
-      setStep('verify');
-    }, 1000);
+    const { error: signUpError } = await supabase.auth.signUp({
+      email,
+      password: pass,
+      options: { data: { name: name.trim(), course, role: 'student' } },
+    });
+    setLoading(false);
+    if (signUpError) { setError(signUpError.message); return; }
+    setStep('verify');
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     const err = validate(lEmail, lPass);
     if (err) { setError(err); return; }
 
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      const account = REGISTERED[lEmail.toLowerCase()];
-      if (!account) {
-        setError('No account found with this email. Please sign up first.');
-        return;
-      }
-      if (account.password !== lPass) {
-        setError('Incorrect password. Please try again.');
-        return;
-      }
-      onSuccess({ name: account.name, email: lEmail.toLowerCase(), role: account.role ?? 'student' });
-    }, 800);
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email: lEmail, password: lPass });
+    setLoading(false);
+    if (signInError) { setError(signInError.message); return; }
+    if (!data.user) { setError('Login failed. Please try again.'); return; }
+    const meta = data.user.user_metadata ?? {};
+    const role: 'student' | 'admin' | 'recruiter' = meta.role ?? 'student';
+    onSuccess({ name: meta.name ?? lEmail, email: data.user.email ?? lEmail, role, course: meta.course });
   };
 
   const handleVerifyComplete = () => {
-    onSuccess({ name: name.trim(), email: email.toLowerCase(), role: 'student' });
+    onSuccess({ name: name.trim(), email: email.toLowerCase(), role: 'student', course });
   };
 
   return (
@@ -170,9 +154,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, onSuccess, 
               <div style={{ fontSize: 15, color: '#374151', lineHeight: 1.6, marginBottom: 24 }}>
                 Check your inbox at <strong style={{ color: '#0f2419' }}>{email}</strong> and click the verification link to activate your account.
               </div>
-              <div style={{ background: '#f0faf4', border: '1px solid #d7f4ea', borderRadius: 10, padding: '12px 16px', marginBottom: 24, fontSize: 12, color: '#374151', textAlign: 'left' }}>
-                <strong>Demo mode:</strong> Click the button below to skip email verification and go straight to your dashboard.
-              </div>
               <button className="btn-primary" style={{ width: '100%', justifyContent: 'center', fontSize: 15 }} onClick={handleVerifyComplete}>
                 Continue to Dashboard →
               </button>
@@ -209,11 +190,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, onSuccess, 
                 </div>
               </Field>
 
-              {/* Demo hint */}
-              <div style={{ background: '#f0faf4', border: '1px solid #d7f4ea', borderRadius: 8, padding: '10px 12px', fontSize: 12, color: '#374151' }}>
-                <strong>Demo account:</strong> rohan@arivupro.in / Demo@123
-              </div>
-
               <button type="submit" className="btn-primary" style={{ width: '100%', justifyContent: 'center', fontSize: 15, padding: '12px' }} disabled={loading}>
                 {loading ? <Spinner /> : 'Sign In →'}
               </button>
@@ -223,25 +199,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, onSuccess, 
               <GoogleBtn />
 
               <SwitchMode mode="login" onSwitch={() => { onSwitchMode('signup'); setError(null); }} />
-
-              {/* Demo credentials box */}
-              <div style={{ background: '#f0faf4', border: '1px solid #d7f4ea', borderRadius: 10, padding: '12px 14px', marginTop: 4 }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: '#1a7a4a', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  🔑 Demo Credentials
-                </div>
-                {DEMO_CREDENTIALS.map(d => (
-                  <div
-                    key={d.role}
-                    onClick={() => { setEmail(d.email); setPass(d.password); setError(null); }}
-                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', borderBottom: '1px solid #d7f4ea', cursor: 'pointer' }}
-                  >
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#0f2419', minWidth: 70 }}>{d.role}</span>
-                    <span style={{ fontSize: 11, color: '#6b7280', fontFamily: 'monospace' }}>{d.email}</span>
-                    <span style={{ fontSize: 11, color: '#1a7a4a', fontWeight: 700, fontFamily: 'monospace' }}>{d.password}</span>
-                  </div>
-                ))}
-                <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 6 }}>Click any row to auto-fill</div>
-              </div>
             </form>
           )}
 

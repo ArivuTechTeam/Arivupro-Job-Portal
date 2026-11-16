@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Literal, Optional
 
-JobType = Literal["articleship", "job"]
+JobType = Literal["articleship", "internship", "trainee", "job"]
 ExperienceLevel = Literal["fresher", "0-1 year", "1-3 years", "3+ years"]
 
 SOURCE_NAMES = [
@@ -13,6 +13,7 @@ SOURCE_NAMES = [
     "icai_wirc",
     "icai_pune",
     "icai_bangalore",
+    "icai_nirc",
     "icmai",
     "buddingca",
     "jsearch",
@@ -20,6 +21,8 @@ SOURCE_NAMES = [
     "apify_multi_board",   # Naukri + Google Jobs + LinkedIn + Indeed in one run
     "apify_google_jobs",   # Google for Jobs — company career pages via Google crawl
     "apify_career_sites",  # Big 4 + banks direct ATS (Workday/Greenhouse/Lever)
+    "greenhouse",          # Greenhouse public API — Big 4, banks, GCCs (free)
+    "lever",               # Lever public API — fintech, startups, consulting (free)
 ]
 
 @dataclass

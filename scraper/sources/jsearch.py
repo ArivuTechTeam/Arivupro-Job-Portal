@@ -9,50 +9,72 @@ from scraper.course_detector import detect_courses
 JSEARCH_BASE = "https://api.openwebninja.com/jsearch"
 
 SEARCH_QUERIES = [
-    # CA
-    "CA articleship India", "article assistant ICAI India",
-    "CA inter articleship India", "CA fresher jobs India",
-    "audit associate fresher India", "tax associate fresher CA India",
-    # CS
-    "CS executive trainee India", "company secretary articleship India",
-    "ICSI training vacancy India", "CS fresher jobs India",
-    "secretarial compliance trainee India",
-    # CMA
-    "CMA industrial training India", "cost accountant trainee India",
-    "ICMAI training vacancy India", "CMA fresher jobs India",
-    # ACCA
-    "ACCA trainee India", "ACCA fresher jobs India", "ACCA affiliate jobs India",
-    # CFA
-    "CFA candidate jobs India", "investment analyst fresher CFA India",
-    # CPA
-    "US CPA fresher jobs India", "CPA candidate accounting jobs India",
-    # General fresher finance
-    "GST taxation fresher India", "internal audit associate India",
-    "finance analyst fresher India", "accounts executive fresher India",
+    # ── Full-time jobs 0–2 yrs (80%) ─────────────────────────────────────────
+    "audit associate 0 experience India",
+    "accounts executive fresher India",
+    "financial analyst fresher India",
+    "tax associate fresher India",
+    "GST executive fresher India",
+    "internal audit associate fresher India",
+    "statutory audit associate fresher India",
+    "FP&A analyst fresher India",
+    "equity research analyst fresher India",
+    "credit analyst fresher India",
+    "fund accountant fresher India",
+    "accounts payable fresher India",
+    "finance executive fresher India",
+    "cost accountant fresher India",
+    "ACCA fresher jobs India",
+    "US CPA fresher jobs India",
+    "CFA level 1 fresher jobs India",
+    "B.Com finance jobs fresher India",
+    "BBA finance jobs fresher India",
+    "company secretary fresher jobs India",
+    "compliance officer fresher India",
+    "treasury analyst fresher India",
+    "risk analyst fresher India",
     "financial reporting analyst fresher India",
+    "Big 4 audit associate fresher India",
+    "US CMA management accountant fresher India",
+    "IMA certified management accountant fresher India",
+    "B.Com accounts executive fresher India",
+    "banking operations associate fresher India",
+    "P2P O2C analyst fresher GCC India",
+    "shared services finance fresher India",
+    "management trainee consulting Big 4 India",
+
+    # ── Articleship + Internship + Trainee (20%) ──────────────────────────────
+    "CA articleship vacancy India",
+    "CMA industrial training India",
+    "CS executive articleship India",
+    "finance internship fresher India",
+    "audit internship fresher India",
+    "management trainee finance India",
+    "finance graduate trainee India",
 ]
 
 SENIOR_RE = re.compile(
-    r'\b(3\+\s*years?|4\s*years?|five\s+years?|[5-9]\s*years?|'
-    r'senior|manager|lead|director|head\s+of|vp\b|vice\s*president|principal|partner)\b',
+    r'\b(senior\s+manager|associate\s+director|deputy\s+manager|'
+    r'avp\b|assistant\s+vice\s+president|vice\s+president\b|'
+    r'director\b|head\s+of|partner\b|principal\b|'
+    r'minimum\s+[3-9]\s*years?|at\s*least\s*[3-9]\s*years?)\b',
     re.I
 )
-OVER_3YR_RE = re.compile(
-    r'\b(minimum\s+[3-9]\s*years?|at\s*least\s*[3-9]\s*years?|'
-    r'[3-9]\s*years?\s*(of\s+)?(exp|experience|work)|'
-    r'[3-9][-–]\d+\s*years?|experience\s*[:\-]?\s*[3-9]\s*years?)\b',
-    re.I
-)
+
+
+def _detect_job_type(title: str, desc: str) -> str:
+    text = f'{title} {desc[:300]}'
+    if re.search(r'\b(article|articleship|industrial\s+train)\b', text, re.I):
+        return 'articleship'
+    if re.search(r'\b(intern(ship)?|summer\s+intern|winter\s+intern)\b', text, re.I):
+        return 'internship'
+    if re.search(r'\b(trainee|graduate\s+trainee|management\s+trainee)\b', text, re.I):
+        return 'trainee'
+    return 'job'
 
 
 def _is_senior(title: str, description: str) -> bool:
-    snippet = description[:800]
-    return bool(
-        SENIOR_RE.search(title) or
-        SENIOR_RE.search(snippet) or
-        OVER_3YR_RE.search(title) or
-        OVER_3YR_RE.search(snippet)
-    )
+    return bool(SENIOR_RE.search(title) or SENIOR_RE.search(description[:800]))
 
 
 def _exp_level(title: str, description: str, job_type: str) -> str | None:
@@ -118,7 +140,7 @@ async def fetch() -> list[NormalizedJob]:
                 continue
 
             courses = await detect_courses(title, description[:500])
-            job_type = 'articleship' if re.search(r'article|articleship', f'{title} {description}', re.I) else 'job'
+            job_type = _detect_job_type(title, description)
             exp_level = _exp_level(title, description, job_type)
 
             posted_raw = item.get('job_posted_at_datetime_utc')

@@ -62,7 +62,9 @@ def _parse_cards(html: str) -> list[dict]:
         detail_url = detail_href if detail_href.startswith('http') else (f'{BASE}{detail_href}' if detail_href else LIST_URL)
 
         m = re.search(r'vacancy-details/(\d+)', detail_url)
-        external_id = f'pune-{m.group(1)}' if m else f'pune-{re.sub(r"\\s", "-", company[:15])}-{re.sub(r"\\s", "-", title[:10])}'
+        _slug_co = re.sub(r"\s", "-", company[:15])
+        _slug_ti = re.sub(r"\s", "-", title[:10])
+        external_id = f'pune-{m.group(1)}' if m else f'pune-{_slug_co}-{_slug_ti}'
 
         results.append({'title': title, 'company': company, 'location': location, 'description': desc, 'detail_url': detail_url, 'external_id': external_id})
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bot, RefreshCw, Globe, CheckCircle2, ArrowRight, Layers, FileCode, Clock, Play, Terminal, Database, ShieldAlert, Cpu } from 'lucide-react';
 import { ScraperSourceStatus, ScraperLog, JobListing } from '../types/index.ts';
+import { adminFetch } from '../lib/supabase/auth.ts';
 
 interface ScraperDashboardProps {
   sources: ScraperSourceStatus[];
@@ -22,9 +23,22 @@ export const ScraperDashboard: React.FC<ScraperDashboardProps> = ({
 
   // Fetch scraper logs
   const fetchLogs = () => {
-    fetch('/api/scrape/logs')
+    adminFetch('/api/scrape/logs')
       .then((res) => res.json())
-      .then((data) => setLogs(data.logs || []))
+      .then((data) => {
+        // Map sync_runs DB columns → ScraperLog shape expected by the table
+        const mapped = (data.logs || []).map((r: any) => ({
+          id: r.id,
+          timestamp: r.started_at ? new Date(r.started_at).toLocaleString() : '—',
+          source: r.source,
+          scannedCount: r.fetched ?? 0,
+          parsedValidCount: r.created ?? 0,
+          qualificationsDetected: r.skipped != null ? { skipped: r.skipped, dupes: r.duplicates ?? 0 } : {},
+          status: r.status ?? 'unknown',
+          error: r.error_msg,
+        }));
+        setLogs(mapped);
+      })
       .catch((err) => console.error(err));
   };
 

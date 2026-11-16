@@ -61,10 +61,11 @@ async def fetch() -> list[NormalizedJob]:
             a_tag = row.find('a', href=True)
             href = a_tag['href'] if a_tag else ''
             detail_url = href if href.startswith('http') else (f'{BASE}{href}' if href else '')
+            _slug = re.sub(r"\s", "-", employer[:20])
             external_id = (
                 f'eirc-{detail_url.rstrip("/").split("/")[-1]}'
                 if detail_url else
-                f'eirc-{re.sub(r"\\s", "-", employer[:20])}-{date_text}'
+                f'eirc-{_slug}-{date_text}'
             )
 
             jobs.append(NormalizedJob(

@@ -21,7 +21,7 @@ export type JobSourceType =
   | 'efinancialcareers'
   | 'big4_portal';
 
-export type JobType = 'Full-Time' | 'Articleship / Industrial Training' | 'Contract' | 'Internship';
+export type JobType = 'Full-Time' | 'Articleship / Industrial Training' | 'Contract' | 'Internship' | 'Trainee';
 export type WorkplaceType = 'Onsite' | 'Hybrid' | 'Remote';
 export type ExperienceLevel = 'Articleship / 0 yrs' | '0-1 yr (Fresher)' | '1-3 yrs' | '3-5 yrs' | '5+ yrs';
 
@@ -51,7 +51,7 @@ export interface JobListing {
   postedDate: string;
   deadlineDate: string;
   applicantsCount: number;
-  department: 'Audit & Assurance' | 'Taxation' | 'FP&A & Corporate Finance' | 'Investment Banking & M&A' | 'Global Accounting (US GAAP/IFRS)' | 'Risk & Compliance' | 'Articleship Desk';
+  department: 'Audit & Assurance' | 'Taxation' | 'FP&A & Corporate Finance' | 'Investment Banking & M&A' | 'Global Accounting (US GAAP/IFRS)' | 'Risk & Compliance' | 'Articleship Desk' | 'Banking & Financial Services' | 'Consulting & Advisory' | 'Finance Operations & GCCs';
   crmDriveCode?: string;
 }
 
@@ -122,7 +122,7 @@ export interface JobApplication {
 }
 
 export interface ScraperSourceStatus {
-  id: JobSourceType;
+  id: string;
   name: string;
   url: string;
   lastRun: string;

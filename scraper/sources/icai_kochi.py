@@ -59,14 +59,17 @@ async def fetch() -> list[NormalizedJob]:
                 href = a_tag['href'] if a_tag else ''
                 detail_url = href if href.startswith('http') else (f'{BASE}/{href.lstrip("/")}' if href else '')
 
+                if len(cells) < 3:
+                    continue
                 employer = cells[1].get_text().strip() or first
                 posted = cells[-1].get_text().strip()
-                qual = cells[3].get_text().strip() if len(cells) > 3 else 'CA'
+                qual = cells[1].get_text().strip()
 
                 parts = [p for p in re.split(r'[/?#]', detail_url) if p]
+                _slug = re.sub(r"\s", "-", employer[:10])
                 external_id = (
                     f'kochi-{parts[-1]}' if detail_url else
-                    f'kochi-p{page}-r{idx}-{re.sub(r"\\s", "-", employer[:10])}'
+                    f'kochi-p{page}-r{idx}-{_slug}'
                 )
                 if external_id in seen:
                     continue

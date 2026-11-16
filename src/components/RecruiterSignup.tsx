@@ -1,100 +1,85 @@
 import React, { useState } from 'react';
-import { CheckCircle2, Clock, ArrowRight, ArrowLeft } from 'lucide-react';
+import { CheckCircle2, Clock, ArrowRight, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 
 interface RecruiterSignupProps {
-  onComplete: (data: RecruiterSignupData) => void;
+  onComplete: (data: { fullName: string; email: string }) => void;
   onCancel: () => void;
-}
-
-interface RecruiterSignupData {
-  fullName: string;
-  email: string;
-  password: string;
-  companyName: string;
-  website: string;
-  cin: string;
-  gstin: string;
-  linkedin: string;
-  verificationStatus: 'mca_verified' | 'gst_verified' | 'pending_review';
 }
 
 type Step = 1 | 2 | 3;
 
-function getEmailDomain(email: string): string {
-  return email.includes('@') ? email.split('@')[1] : '';
-}
-
-function getWebsiteDomain(url: string): string {
-  try {
-    const u = new URL(url.startsWith('http') ? url : 'https://' + url);
-    return u.hostname.replace(/^www\./, '');
-  } catch {
-    return url.replace(/^www\./, '').replace(/\/.*$/, '');
-  }
-}
-
 const STEP_LABELS: Record<Step, string> = {
-  1: 'Account',
-  2: 'Company Details',
-  3: 'Verification',
+  1: 'Your Details',
+  2: 'Company Info',
+  3: 'Submitted',
 };
 
 export const RecruiterSignup: React.FC<RecruiterSignupProps> = ({ onComplete, onCancel }) => {
   const [step, setStep] = useState<Step>(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [showPw, setShowPw] = useState(false);
 
-  // Step 1
+  // Step 1 — personal
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
 
-  // Step 2
+  // Step 2 — company
   const [companyName, setCompanyName] = useState('');
-  const [website, setWebsite] = useState('');
+  const [companyWebsite, setCompanyWebsite] = useState('');
+  const [companyDomain, setCompanyDomain] = useState('');
+  const [officeAddress, setOfficeAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
   const [cin, setCin] = useState('');
   const [gstin, setGstin] = useState('');
-  const [linkedin, setLinkedin] = useState('');
-
-  // Derived
-  const domainMatch =
-    email && website
-      ? getEmailDomain(email) === getWebsiteDomain(website)
-      : null;
-
-  const verificationStatus: RecruiterSignupData['verificationStatus'] =
-    cin ? 'mca_verified' : gstin ? 'gst_verified' : 'pending_review';
+  const [linkedinPage, setLinkedinPage] = useState('');
 
   const handleStep1 = (e: React.FormEvent) => {
     e.preventDefault();
+    if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
+    setError('');
     setStep(2);
   };
 
-  const handleStep2 = (e: React.FormEvent) => {
+  const handleStep2 = async (e: React.FormEvent) => {
     e.preventDefault();
-    setStep(3);
-  };
-
-  const handleFinish = () => {
-    onComplete({
-      fullName,
-      email,
-      password,
-      companyName,
-      website,
-      cin,
-      gstin,
-      linkedin,
-      verificationStatus,
-    });
+    setError('');
+    setLoading(true);
+    try {
+      const res = await fetch('/api/recruiters/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          full_name: fullName,
+          email,
+          password,
+          phone: phone || null,
+          company_name: companyName,
+          company_website: companyWebsite || null,
+          company_domain: companyDomain || null,
+          office_address: officeAddress || null,
+          city: city || null,
+          state: state || null,
+          cin: cin || null,
+          gstin: gstin || null,
+          linkedin_page: linkedinPage || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.detail || 'Registration failed. Please try again.'); setLoading(false); return; }
+      setStep(3);
+    } catch {
+      setError('Network error. Please check your connection.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div
-      style={{
-        maxWidth: 480,
-        margin: '40px auto',
-        padding: '0 20px',
-      }}
-    >
+    <div style={{ maxWidth: 480, margin: '40px auto', padding: '0 20px' }}>
       {/* Progress stepper */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 32 }}>
         {([1, 2, 3] as Step[]).map((s, i) => (
@@ -102,15 +87,9 @@ export const RecruiterSignup: React.FC<RecruiterSignupProps> = ({ onComplete, on
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
               <div
                 style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 800,
-                  fontSize: 13,
-                  fontFamily: 'Manrope, sans-serif',
+                  width: 32, height: 32, borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontWeight: 800, fontSize: 13, fontFamily: 'Manrope, sans-serif',
                   background: step > s ? '#1a7a4a' : step === s ? '#0f2419' : '#e5e7eb',
                   color: step >= s ? '#fff' : '#9ca3af',
                   transition: 'all 0.2s ease',
@@ -118,83 +97,61 @@ export const RecruiterSignup: React.FC<RecruiterSignupProps> = ({ onComplete, on
               >
                 {step > s ? <CheckCircle2 size={16} /> : s}
               </div>
-              <div
-                style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  fontFamily: 'Manrope, sans-serif',
-                  color: step >= s ? '#0f2419' : '#9ca3af',
-                  whiteSpace: 'nowrap',
-                }}
-              >
+              <div style={{ fontSize: 11, fontWeight: 600, fontFamily: 'Manrope, sans-serif', color: step >= s ? '#0f2419' : '#9ca3af', whiteSpace: 'nowrap' }}>
                 {STEP_LABELS[s]}
               </div>
             </div>
             {i < 2 && (
-              <div
-                style={{
-                  flex: 1,
-                  height: 2,
-                  background: step > s ? '#1a7a4a' : '#e5e7eb',
-                  marginBottom: 20,
-                  transition: 'background 0.2s ease',
-                }}
-              />
+              <div style={{ flex: 1, height: 2, background: step > s ? '#1a7a4a' : '#e5e7eb', marginBottom: 20, transition: 'background 0.2s ease' }} />
             )}
           </React.Fragment>
         ))}
       </div>
 
-      <div
-        className="card"
-        style={{ padding: 28 }}
-      >
-        {/* Step 1 */}
+      <div className="card" style={{ padding: 28 }}>
+
+        {/* ── Step 1: Personal Details ── */}
         {step === 1 && (
           <form onSubmit={handleStep1}>
             <div style={{ fontSize: 20, fontWeight: 800, color: '#0f2419', marginBottom: 20, letterSpacing: '-0.02em' }}>
-              Create Your Account
+              Your Details
             </div>
+            {error && <ErrorBanner>{error}</ErrorBanner>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={labelSt}>Full Name</label>
-                <input
-                  type="text"
-                  className="input-field"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Priya Sharma"
-                  required
-                />
-              </div>
-              <div>
-                <label style={labelSt}>Work Email</label>
-                <input
-                  type="email"
-                  className="input-field"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="priya@yourcompany.com"
-                  required
-                />
-              </div>
-              <div>
-                <label style={labelSt}>Password</label>
-                <input
-                  type="password"
-                  className="input-field"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Minimum 8 characters"
-                  minLength={8}
-                  required
-                />
-              </div>
+              <Field label="Full Name">
+                <input type="text" className="input-field" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Priya Sharma" required />
+              </Field>
+              <Field label="Work Email">
+                <input type="email" className="input-field" value={email} onChange={e => setEmail(e.target.value)} placeholder="priya@yourcompany.com" required />
+              </Field>
+              <Field label="Password">
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPw ? 'text' : 'password'}
+                    className="input-field"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="Minimum 8 characters"
+                    minLength={8}
+                    required
+                    style={{ paddingRight: 40 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw(v => !v)}
+                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', display: 'flex', alignItems: 'center' }}
+                    tabIndex={-1}
+                  >
+                    {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </Field>
+              <Field label="Phone (optional)">
+                <input type="tel" className="input-field" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 98765 43210" />
+              </Field>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
-              <button type="button" onClick={onCancel} className="btn-ghost" style={{ flex: 1 }}>
-                Cancel
-              </button>
+              <button type="button" onClick={onCancel} className="btn-ghost" style={{ flex: 1 }}>Cancel</button>
               <button type="submit" className="btn-primary" style={{ flex: 2, justifyContent: 'center' }}>
                 Next <ArrowRight size={14} />
               </button>
@@ -202,180 +159,83 @@ export const RecruiterSignup: React.FC<RecruiterSignupProps> = ({ onComplete, on
           </form>
         )}
 
-        {/* Step 2 */}
+        {/* ── Step 2: Company Details ── */}
         {step === 2 && (
           <form onSubmit={handleStep2}>
             <div style={{ fontSize: 20, fontWeight: 800, color: '#0f2419', marginBottom: 20, letterSpacing: '-0.02em' }}>
               Company Details
             </div>
+            {error && <ErrorBanner>{error}</ErrorBanner>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={labelSt}>Company Name</label>
-                <input
-                  type="text"
-                  className="input-field"
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  placeholder="Deloitte India"
-                  required
-                />
-              </div>
-              <div>
-                <label style={labelSt}>Company Website</label>
-                <input
-                  type="text"
-                  className="input-field"
-                  value={website}
-                  onChange={(e) => setWebsite(e.target.value)}
-                  placeholder="deloitte.com"
-                  required
-                />
-                {domainMatch === false && email && website && (
-                  <div
-                    style={{
-                      marginTop: 6,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: '#b45309',
-                      background: '#fffbeb',
-                      border: '1px solid #fde68a',
-                      borderRadius: 7,
-                      padding: '8px 12px',
-                    }}
-                  >
-                    ⚠ Email domain ({getEmailDomain(email)}) doesn't match website domain ({getWebsiteDomain(website)}).
-                    Your account will require manual verification.
-                  </div>
-                )}
-                {domainMatch === true && (
-                  <div style={{ marginTop: 6, fontSize: 12, fontWeight: 600, color: '#1a7a4a' }}>
-                    ✓ Domain email match confirmed
-                  </div>
-                )}
+              <Field label="Company Name">
+                <input type="text" className="input-field" value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="Deloitte India" required />
+              </Field>
+              <Field label="Company Website">
+                <input type="text" className="input-field" value={companyWebsite} onChange={e => setCompanyWebsite(e.target.value)} placeholder="https://deloitte.com" />
+              </Field>
+              <Field label="Company Domain (email domain)">
+                <input type="text" className="input-field" value={companyDomain} onChange={e => setCompanyDomain(e.target.value)} placeholder="deloitte.com" />
+              </Field>
+              <Field label="Office Address">
+                <input type="text" className="input-field" value={officeAddress} onChange={e => setOfficeAddress(e.target.value)} placeholder="12, MG Road, Bengaluru" />
+              </Field>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <Field label="City">
+                  <input type="text" className="input-field" value={city} onChange={e => setCity(e.target.value)} placeholder="Bengaluru" />
+                </Field>
+                <Field label="State">
+                  <input type="text" className="input-field" value={state} onChange={e => setState(e.target.value)} placeholder="Karnataka" />
+                </Field>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={labelSt}>CIN (optional)</label>
-                  <input
-                    type="text"
-                    className="input-field"
-                    value={cin}
-                    onChange={(e) => setCin(e.target.value)}
-                    placeholder="L17110KA2000..."
-                  />
-                </div>
-                <div>
-                  <label style={labelSt}>GSTIN (optional)</label>
-                  <input
-                    type="text"
-                    className="input-field"
-                    value={gstin}
-                    onChange={(e) => setGstin(e.target.value)}
-                    placeholder="29AABCT..."
-                  />
-                </div>
+                <Field label="CIN (optional)">
+                  <input type="text" className="input-field" value={cin} onChange={e => setCin(e.target.value)} placeholder="L17110KA2000..." />
+                </Field>
+                <Field label="GSTIN (optional)">
+                  <input type="text" className="input-field" value={gstin} onChange={e => setGstin(e.target.value)} placeholder="29AABCT..." />
+                </Field>
               </div>
-              <div>
-                <label style={labelSt}>LinkedIn Page (optional)</label>
-                <input
-                  type="text"
-                  className="input-field"
-                  value={linkedin}
-                  onChange={(e) => setLinkedin(e.target.value)}
-                  placeholder="linkedin.com/company/deloitte"
-                />
-              </div>
+              <Field label="LinkedIn Company Page (optional)">
+                <input type="text" className="input-field" value={linkedinPage} onChange={e => setLinkedinPage(e.target.value)} placeholder="linkedin.com/company/deloitte" />
+              </Field>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
               <button type="button" onClick={() => setStep(1)} className="btn-ghost" style={{ flex: 1 }}>
                 <ArrowLeft size={14} /> Back
               </button>
-              <button type="submit" className="btn-primary" style={{ flex: 2, justifyContent: 'center' }}>
-                Submit for Verification <ArrowRight size={14} />
+              <button type="submit" className="btn-primary" style={{ flex: 2, justifyContent: 'center' }} disabled={loading}>
+                {loading ? 'Submitting…' : <>Submit for Verification <ArrowRight size={14} /></>}
               </button>
             </div>
           </form>
         )}
 
-        {/* Step 3: Verification status */}
+        {/* ── Step 3: Submitted ── */}
         {step === 3 && (
           <div style={{ textAlign: 'center', padding: '8px 0 16px' }}>
-            <div
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: '50%',
-                background: verificationStatus === 'pending_review' ? '#fffbeb' : '#d7f4ea',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 20px',
-              }}
-            >
-              {verificationStatus === 'pending_review' ? (
-                <Clock size={30} color="#b45309" />
-              ) : (
-                <CheckCircle2 size={30} color="#1a7a4a" />
-              )}
+            <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#fffbeb', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+              <Clock size={30} color="#b45309" />
             </div>
-
             <div style={{ fontSize: 20, fontWeight: 800, color: '#0f2419', marginBottom: 8, letterSpacing: '-0.02em' }}>
-              {verificationStatus === 'mca_verified'
-                ? 'MCA Verified ✓'
-                : verificationStatus === 'gst_verified'
-                ? 'GST Verified ✓'
-                : 'Under Review'}
+              Registration Submitted!
             </div>
-
             <p style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.65, marginBottom: 20 }}>
-              {verificationStatus === 'pending_review'
-                ? `Your company ${companyName} is under manual review. Our team will verify via domain email match and company records within 1–2 business days.`
-                : `${companyName} has been successfully verified. You can now post jobs and access the recruiter dashboard.`}
+              We've received your registration for <strong>{companyName}</strong>. Our team has been notified and will verify your account within 1–2 business days.
             </p>
-
-            {/* Summary card */}
-            <div
-              style={{
-                background: '#f9fafb',
-                border: '1px solid #e5e7eb',
-                borderRadius: 10,
-                padding: '16px',
-                textAlign: 'left',
-                marginBottom: 24,
-                fontSize: 13,
-              }}
-            >
-              <div style={{ fontWeight: 700, color: '#0f2419', marginBottom: 8 }}>Registration Summary</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, color: '#374151' }}>
-                <div><span style={{ fontWeight: 600, color: '#6b7280' }}>Name: </span>{fullName}</div>
-                <div><span style={{ fontWeight: 600, color: '#6b7280' }}>Company: </span>{companyName}</div>
-                <div><span style={{ fontWeight: 600, color: '#6b7280' }}>Email: </span>{email}</div>
-                <div><span style={{ fontWeight: 600, color: '#6b7280' }}>Verification: </span>
-                  <span
-                    style={{
-                      fontWeight: 700,
-                      color:
-                        verificationStatus === 'pending_review'
-                          ? '#b45309'
-                          : '#1a7a4a',
-                    }}
-                  >
-                    {verificationStatus === 'mca_verified'
-                      ? 'MCA CIN Verified'
-                      : verificationStatus === 'gst_verified'
-                      ? 'GSTIN Verified'
-                      : 'Pending Manual Review'}
-                  </span>
-                </div>
+            <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: 16, textAlign: 'left', marginBottom: 24, fontSize: 13 }}>
+              <div style={{ fontWeight: 700, color: '#0f2419', marginBottom: 8 }}>What happens next?</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, color: '#374151' }}>
+                <div style={{ display: 'flex', gap: 8 }}><span style={{ color: '#1a7a4a', fontWeight: 700 }}>1.</span> ArivuPro team reviews your company details</div>
+                <div style={{ display: 'flex', gap: 8 }}><span style={{ color: '#1a7a4a', fontWeight: 700 }}>2.</span> You'll receive an approval email at <strong>{email}</strong></div>
+                <div style={{ display: 'flex', gap: 8 }}><span style={{ color: '#1a7a4a', fontWeight: 700 }}>3.</span> Login with your credentials to post jobs</div>
               </div>
             </div>
-
             <button
-              onClick={handleFinish}
+              onClick={() => onComplete({ fullName, email })}
               className="btn-primary"
               style={{ width: '100%', justifyContent: 'center' }}
             >
-              {verificationStatus === 'pending_review' ? 'Got it' : 'Go to Dashboard'} →
+              Got it, I'll wait for approval →
             </button>
           </div>
         )}
@@ -384,13 +244,21 @@ export const RecruiterSignup: React.FC<RecruiterSignupProps> = ({ onComplete, on
   );
 };
 
-const labelSt: React.CSSProperties = {
-  display: 'block',
-  fontSize: 11,
-  fontWeight: 700,
-  color: '#6b7280',
-  textTransform: 'uppercase',
-  letterSpacing: '0.04em',
-  marginBottom: 5,
-  fontFamily: 'Manrope, sans-serif',
-};
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase' as const, letterSpacing: '0.04em', marginBottom: 5, fontFamily: 'Manrope, sans-serif' }}>
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+function ErrorBanner({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 14, padding: '10px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, fontSize: 13, color: '#dc2626', fontWeight: 600 }}>
+      {children}
+    </div>
+  );
+}

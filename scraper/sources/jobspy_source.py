@@ -17,50 +17,95 @@ logger = logging.getLogger(__name__)
 
 # ── ArivuPro finance job search queries ──────────────────────────────────────
 QUERIES = [
-    # CA / Articleship
-    {'term': 'CA articleship vacancy',              'courses': ['CA']},
-    {'term': 'article assistant CA firm',           'courses': ['CA']},
-    {'term': 'CA Inter articleship',                'courses': ['CA']},
-    {'term': 'audit associate fresher CA',          'courses': ['CA']},
-    {'term': 'tax associate fresher chartered accountant', 'courses': ['CA']},
-    # CS
-    {'term': 'company secretary trainee CS',        'courses': ['CS']},
-    {'term': 'CS executive ICSI articleship',       'courses': ['CS']},
-    {'term': 'secretarial compliance trainee',      'courses': ['CS']},
-    # CMA India
-    {'term': 'CMA industrial training ICMAI',       'courses': ['CMA India']},
-    {'term': 'cost accountant trainee fresher',     'courses': ['CMA India']},
-    # ACCA
-    {'term': 'ACCA fresher jobs India',             'courses': ['ACCA']},
-    {'term': 'ACCA affiliate audit India',          'courses': ['ACCA']},
-    # CFA
-    {'term': 'CFA candidate investment analyst',    'courses': ['CFA']},
-    {'term': 'equity research analyst fresher CFA', 'courses': ['CFA']},
-    # CPA US
-    {'term': 'US CPA accounting fresher India',     'courses': ['CPA US']},
-    {'term': 'US tax analyst CPA India',            'courses': ['CPA US']},
-    # General finance fresher
-    {'term': 'finance fresher accounts executive',  'courses': ['CA']},
-    {'term': 'GST taxation fresher accountant',     'courses': ['CA']},
-    {'term': 'FP&A analyst fresher India',          'courses': ['CA', 'CMA India']},
-    {'term': 'internal audit fresher India',        'courses': ['CA']},
+    # ── Articleship (CA / CMA mandatory training) ────────────────────────────
+    {'term': 'CA articleship vacancy India',               'courses': ['CA']},
+    {'term': 'article assistant CA firm India',            'courses': ['CA']},
+    {'term': 'CA Inter articleship training',              'courses': ['CA']},
+    {'term': 'CMA industrial training ICMAI',              'courses': ['CMA India']},
+    {'term': 'CS executive articleship ICSI',              'courses': ['CS']},
+
+    # ── Internship — finance / accounting ────────────────────────────────────
+    {'term': 'finance internship fresher India',           'courses': ['CA']},
+    {'term': 'accounting internship B.Com India',          'courses': ['CA']},
+    {'term': 'audit internship India',                     'courses': ['CA', 'ACCA']},
+    {'term': 'tax internship India',                       'courses': ['CA']},
+    {'term': 'investment banking internship India',        'courses': ['CFA']},
+    {'term': 'equity research internship India',           'courses': ['CFA']},
+    {'term': 'ACCA internship India',                      'courses': ['ACCA']},
+    {'term': 'CFA internship finance India',               'courses': ['CFA']},
+    {'term': 'US CPA internship India',                    'courses': ['CPA US']},
+    {'term': 'FP&A internship India',                      'courses': ['CA', 'CMA India']},
+    {'term': 'compliance internship India',                'courses': ['CS']},
+    {'term': 'risk management internship India',           'courses': ['CA', 'CFA']},
+
+    # ── Trainee / Graduate roles ──────────────────────────────────────────────
+    {'term': 'finance graduate trainee India',             'courses': ['CA']},
+    {'term': 'audit trainee Big 4 India',                  'courses': ['CA', 'ACCA']},
+    {'term': 'accounts trainee fresher India',             'courses': ['CA']},
+    {'term': 'tax trainee India',                          'courses': ['CA']},
+    {'term': 'management trainee finance India',           'courses': ['CA', 'CMA India']},
+    {'term': 'company secretary trainee India',            'courses': ['CS']},
+    {'term': 'cost accountant trainee India',              'courses': ['CMA India']},
+
+    # ── Entry-level jobs (0–2 yrs) ────────────────────────────────────────────
+    {'term': 'audit associate fresher India',              'courses': ['CA', 'ACCA']},
+    {'term': 'tax associate fresher India',                'courses': ['CA']},
+    {'term': 'accounts executive fresher India',           'courses': ['CA']},
+    {'term': 'financial analyst fresher India',            'courses': ['CA', 'CFA']},
+    {'term': 'GST executive fresher India',                'courses': ['CA']},
+    {'term': 'internal audit associate India',             'courses': ['CA']},
+    {'term': 'FP&A analyst fresher India',                 'courses': ['CA', 'CMA India']},
+    {'term': 'equity research analyst fresher India',      'courses': ['CFA']},
+    {'term': 'investment analyst fresher CFA India',       'courses': ['CFA']},
+    {'term': 'US CPA accounting fresher India',            'courses': ['CPA US']},
+    {'term': 'ACCA affiliate jobs India',                  'courses': ['ACCA']},
+    {'term': 'fund accountant fresher India',              'courses': ['CA', 'ACCA']},
+    {'term': 'credit analyst fresher India',               'courses': ['CA', 'CFA']},
+    {'term': 'B.Com finance fresher jobs India',           'courses': ['CA']},
+    {'term': 'BBA finance fresher jobs India',             'courses': ['CA']},
 ]
 
-# Sites to query — configurable via JOBSPY_SITES env var
-DEFAULT_SITES = ['indeed', 'glassdoor']   # LinkedIn rate-limits aggressively; Naukri is in beta
+DEFAULT_SITES = ['indeed', 'glassdoor', 'linkedin']
 NAUKRI_QUERIES = [
-    'CA articleship', 'article assistant', 'audit associate fresher',
-    'CMA industrial training', 'CS executive trainee', 'ACCA fresher',
+    # Articleship
+    'CA articleship', 'article assistant', 'CMA industrial training',
+    # Internship
+    'finance internship fresher', 'audit internship', 'accounting internship',
+    'investment banking internship India', 'ACCA internship',
+    # Trainee
+    'finance trainee fresher', 'audit trainee', 'management trainee finance',
+    # Jobs
+    'audit associate fresher', 'accounts executive fresher',
+    'financial analyst fresher', 'GST executive fresher',
+    'CS executive trainee', 'ACCA fresher jobs',
 ]
 
 SENIOR_RE = re.compile(
-    r'\b(senior|manager|lead\b|director|head of|vp\b|vice president|principal|partner|'
-    r'[3-9]\+?\s*years?|[1-9]\d+\s*years?)\b', re.I
+    r'\b(senior\s+manager|associate\s+director|deputy\s+manager|'
+    r'avp\b|assistant\s+vice\s+president|vice\s+president\b|'
+    r'director\b|head\s+of|partner\b|principal\b|'
+    r'minimum\s+[3-9]\s*years?|at\s*least\s*[3-9]\s*years?)\b', re.I
 )
+
+ARTICLESHIP_RE = re.compile(r'\b(article|articleship|industrial\s+train)\b', re.I)
+INTERNSHIP_RE  = re.compile(r'\b(intern(ship)?|summer\s+intern|winter\s+intern)\b', re.I)
+TRAINEE_RE     = re.compile(r'\b(trainee|graduate\s+trainee|management\s+trainee|'
+                             r'junior\s+trainee|entry.?level\s+trainee)\b', re.I)
 
 
 def _is_senior(title: str, description: str) -> bool:
     return bool(SENIOR_RE.search(title) or SENIOR_RE.search((description or '')[:600]))
+
+
+def _detect_job_type(title: str, desc: str) -> str:
+    text = f'{title} {desc[:300]}'
+    if ARTICLESHIP_RE.search(text):
+        return 'articleship'
+    if INTERNSHIP_RE.search(text):
+        return 'internship'
+    if TRAINEE_RE.search(text):
+        return 'trainee'
+    return 'job'
 
 
 def _parse_date(d) -> datetime:
@@ -113,7 +158,6 @@ def _run_jobspy_sync(sites: list[str], query: str, location: str, results: int) 
             country_indeed='india',
             results_wanted=results,
             hours_old=168,       # last 7 days
-            job_type='fulltime',
             fetch_description=False,
         )
         if df is None or df.empty:
@@ -185,7 +229,7 @@ async def fetch() -> list[NormalizedJob]:
                     continue
 
                 courses = await detect_courses(title, desc[:400]) or q['courses']
-                job_type = 'articleship' if re.search(r'article|articleship|industrial train|trainee', f'{title} {desc}', re.I) else 'job'
+                job_type = _detect_job_type(title, desc)
 
                 loc_parts = [row.get('location'), row.get('city'), row.get('state')]
                 location_str = next((str(x) for x in loc_parts if x), location)
@@ -235,7 +279,7 @@ async def fetch() -> list[NormalizedJob]:
                     continue
 
                 courses = await detect_courses(title, desc[:400]) or ['CA']
-                job_type = 'articleship' if re.search(r'article|articleship|industrial train|trainee', f'{title} {desc}', re.I) else 'job'
+                job_type = _detect_job_type(title, desc)
                 loc_parts = [row.get('location'), row.get('city')]
                 location_str = next((str(x) for x in loc_parts if x), 'India')
                 stipend = _salary_monthly(row) or extract_stipend(desc)

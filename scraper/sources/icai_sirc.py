@@ -33,6 +33,10 @@ def _parse_date(text: str) -> datetime:
     except ValueError:
         pass
     try:
+        return datetime.strptime(text.strip(), '%d/%m/%Y')
+    except ValueError:
+        pass
+    try:
         return datetime.strptime(text.strip(), '%Y-%m-%d')
     except ValueError:
         pass
@@ -65,9 +69,10 @@ async def fetch() -> list[NormalizedJob]:
             detail_url = href if href.startswith('http') else (f'{BASE}/{href.lstrip("/")}' if href else '')
 
             parts = [p for p in (detail_url.split('?')[0].split('#')[0].split('/')) if p]
+            _slug = re.sub(r"\s", "-", employer[:15])
             external_id = (
                 f'sirc-{parts[-1]}' if detail_url else
-                f'sirc-{idx}-{re.sub(r"\\s", "-", employer[:15])}'
+                f'sirc-{idx}-{_slug}'
             )
 
             jobs.append(NormalizedJob(

@@ -1,116 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { JobListing, JobApplication } from '../types/index.ts';
+import { adminFetch } from '../lib/supabase/auth.ts';
 
 interface AdminDashboardProps {
   jobs: JobListing[];
   applications: JobApplication[];
+  activeTab?: AdminTab;
 }
 
-type AdminTab = 'Dashboard' | 'All Students' | 'All Jobs' | 'Companies';
+type AdminTab = 'Dashboard' | 'All Students' | 'All Jobs' | 'Companies' | 'Recruiters';
 
 // ── Seed Data ──────────────────────────────────────────────────────────────
 
-const SEED_STUDENTS = [
-  {
-    id: 'RV-2024-001',
-    name: 'Rohan Venkatesh',
-    course: 'ACCA',
-    stage: 'Recruiter Screen' as const,
-    aiScore: 87,
-    aiGrade: 'Excellent' as const,
-    counselor: 'Meghna Rao',
-    crmSync: 'Synced' as const,
-  },
-  {
-    id: 'PN-2024-022',
-    name: 'Priya Nair',
-    course: 'CA',
-    stage: 'Offer Released' as const,
-    aiScore: 91,
-    aiGrade: 'Excellent' as const,
-    counselor: 'Arjun Pillai',
-    crmSync: 'Synced' as const,
-  },
-  {
-    id: 'AS-2024-045',
-    name: 'Amit Sharma',
-    course: 'US CPA',
-    stage: 'ArivuPro Review' as const,
-    aiScore: 74,
-    aiGrade: 'Strong' as const,
-    counselor: 'Meghna Rao',
-    crmSync: 'Pending' as const,
-  },
-  {
-    id: 'SR-2024-067',
-    name: 'Sneha Reddy',
-    course: 'CFA',
-    stage: 'Applied' as const,
-    aiScore: 68,
-    aiGrade: 'Good' as const,
-    counselor: '—',
-    crmSync: 'Pending' as const,
-  },
-  {
-    id: 'KI-2024-089',
-    name: 'Karthik Iyer',
-    course: 'CS',
-    stage: 'Technical Round' as const,
-    aiScore: 82,
-    aiGrade: 'Excellent' as const,
-    counselor: 'Arjun Pillai',
-    crmSync: 'Synced' as const,
-  },
-  {
-    id: 'DM-2024-103',
-    name: 'Divya Menon',
-    course: 'CA Inter',
-    stage: 'Applied' as const,
-    aiScore: 71,
-    aiGrade: 'Strong' as const,
-    counselor: '—',
-    crmSync: 'Pending' as const,
-  },
-];
-
-const SEED_COMPANIES = [
-  {
-    id: 'c1',
-    name: 'Deloitte India',
-    email: 'campus@deloitte.com',
-    status: 'MoU Partner' as const,
-    industry: 'Big 4 Audit',
-    activeJobs: 3,
-    contact: 'Meghna Rao',
-  },
-  {
-    id: 'c2',
-    name: 'Goldman Sachs',
-    email: 'campus@gs.com',
-    status: 'MoU Partner' as const,
-    industry: 'Investment Banking',
-    activeJobs: 1,
-    contact: 'Ravi Kumar',
-  },
-  {
-    id: 'c3',
-    name: 'BDO India LLP',
-    email: 'hr@bdo.in',
-    status: 'Verified' as const,
-    industry: 'Accounting',
-    activeJobs: 2,
-    contact: 'Suresh Pillai',
-  },
-  {
-    id: 'c4',
-    name: 'Grant Thornton',
-    email: 'careers@gt.in',
-    status: 'Pending Review' as const,
-    industry: 'Accounting',
-    activeJobs: 0,
-    contact: 'Anjali Sharma',
-  },
-];
 
 const PIPELINE_STAGES = [
   { label: 'Applied', count: 148 },
@@ -537,23 +438,199 @@ const styles: Record<string, React.CSSProperties> = {
   },
 };
 
+// ── Companies Tab ──────────────────────────────────────────────────────────
+
+function CompaniesTab({ displayCompanies }: { displayCompanies: any[] }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  return (
+    <>
+      <div style={styles.pageHeader}>
+        <h1 style={styles.pageTitle}>Registered Companies</h1>
+        <p style={styles.pageSubtitle}>Recruiter partners and MoU holders</p>
+      </div>
+      <div style={{ ...styles.card, padding: 0 }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={{ ...styles.th, ...styles.thFirst }}>Company</th>
+                <th style={styles.th}>Contact Person</th>
+                <th style={styles.th}>Phone</th>
+                <th style={styles.th}>Website</th>
+                <th style={styles.th}>Status</th>
+                <th style={styles.th}>Active Jobs</th>
+                <th style={{ ...styles.th, ...styles.thLast }}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {displayCompanies.map((co: any, i: number) => {
+                const id = co.id || String(i);
+                const name = co.company_name || co.name || '—';
+                const email = co.work_email || co.email || '—';
+                const phone = co.phone || '—';
+                const website = co.website || co.company_website || '';
+                const contact = co.contact_person || co.contact || '—';
+                const activeJobs = co.active_jobs_count ?? co.activeJobs ?? 0;
+                const rawStatus = co.verification_status || co.status || '';
+                const statusLabel =
+                  rawStatus === 'verified' ? 'Verified'
+                  : rawStatus === 'pending' ? 'Pending Review'
+                  : rawStatus === 'mou_partner' ? 'MoU Partner'
+                  : rawStatus || '—';
+                const notes = co.notes || '';
+                const cin = co.cin_or_gstin || '';
+                const isExpanded = expandedId === id;
+                const tdSt = i % 2 === 0 ? styles.td : styles.tdAlt;
+                return (
+                  <React.Fragment key={id}>
+                    <tr>
+                      <td style={tdSt}>
+                        <div style={{ fontWeight: 700, color: '#0f2419', fontSize: 13 }}>{name}</div>
+                        <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{email}</div>
+                      </td>
+                      <td style={tdSt}><span style={{ fontSize: 13 }}>{contact}</span></td>
+                      <td style={tdSt}><span style={{ fontSize: 13 }}>{phone}</span></td>
+                      <td style={tdSt}>
+                        {website
+                          ? <a href={website.startsWith('http') ? website : `https://${website}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#1a7a4a', textDecoration: 'none' }}>{website}</a>
+                          : <span style={{ color: '#9ca3af', fontSize: 12 }}>—</span>}
+                      </td>
+                      <td style={tdSt}><span className={companyStatusBadgeClass(statusLabel)}>{statusLabel}</span></td>
+                      <td style={tdSt}>
+                        <span style={{ fontWeight: 700, color: activeJobs > 0 ? '#1a7a4a' : '#9ca3af' }}>{activeJobs}</span>
+                      </td>
+                      <td style={tdSt}>
+                        <button
+                          style={isExpanded ? styles.btnSmallSolid : styles.btnSmallOutline}
+                          onClick={() => setExpandedId(isExpanded ? null : id)}
+                        >
+                          {isExpanded ? 'Close' : 'View'}
+                        </button>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr>
+                        <td colSpan={7} style={{ padding: '16px 20px', background: '#f0faf4', borderBottom: '1px solid #d1fae5' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px 24px', fontSize: 13 }}>
+                            <DetailItem label="Company Email" value={email} />
+                            <DetailItem label="Phone" value={phone} />
+                            <DetailItem label="Website" value={website || '—'} />
+                            <DetailItem label="CIN / GSTIN" value={cin || '—'} />
+                            <DetailItem label="Status" value={statusLabel} />
+                            <DetailItem label="Active Jobs" value={String(activeJobs)} />
+                            {notes && <DetailItem label="Notes" value={notes} />}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function DetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>{label}</div>
+      <div style={{ color: '#0f2419', fontWeight: 600 }}>{value}</div>
+    </div>
+  );
+}
+
 // ── Main Component ──────────────────────────────────────────────────────────
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applications }) => {
-  const [activeTab, setActiveTab] = useState<AdminTab>('Dashboard');
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applications, activeTab: propTab }) => {
+  const activeTab: AdminTab = propTab ?? 'Dashboard';
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [studentSearch, setStudentSearch] = useState('');
   const [studentStageFilter, setStudentStageFilter] = useState('All Stages');
+  const [liveCompanies, setLiveCompanies] = useState<any[]>([]);
+  const [liveStudents, setLiveStudents] = useState<any[]>([]);
+  const [liveRecruiters, setLiveRecruiters] = useState<any[]>([]);
+  const [recruitersLoading, setRecruitersLoading] = useState(false);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
 
   const showToast = useCallback((msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 2500);
   }, []);
 
-  const TABS: AdminTab[] = ['Dashboard', 'All Students', 'All Jobs', 'Companies'];
+  // Fetch live companies when Companies tab is active
+  useEffect(() => {
+    if (activeTab === 'Companies') {
+      adminFetch('/api/companies')
+        .then(r => r.json())
+        .then(d => setLiveCompanies(d.companies || []))
+        .catch(() => setLiveCompanies([]));
+    }
+  }, [activeTab]);
+
+  // Fetch recruiters when Recruiters tab is active
+  useEffect(() => {
+    if (activeTab === 'Recruiters') {
+      setRecruitersLoading(true);
+      adminFetch('/api/recruiters/pending')
+        .then(r => r.json())
+        .then(d => setLiveRecruiters(d.recruiters || []))
+        .catch(() => setLiveRecruiters([]))
+        .finally(() => setRecruitersLoading(false));
+    }
+  }, [activeTab]);
+
+  const handleRecruiterAction = useCallback(async (recruiterId: string, action: 'approve' | 'reject') => {
+    setApprovingId(recruiterId);
+    try {
+      const res = await adminFetch(`/api/recruiters/${recruiterId}/approve`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      if (res.ok) {
+        setLiveRecruiters(prev => prev.map(r =>
+          r.id === recruiterId ? { ...r, approval_status: action === 'approve' ? 'approved' : 'rejected' } : r
+        ));
+        showToast(action === 'approve' ? 'Recruiter approved — email sent' : 'Recruiter rejected');
+      } else {
+        showToast('Action failed — check console');
+      }
+    } catch {
+      showToast('Network error');
+    } finally {
+      setApprovingId(null);
+    }
+  }, [showToast]);
+
+  // Fetch live students (applications) when All Students tab is active
+  useEffect(() => {
+    if (activeTab === 'All Students') {
+      adminFetch('/api/applications')
+        .then(r => r.json())
+        .then(d => setLiveStudents(d.applications || []))
+        .catch(() => setLiveStudents([]));
+    }
+  }, [activeTab]);
+
+  const displayCompanies = liveCompanies;
+  const displayStudents = liveStudents.map((a: any) => ({
+    id: a.student_id || a.id,
+    name: a.student_name || '—',
+    course: a.primary_course || '—',
+    stage: a.stage || 'Applied',
+    aiScore: a.ai_match_score || 0,
+    aiGrade: a.match_grade || 'Good',
+    counselor: a.assigned_counselor || '—',
+    crmSync: a.crm_sync_status === 'synced' ? 'Synced' : 'Pending',
+  }));
 
   // Filter students
-  const filteredStudents = SEED_STUDENTS.filter((s) => {
+  const filteredStudents = displayStudents.filter((s: any) => {
     const matchSearch =
       studentSearch.trim() === '' ||
       s.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
@@ -568,20 +645,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
 
   return (
     <div style={styles.wrapper}>
-      {/* ── Tab Strip ── */}
-      <div style={styles.tabStrip}>
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            className={'tab-link' + (activeTab === tab ? ' active' : '')}
-            onClick={() => setActiveTab(tab)}
-            style={{ background: 'none' }}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
-
       {/* ── Tab Content ── */}
       <div style={styles.pageContent}>
 
@@ -950,79 +1013,110 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
             TAB 4: COMPANIES
         ══════════════════════════════════════════════════════════ */}
         {activeTab === 'Companies' && (
+          <CompaniesTab displayCompanies={displayCompanies} />
+        )}
+        {/* ══════════════════════════════════════════════════════════
+            TAB 5: RECRUITERS
+        ══════════════════════════════════════════════════════════ */}
+        {activeTab === 'Recruiters' && (
           <>
             <div style={styles.pageHeader}>
-              <h1 style={styles.pageTitle}>Registered Companies</h1>
-              <p style={styles.pageSubtitle}>Recruiter partners and MoU holders</p>
+              <h1 style={styles.pageTitle}>Recruiter Applications</h1>
+              <p style={styles.pageSubtitle}>Review and approve recruiter account registrations</p>
             </div>
-
-            <div style={{ ...styles.card, padding: 0 }}>
-              <div style={{ overflowX: 'auto' }}>
+            {recruitersLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: '#6b7280' }}>Loading…</div>
+            ) : liveRecruiters.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '48px 0', background: '#fff', borderRadius: 14, border: '1px solid #e5e7eb', color: '#9ca3af', fontSize: 14 }}>
+                No recruiter registrations yet.
+              </div>
+            ) : (
+              <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e5e7eb', overflow: 'hidden' }}>
                 <table style={styles.table}>
                   <thead>
                     <tr>
-                      <th style={{ ...styles.th, ...styles.thFirst }}>Company</th>
+                      <th style={{ ...styles.th, ...styles.thFirst }}>Company Name</th>
+                      <th style={styles.th}>Company Website</th>
+                      <th style={styles.th}>Name</th>
+                      <th style={styles.th}>Contact Number</th>
+                      <th style={styles.th}>Mail</th>
+                      <th style={styles.th}>Office Address</th>
                       <th style={styles.th}>Status</th>
-                      <th style={styles.th}>Industry</th>
-                      <th style={styles.th}>Active Jobs</th>
-                      <th style={styles.th}>Contact</th>
                       <th style={{ ...styles.th, ...styles.thLast }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {SEED_COMPANIES.map((co, i) => (
-                      <tr key={co.id}>
-                        <td style={i % 2 === 0 ? styles.td : styles.tdAlt}>
-                          <div style={{ fontWeight: 700, color: '#0f2419', fontSize: 13 }}>
-                            {co.name}
-                          </div>
-                          <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
-                            {co.email}
-                          </div>
-                        </td>
-                        <td style={i % 2 === 0 ? styles.td : styles.tdAlt}>
-                          <span className={companyStatusBadgeClass(co.status)}>{co.status}</span>
-                        </td>
-                        <td style={i % 2 === 0 ? styles.td : styles.tdAlt}>
-                          <span style={{ fontSize: 13, color: '#374151' }}>{co.industry}</span>
-                        </td>
-                        <td style={i % 2 === 0 ? styles.td : styles.tdAlt}>
-                          <span
-                            style={{
-                              fontWeight: 700,
-                              color: co.activeJobs > 0 ? '#1a7a4a' : '#9ca3af',
-                            }}
-                          >
-                            {co.activeJobs}
-                          </span>
-                        </td>
-                        <td style={i % 2 === 0 ? styles.td : styles.tdAlt}>
-                          <span style={{ fontSize: 13 }}>{co.contact}</span>
-                        </td>
-                        <td style={i % 2 === 0 ? styles.td : styles.tdAlt}>
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            <button
-                              style={styles.btnSmallOutline}
-                              onClick={() => showToast(`Viewing ${co.name}`)}
-                            >
-                              View
-                            </button>
-                            {co.status === 'Pending Review' && (
-                              <button
-                                style={styles.btnSmallSolid}
-                                onClick={() => showToast(`${co.name} approved`)}
-                              >
-                                Approve
-                              </button>
+                    {liveRecruiters.map((r: any, i: number) => {
+                      const tdSt = i % 2 === 0 ? styles.td : styles.tdAlt;
+                      const statusColor =
+                        r.approval_status === 'approved' ? '#1a7a4a'
+                        : r.approval_status === 'rejected' ? '#dc2626'
+                        : '#b45309';
+                      const statusLabel =
+                        r.approval_status === 'approved' ? 'Approved'
+                        : r.approval_status === 'rejected' ? 'Rejected'
+                        : 'Pending';
+                      return (
+                        <tr key={r.id}>
+                          <td style={tdSt}>
+                            <div style={{ fontWeight: 700, color: '#0f2419', fontSize: 13 }}>{r.company_name}</div>
+                          </td>
+                          <td style={tdSt}>
+                            {r.company_website
+                              ? <a href={r.company_website.startsWith('http') ? r.company_website : `https://${r.company_website}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: '#1a7a4a', textDecoration: 'none' }}>{r.company_website}</a>
+                              : <span style={{ color: '#9ca3af', fontSize: 12 }}>—</span>}
+                          </td>
+                          <td style={tdSt}>
+                            <div style={{ fontWeight: 600, fontSize: 13 }}>{r.full_name}</div>
+                          </td>
+                          <td style={tdSt}>
+                            <div style={{ fontSize: 13, color: '#374151' }}>{r.phone || <span style={{ color: '#9ca3af' }}>—</span>}</div>
+                          </td>
+                          <td style={tdSt}>
+                            <div style={{ fontSize: 12, color: '#374151' }}>{r.email}</div>
+                          </td>
+                          <td style={tdSt}>
+                            {r.office_address
+                              ? <div style={{ fontSize: 12, color: '#374151' }}>{r.office_address}{r.city ? `, ${r.city}` : ''}{r.state ? `, ${r.state}` : ''}</div>
+                              : <span style={{ color: '#9ca3af', fontSize: 12 }}>—</span>}
+                          </td>
+                          <td style={tdSt}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: statusColor }}>{statusLabel}</span>
+                            {r.created_at && (
+                              <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
+                                {new Date(r.created_at).toLocaleDateString('en-IN')}
+                              </div>
                             )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td style={tdSt}>
+                            {r.approval_status === 'pending' ? (
+                              <div style={{ display: 'flex', gap: 6 }}>
+                                <button
+                                  style={styles.btnSmallSolid}
+                                  disabled={approvingId === r.id}
+                                  onClick={() => handleRecruiterAction(r.id, 'approve')}
+                                >
+                                  {approvingId === r.id ? '…' : 'Approve'}
+                                </button>
+                                <button
+                                  style={styles.btnSmallRed}
+                                  disabled={approvingId === r.id}
+                                  onClick={() => handleRecruiterAction(r.id, 'reject')}
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: 12, color: '#9ca3af' }}>—</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
-            </div>
+            )}
           </>
         )}
       </div>

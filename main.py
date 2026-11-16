@@ -5,14 +5,13 @@ from datetime import datetime
 from typing import Optional
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Query, Header
+from fastapi import FastAPI, HTTPException, Query, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from supabase import create_client, Client
-from google import genai as google_genai
 
 load_dotenv()
 
@@ -29,12 +28,38 @@ supabase: Client = create_client(
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 gemini_client = None
 if GEMINI_KEY:
-    gemini_client = google_genai.Client(api_key=GEMINI_KEY)
+    try:
+        from google import genai as google_genai
+        gemini_client = google_genai.Client(api_key=GEMINI_KEY)
+    except ImportError:
+        logger.warning("google-genai not installed — Gemini features disabled")
 
 # ---------------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------------
 CRON_SECRET = os.getenv("CRON_SECRET", "")
+
+
+# ---------------------------------------------------------------------------
+# Admin auth — validate caller's Supabase access token against admin_users.
+# Mirrors the frontend signInAdmin() gate (src/lib/supabase/auth.ts).
+# Admin dashboard calls must send `Authorization: Bearer <access_token>`.
+# ---------------------------------------------------------------------------
+async def require_admin(authorization: Optional[str] = Header(default=None)) -> dict:
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Missing bearer token")
+    token = authorization.split(" ", 1)[1].strip()
+    try:
+        user_res = supabase.auth.get_user(token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    user = getattr(user_res, "user", None)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    admin = supabase.table("admin_users").select("id, email, role").eq("id", user.id).limit(1).execute()
+    if not admin.data:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return admin.data[0]
 
 # ---------------------------------------------------------------------------
 # APScheduler — auto-sync every N hours (default 6)
@@ -43,29 +68,39 @@ _scheduler = None
 
 def _start_scheduler(sb: Client):
     global _scheduler
-    interval_hours = int(os.getenv("SCRAPER_INTERVAL_HOURS", "6"))
+    daily_hours = int(os.getenv("SCRAPER_INTERVAL_HOURS", "24"))
+    weekly_hours = int(os.getenv("SCRAPER_WEEKLY_INTERVAL_HOURS", "168"))
     try:
         from apscheduler.schedulers.asyncio import AsyncIOScheduler
         from apscheduler.triggers.interval import IntervalTrigger
 
-        async def _scheduled_sync():
-            logger.info("[cron] Scheduled scraper sync starting…")
+        async def _daily_sync():
+            sources = [s.strip() for s in os.getenv("SYNC_SOURCES_ENABLED", "").split(",") if s.strip()]
+            logger.info(f"[cron] Daily sync starting — {len(sources)} sources")
             try:
-                results = await run_all_sources(sb)
+                results = await run_all_sources(sb, sources=sources)
                 total_new = sum(r.created for r in results)
-                logger.info(f"[cron] Sync done — {total_new} new jobs across {len(results)} sources")
+                logger.info(f"[cron] Daily sync done — {total_new} new jobs")
             except Exception as e:
-                logger.error(f"[cron] Sync failed: {e}")
+                logger.error(f"[cron] Daily sync failed: {e}")
+
+        async def _weekly_sync():
+            sources = [s.strip() for s in os.getenv("SYNC_SOURCES_WEEKLY", "").split(",") if s.strip()]
+            if not sources:
+                return
+            logger.info(f"[cron] Weekly sync starting — {len(sources)} sources")
+            try:
+                results = await run_all_sources(sb, sources=sources)
+                total_new = sum(r.created for r in results)
+                logger.info(f"[cron] Weekly sync done — {total_new} new jobs")
+            except Exception as e:
+                logger.error(f"[cron] Weekly sync failed: {e}")
 
         _scheduler = AsyncIOScheduler()
-        _scheduler.add_job(
-            _scheduled_sync,
-            trigger=IntervalTrigger(hours=interval_hours),
-            id="scraper_sync",
-            replace_existing=True,
-        )
+        _scheduler.add_job(_daily_sync, trigger=IntervalTrigger(hours=daily_hours), id="daily_sync", replace_existing=True)
+        _scheduler.add_job(_weekly_sync, trigger=IntervalTrigger(hours=weekly_hours), id="weekly_sync", replace_existing=True)
         _scheduler.start()
-        logger.info(f"[cron] APScheduler started — scraper runs every {interval_hours}h")
+        logger.info(f"[cron] APScheduler started — daily every {daily_hours}h, weekly every {weekly_hours}h")
     except ImportError:
         logger.warning("[cron] apscheduler not installed — scheduled sync disabled. Run: pip install apscheduler")
 
@@ -86,9 +121,13 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="ArivuPro Finance Career Portal", lifespan=lifespan)
 
+_origins_env = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000")
+_allowed_origins = [o.strip() for o in _origins_env.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=_allowed_origins,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -146,6 +185,25 @@ class CompanyRegister(BaseModel):
     contact_person: Optional[str] = "Talent Acquisition Partner"
     phone: Optional[str] = None
     industry: Optional[str] = "Finance & Corporate Services"
+
+class RecruiterRegister(BaseModel):
+    full_name: str
+    email: str
+    password: str
+    phone: Optional[str] = None
+    company_name: str
+    company_website: Optional[str] = None
+    company_domain: Optional[str] = None
+    office_address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    cin: Optional[str] = None
+    gstin: Optional[str] = None
+    linkedin_page: Optional[str] = None
+
+class RecruiterApprove(BaseModel):
+    action: str  # "approve" | "reject"
+    rejection_reason: Optional[str] = None
 
 class MatchRequest(BaseModel):
     job_id: str
@@ -267,7 +325,7 @@ async def get_job(job_id: str):
 
 
 @app.post("/api/jobs", status_code=201)
-async def create_job(body: JobPost):
+async def create_job(body: JobPost, _admin: dict = Depends(require_admin)):
     job = {
         "id": str(uuid.uuid4()),
         "title": body.title,
@@ -306,7 +364,7 @@ async def create_job(body: JobPost):
 # APPLICATIONS
 # ---------------------------------------------------------------------------
 @app.get("/api/applications")
-async def get_applications():
+async def get_applications(_admin: dict = Depends(require_admin)):
     result = supabase.table("student_leads").select("*").order("created_at", desc=True).execute()
     data = result.data or []
     return {"total": len(data), "applications": data}
@@ -365,7 +423,7 @@ async def submit_application(body: ApplicationPost):
 
 
 @app.patch("/api/applications/{app_id}")
-async def update_application(app_id: str, body: ApplicationPatch):
+async def update_application(app_id: str, body: ApplicationPatch, _admin: dict = Depends(require_admin)):
     app_res = supabase.table("student_leads").select("*").eq("id", app_id).single().execute()
     if not app_res.data:
         raise HTTPException(status_code=404, detail="Application not found")
@@ -396,7 +454,7 @@ async def update_application(app_id: str, body: ApplicationPatch):
 # COMPANIES
 # ---------------------------------------------------------------------------
 @app.get("/api/companies")
-async def get_companies():
+async def get_companies(_admin: dict = Depends(require_admin)):
     result = supabase.table("company_leads").select("*").order("created_at", desc=True).execute()
     data = result.data or []
     return {"total": len(data), "companies": data}
@@ -441,7 +499,7 @@ async def register_company(body: CompanyRegister):
 
 
 @app.get("/api/companies/{company_id}/applications")
-async def company_applications(company_id: str):
+async def company_applications(company_id: str, _admin: dict = Depends(require_admin)):
     comp = supabase.table("company_leads").select("company_name").eq("id", company_id).single().execute()
     name = comp.data.get("company_name", "") if comp.data else ""
     result = supabase.table("student_leads").select("*").ilike("company", f"%{name}%").execute()
@@ -449,10 +507,344 @@ async def company_applications(company_id: str):
     return {"company_name": name, "total_applications": len(data), "applications": data}
 
 # ---------------------------------------------------------------------------
+# RECRUITERS
+# ---------------------------------------------------------------------------
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+ADMIN_NOTIFY_EMAIL = os.getenv("ADMIN_NOTIFY_EMAIL", "tech@arivupro.com")
+PORTAL_URL = os.getenv("PORTAL_URL", "https://arivupro.com")
+# EMAIL_FROM must match a verified sender in your Resend account.
+# Without a verified domain, use "onboarding@resend.dev" (Resend's shared test sender).
+# Once arivupro.com is verified in Resend, change to "noreply@arivupro.com".
+EMAIL_FROM = os.getenv("EMAIL_FROM", "onboarding@resend.dev")
+
+
+def _send_email(to: str, subject: str, html: str) -> bool:
+    """Send email via Resend API. Returns True on success."""
+    if not RESEND_API_KEY:
+        logger.warning("[email] RESEND_API_KEY not set — email skipped")
+        return False
+    import httpx as _httpx
+    try:
+        resp = _httpx.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {RESEND_API_KEY}", "Content-Type": "application/json"},
+            json={"from": f"ArivuPro Portal <{EMAIL_FROM}>", "to": [to], "subject": subject, "html": html},
+            timeout=10,
+        )
+        if resp.status_code not in (200, 201):
+            logger.warning(f"[email] Resend returned {resp.status_code}: {resp.text}")
+            return False
+        return True
+    except Exception as exc:
+        logger.warning(f"[email] Send failed: {exc}")
+        return False
+
+
+@app.post("/api/recruiters/register", status_code=201)
+async def recruiter_register(body: RecruiterRegister):
+    # 1. Validate password length (Supabase enforces min 6, we want 8)
+    if len(body.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters.")
+
+    # 2. Check duplicate email
+    existing = supabase.table("recruiter_profiles").select("id").eq("email", body.email).execute()
+    if existing.data:
+        raise HTTPException(status_code=409, detail="An account with this email already exists.")
+
+    # 3. Create Supabase Auth user
+    try:
+        auth_res = supabase.auth.admin.create_user({
+            "email": body.email,
+            "password": body.password,
+            "email_confirm": True,
+            "user_metadata": {"full_name": body.full_name, "role": "recruiter"},
+        })
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Could not create account: {exc}")
+
+    auth_user = getattr(auth_res, "user", None)
+    if not auth_user:
+        raise HTTPException(status_code=500, detail="Account creation failed — no user returned.")
+
+    # 4. Insert recruiter_profiles row
+    profile = {
+        "auth_user_id": str(auth_user.id),
+        "full_name": body.full_name,
+        "email": body.email,
+        "phone": body.phone,
+        "company_name": body.company_name,
+        "company_website": body.company_website,
+        "company_domain": body.company_domain,
+        "office_address": body.office_address,
+        "city": body.city,
+        "state": body.state,
+        "cin": body.cin,
+        "gstin": body.gstin,
+        "linkedin_page": body.linkedin_page,
+        "approval_status": "pending",
+    }
+    result = supabase.table("recruiter_profiles").insert(profile).execute()
+    recruiter_id = result.data[0]["id"] if result.data else str(auth_user.id)
+
+    # 5. Notify admin
+    admin_panel_url = f"{PORTAL_URL}/?admin"
+    _send_email(
+        to=ADMIN_NOTIFY_EMAIL,
+        subject=f"[ArivuPro] New Recruiter Registration: {body.company_name}",
+        html=f"""
+<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+  <h2 style="color:#0f2419;">New Recruiter Registration</h2>
+  <table style="width:100%;border-collapse:collapse;font-size:14px;">
+    <tr><td style="padding:6px 0;color:#6b7280;width:140px;">Company</td><td style="font-weight:700;">{body.company_name}</td></tr>
+    <tr><td style="padding:6px 0;color:#6b7280;">Contact</td><td>{body.full_name}</td></tr>
+    <tr><td style="padding:6px 0;color:#6b7280;">Email</td><td>{body.email}</td></tr>
+    <tr><td style="padding:6px 0;color:#6b7280;">Phone</td><td>{body.phone or '—'}</td></tr>
+    <tr><td style="padding:6px 0;color:#6b7280;">Website</td><td>{body.company_website or '—'}</td></tr>
+    <tr><td style="padding:6px 0;color:#6b7280;">Domain</td><td>{body.company_domain or '—'}</td></tr>
+    <tr><td style="padding:6px 0;color:#6b7280;">Address</td><td>{body.office_address or '—'}, {body.city or ''} {body.state or ''}</td></tr>
+    <tr><td style="padding:6px 0;color:#6b7280;">CIN</td><td>{body.cin or '—'}</td></tr>
+    <tr><td style="padding:6px 0;color:#6b7280;">GSTIN</td><td>{body.gstin or '—'}</td></tr>
+  </table>
+  <div style="margin-top:24px;">
+    <a href="{admin_panel_url}" style="background:#1a7a4a;color:#fff;padding:12px 24px;text-decoration:none;border-radius:8px;font-weight:700;display:inline-block;">
+      Review in Admin Panel →
+    </a>
+  </div>
+  <p style="color:#9ca3af;font-size:12px;margin-top:24px;">ArivuPro Finance Career Portal · Recruiter ID: {recruiter_id}</p>
+</div>""",
+    )
+
+    return {"message": "Registration successful. Your account is pending approval.", "recruiter_id": recruiter_id}
+
+
+@app.get("/api/recruiters/pending")
+async def get_pending_recruiters(_admin: dict = Depends(require_admin)):
+    result = (
+        supabase.table("recruiter_profiles")
+        .select("*")
+        .order("created_at", desc=True)
+        .execute()
+    )
+    data = result.data or []
+    return {"total": len(data), "recruiters": data}
+
+
+@app.patch("/api/recruiters/{recruiter_id}/approve")
+async def approve_recruiter(
+    recruiter_id: str,
+    body: RecruiterApprove,
+    _admin: dict = Depends(require_admin),
+):
+    if body.action not in ("approve", "reject"):
+        raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'")
+
+    rec = supabase.table("recruiter_profiles").select("*").eq("id", recruiter_id).maybe_single().execute()
+    if not rec.data:
+        raise HTTPException(status_code=404, detail="Recruiter not found")
+
+    updates: dict = {"updated_at": now_iso()}
+    if body.action == "approve":
+        updates["approval_status"] = "approved"
+        updates["approved_by"] = str(_admin["id"])
+        updates["approved_at"] = now_iso()
+        # Sync approved recruiter into company_leads so they appear in Companies tab
+        # Check if already exists first (no unique constraint on work_email)
+        existing = supabase.table("company_leads").select("id").eq("work_email", rec.data["email"]).execute()
+        if not existing.data:
+            supabase.table("company_leads").insert({
+                "company_name": rec.data["company_name"],
+                "legal_name": rec.data["company_name"],
+                "website": rec.data.get("company_website") or "",
+                "contact_person": rec.data["full_name"],
+                "work_email": rec.data["email"],
+                "phone": rec.data.get("phone") or "",
+                "industry": "Finance & Corporate Services",
+                "cin_or_gstin": rec.data.get("cin") or rec.data.get("gstin") or "",
+                "verification_status": "verified",
+                "notes": f"Approved recruiter. Address: {rec.data.get('office_address') or ''}, {rec.data.get('city') or ''} {rec.data.get('state') or ''}".strip(", "),
+                "status": "new",
+                "active_jobs_count": 0,
+            }).execute()
+        # Notify recruiter
+        _send_email(
+            to=rec.data["email"],
+            subject="Your ArivuPro Recruiter Account is Approved!",
+            html=f"""
+<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+  <h2 style="color:#1a7a4a;">Welcome to ArivuPro, {rec.data['full_name']}!</h2>
+  <p>Your recruiter account for <strong>{rec.data['company_name']}</strong> has been verified and approved.</p>
+  <p>You can now login and post finance jobs to reach our pool of CA, ACCA, US CPA, CFA, and CS candidates.</p>
+  <div style="margin-top:24px;">
+    <a href="{PORTAL_URL}" style="background:#1a7a4a;color:#fff;padding:12px 24px;text-decoration:none;border-radius:8px;font-weight:700;display:inline-block;">
+      Login to ArivuPro Portal →
+    </a>
+  </div>
+  <p style="color:#9ca3af;font-size:12px;margin-top:24px;">Login email: {rec.data['email']}</p>
+</div>""",
+        )
+    else:
+        updates["approval_status"] = "rejected"
+        updates["rejection_reason"] = body.rejection_reason or ""
+        _send_email(
+            to=rec.data["email"],
+            subject="ArivuPro Recruiter Account — Verification Update",
+            html=f"""
+<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+  <h2 style="color:#0f2419;">Account Verification Update</h2>
+  <p>Hi {rec.data['full_name']}, we could not verify your recruiter account for <strong>{rec.data['company_name']}</strong> at this time.</p>
+  {f'<p style="color:#dc2626;">Reason: {body.rejection_reason}</p>' if body.rejection_reason else ''}
+  <p>If you believe this is an error, please reply to this email with supporting documents.</p>
+  <p style="color:#9ca3af;font-size:12px;margin-top:24px;">ArivuPro Finance Career Portal</p>
+</div>""",
+        )
+
+    supabase.table("recruiter_profiles").update(updates).eq("id", recruiter_id).execute()
+    return {"message": f"Recruiter {body.action}d successfully"}
+
+
+@app.get("/api/recruiters/status")
+async def recruiter_status(email: str = Query(...)):
+    """Frontend polls this after login to check approval status."""
+    result = (
+        supabase.table("recruiter_profiles")
+        .select("approval_status, company_name, full_name")
+        .eq("email", email)
+        .maybe_single()
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Recruiter profile not found")
+    return result.data
+
+
+async def require_recruiter(authorization: Optional[str] = Header(default=None)) -> dict:
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Missing bearer token")
+    token = authorization.split(" ", 1)[1].strip()
+    try:
+        user_res = supabase.auth.get_user(token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    user = getattr(user_res, "user", None)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    profile = (
+        supabase.table("recruiter_profiles")
+        .select("id, email, company_name, full_name, approval_status")
+        .eq("auth_user_id", str(user.id))
+        .maybe_single()
+        .execute()
+    )
+    if not profile.data:
+        raise HTTPException(status_code=403, detail="Recruiter profile not found")
+    if profile.data["approval_status"] != "approved":
+        raise HTTPException(status_code=403, detail="Recruiter account not approved")
+    return profile.data
+
+
+@app.post("/api/recruiters/jobs", status_code=201)
+async def recruiter_create_job(body: JobPost, recruiter: dict = Depends(require_recruiter)):
+    job_id = str(uuid.uuid4())
+    job = {
+        "id": job_id,
+        "title": body.title,
+        "company": recruiter["company_name"],
+        "salary_text": body.salary_text or "As per norms",
+        "location": body.location or "",
+        "city": body.city or "",
+        "workplace_type": body.workplace_type or "hybrid",
+        "job_type": body.job_type or "full-time",
+        "experience_level": body.experience_level or "Fresher / 0-1 yr",
+        "min_experience_years": body.min_experience_years or 0,
+        "salary_min_lpa": body.salary_min_lpa,
+        "salary_max_lpa": body.salary_max_lpa,
+        "qualifications": body.qualifications or [],
+        "mandatory_skills": body.mandatory_skills or [],
+        "good_to_have_skills": body.good_to_have_skills or [],
+        "description": body.description or "",
+        "key_responsibilities": body.key_responsibilities or [],
+        "department": body.department or "Audit & Assurance",
+        "source": "direct_recruiter",
+        "arivupro_exclusive": False,
+        "is_urgent": body.is_urgent or False,
+        "is_featured": False,
+        "status": "draft" if body.crm_drive_code == "draft" else "active",
+        "posted_date": now_iso(),
+        "deadline_date": body.deadline_date,
+        "applicants_count": 0,
+        "recruiter_profile_id": recruiter["id"],
+    }
+    try:
+        result = supabase.table("jobs").insert(job).execute()
+    except Exception as e:
+        err = str(e)
+        logger.error(f"[recruiter_create_job] insert failed: {err}")
+        # If recruiter_profile_id column doesn't exist yet, retry without it
+        if "recruiter_profile_id" in err:
+            job.pop("recruiter_profile_id", None)
+            result = supabase.table("jobs").insert(job).execute()
+        else:
+            raise HTTPException(status_code=500, detail=f"Failed to create job: {err}")
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Job insert returned no data")
+    return {"message": "Job published successfully", "job": result.data[0]}
+
+
+@app.get("/api/recruiters/jobs")
+async def recruiter_get_jobs(recruiter: dict = Depends(require_recruiter)):
+    try:
+        result = (
+            supabase.table("jobs")
+            .select("*")
+            .eq("recruiter_profile_id", recruiter["id"])
+            .order("posted_date", desc=True)
+            .execute()
+        )
+        jobs = result.data or []
+    except Exception:
+        # Fallback if column not migrated yet: filter by company name
+        result = (
+            supabase.table("jobs")
+            .select("*")
+            .eq("company", recruiter["company_name"])
+            .eq("source", "direct_recruiter")
+            .order("posted_date", desc=True)
+            .execute()
+        )
+        jobs = result.data or []
+    return {"jobs": jobs}
+
+
+@app.get("/api/recruiters/applicants")
+async def recruiter_get_applicants(job_id: Optional[str] = None, recruiter: dict = Depends(require_recruiter)):
+    """Return applicants for jobs posted by this recruiter."""
+    # Get this recruiter's job IDs
+    jobs_res = (
+        supabase.table("jobs")
+        .select("id, title")
+        .eq("recruiter_profile_id", recruiter["id"])
+        .execute()
+    )
+    recruiter_job_ids = {j["id"]: j["title"] for j in (jobs_res.data or [])}
+
+    if not recruiter_job_ids:
+        return {"applicants": []}
+
+    q = supabase.table("student_leads").select("*")
+    if job_id and job_id in recruiter_job_ids:
+        q = q.eq("job_id", job_id)
+    else:
+        q = q.in_("job_id", list(recruiter_job_ids.keys()))
+
+    result = q.order("created_at", desc=True).execute()
+    return {"applicants": result.data or []}
+
+
+# ---------------------------------------------------------------------------
 # CRM
 # ---------------------------------------------------------------------------
 @app.post("/api/crm/sync-all")
-async def crm_sync_all():
+async def crm_sync_all(_admin: dict = Depends(require_admin)):
     supabase.table("student_leads").update({"crm_sync_status": "synced", "updated_at": now_iso()}).eq("crm_sync_status", "pending").execute()
     count_res = supabase.table("student_leads").select("id", count="exact").execute()
     return {
@@ -511,14 +903,14 @@ async def scrape_status():
 
 
 @app.get("/api/scrape/logs")
-async def scrape_logs():
+async def scrape_logs(_admin: dict = Depends(require_admin)):
     result = supabase.table("sync_runs").select("*").order("started_at", desc=True).limit(20).execute()
     data = result.data or []
     return {"logs": data, "last_run": data[0].get("started_at") if data else None}
 
 
 @app.post("/api/scrape/trigger")
-async def scrape_trigger(body: ScrapeRequest):
+async def scrape_trigger(body: ScrapeRequest, _admin: dict = Depends(require_admin)):
     """Trigger one source or all sources. Runs in background."""
     import asyncio
     source = body.target_source
@@ -534,7 +926,7 @@ async def scrape_trigger(body: ScrapeRequest):
 
 
 @app.post("/api/scrape/run-sync")
-async def run_sync_now(body: ScrapeRequest):
+async def run_sync_now(body: ScrapeRequest, _admin: dict = Depends(require_admin)):
     """Synchronous trigger — waits for result. Use for cron jobs."""
     source = body.target_source
     if source:
@@ -578,16 +970,24 @@ async def cron_status():
     """Check scheduler status and next run time."""
     next_run = None
     running = False
+    next_weekly = None
     if _scheduler and _scheduler.running:
         running = True
-        job = _scheduler.get_job("scraper_sync")
-        if job and job.next_run_time:
-            next_run = job.next_run_time.isoformat()
+        daily_job = _scheduler.get_job("daily_sync")
+        if daily_job and daily_job.next_run_time:
+            next_run = daily_job.next_run_time.isoformat()
+        weekly_job = _scheduler.get_job("weekly_sync")
+        if weekly_job and weekly_job.next_run_time:
+            next_weekly = weekly_job.next_run_time.isoformat()
     return {
         "scheduler_running": running,
-        "next_run": next_run,
-        "interval_hours": int(os.getenv("SCRAPER_INTERVAL_HOURS", "6")),
+        "next_daily_run": next_run,
+        "next_weekly_run": next_weekly,
+        "daily_interval_hours": int(os.getenv("SCRAPER_INTERVAL_HOURS", "24")),
+        "weekly_interval_hours": int(os.getenv("SCRAPER_WEEKLY_INTERVAL_HOURS", "168")),
         "auto_run_enabled": os.getenv("SCRAPER_AUTO_RUN", "true").lower() == "true",
+        "daily_sources": os.getenv("SYNC_SOURCES_ENABLED", "").split(","),
+        "weekly_sources": os.getenv("SYNC_SOURCES_WEEKLY", "").split(","),
     }
 
 

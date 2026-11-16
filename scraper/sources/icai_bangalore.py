@@ -62,9 +62,10 @@ def _parse_rows(html: str, job_type_param: int, default_title: str, job_type: st
         apply_url = apply_href if apply_href.startswith('http') else (f'{BASE}{apply_href}' if apply_href else f'{BASE}/home/searchJobs?JobType={job_type_param}')
 
         jm = re.search(r'jobId=(\d+)', apply_href)
+        _slug = re.sub(r"\s", "-", company[:12])
         external_id = (
             f'blr-{job_type_param}-{jm.group(1)}' if jm else
-            f'blr-{job_type_param}-{idx}-{re.sub(r"\\s", "-", company[:12])}'
+            f'blr-{job_type_param}-{idx}-{_slug}'
         )
 
         loc_full = f'{location}, Karnataka' if 'bangalore' not in location.lower() and 'bengaluru' not in location.lower() else location

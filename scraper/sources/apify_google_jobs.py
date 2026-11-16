@@ -7,6 +7,7 @@ Docs: https://apify.com/automationnation/google-jobs-scraper
 """
 import os
 import re
+import hashlib
 import httpx
 import logging
 import asyncio
@@ -20,22 +21,82 @@ logger = logging.getLogger(__name__)
 ACTOR_ID = os.getenv("APIFY_GOOGLE_JOBS_ACTOR_ID", "automationnation/google-jobs-scraper")
 APIFY_BASE = "https://api.apify.com/v2"
 
-# Daily focused queries — keep tight to avoid burning credit
 SEARCH_QUERIES = [
-    {"query": "CA articleship vacancy India site:naukri.com OR site:linkedin.com", "courses": ["CA"]},
-    {"query": "article assistant CA firm India",         "courses": ["CA"]},
-    {"query": "audit associate fresher chartered accountant India", "courses": ["CA"]},
-    {"query": "CMA industrial training ICMAI India",     "courses": ["CMA India"]},
-    {"query": "cost accountant trainee fresher India",   "courses": ["CMA India"]},
-    {"query": "CS executive trainee ICSI India",         "courses": ["CS"]},
-    {"query": "company secretary articleship India",     "courses": ["CS"]},
-    {"query": "ACCA fresher audit jobs India",           "courses": ["ACCA"]},
-    {"query": "CFA analyst fresher investment India",    "courses": ["CFA"]},
-    {"query": "US CPA accounting fresher India",         "courses": ["CPA US"]},
-    {"query": "GST taxation fresher accountant India",   "courses": ["CA"]},
-    {"query": "internal audit associate fresher India",  "courses": ["CA"]},
-    {"query": "FP&A analyst fresher India",              "courses": ["CA", "CMA India"]},
-    {"query": "B.Com accounts executive fresher India",  "courses": ["CA"]},
+    # ── Full-time jobs — Big 4 & mid-tier audit firms (80%) ──────────────
+    {"query": "audit associate fresher Deloitte EY KPMG PwC India",        "courses": ["CA"]},
+    {"query": "tax associate fresher Big 4 India",                          "courses": ["CA"]},
+    {"query": "audit associate fresher Grant Thornton BDO RSM India",       "courses": ["CA"]},
+    {"query": "financial reporting analyst fresher Big 4 India",            "courses": ["CA"]},
+
+    # ── Full-time jobs — South India cities ───────────────────────────────
+    {"query": "audit associate fresher Chennai",                            "courses": ["CA"]},
+    {"query": "accounts executive fresher Chennai",                         "courses": ["CA"]},
+    {"query": "financial analyst fresher Bengaluru",                        "courses": ["CA", "CFA"]},
+    {"query": "audit associate fresher Hyderabad",                          "courses": ["CA"]},
+    {"query": "finance executive fresher Coimbatore Tamil Nadu",            "courses": ["CA"]},
+    {"query": "accounts executive fresher Kochi Kerala",                    "courses": ["CA"]},
+    {"query": "audit associate fresher Mumbai",                             "courses": ["CA"]},
+    {"query": "financial analyst fresher Mumbai",                           "courses": ["CA", "CFA"]},
+    {"query": "CA articleship vacancy Mumbai",                              "courses": ["CA"]},
+    {"query": "audit associate fresher Delhi NCR",                          "courses": ["CA"]},
+    {"query": "financial analyst fresher Delhi NCR",                        "courses": ["CA", "CFA"]},
+    {"query": "CA articleship vacancy Delhi Noida Gurugram",                "courses": ["CA"]},
+
+    # ── Full-time jobs — GCCs & MNCs ──────────────────────────────────────
+    {"query": "FP&A analyst fresher GCC Bengaluru Hyderabad",               "courses": ["CA", "CMA India"]},
+    {"query": "financial reporting fresher MNC Hyderabad",                  "courses": ["CA"]},
+    {"query": "accounts payable fresher Bengaluru MNC",                     "courses": ["CA", "CMA India"]},
+    {"query": "internal audit fresher Goldman Sachs JP Morgan India",        "courses": ["CA"]},
+    {"query": "audit associate fresher Cognizant TCS Infosys India",        "courses": ["CA"]},
+
+    # ── Full-time jobs — Banks & NBFC ─────────────────────────────────────
+    {"query": "finance analyst fresher HDFC ICICI Axis Bank India",         "courses": ["CA", "CMA India"]},
+    {"query": "audit fresher Federal Bank South Indian Bank Kerala",         "courses": ["CA"]},
+    {"query": "finance executive fresher City Union Bank Karur Vysya",       "courses": ["CA"]},
+    {"query": "accounts fresher Muthoot Manappuram Cholamandalam India",     "courses": ["CA"]},
+
+    # ── Full-time jobs — Fintech & Startups ───────────────────────────────
+    {"query": "finance analyst fresher Razorpay Zerodha Groww India",       "courses": ["CA", "CFA"]},
+    {"query": "accounts fresher PhonePe CRED Juspay Bengaluru",             "courses": ["CA"]},
+
+    # ── Full-time jobs — Specialised roles ────────────────────────────────
+    {"query": "GST executive fresher India",                                "courses": ["CA"]},
+    {"query": "cost accountant fresher manufacturing India",                "courses": ["CMA India"]},
+    {"query": "equity research analyst fresher India",                      "courses": ["CFA"]},
+    {"query": "credit analyst fresher NBFC bank India",                     "courses": ["CA", "CFA"]},
+    {"query": "treasury analyst fresher India",                             "courses": ["CA"]},
+    {"query": "compliance officer fresher India",                           "courses": ["CS", "CA"]},
+    {"query": "company secretary fresher listed company India",             "courses": ["CS"]},
+    {"query": "ACCA fresher audit jobs India",                              "courses": ["ACCA"]},
+    {"query": "US CPA fresher accounting GCC India",                        "courses": ["CPA US"]},
+    {"query": "CFA level 1 fresher investment analyst India",               "courses": ["CFA"]},
+    {"query": "risk analyst fresher India",                                 "courses": ["CA", "CFA"]},
+    {"query": "statutory audit fresher CA firm India",                      "courses": ["CA"]},
+    {"query": "US CMA fresher management accountant GCC India",  "courses": ["US CMA"]},
+    {"query": "IMA CMA fresher FP&A analyst India",              "courses": ["US CMA"]},
+    {"query": "B.Com accounts executive fresher India",          "courses": ["B.Com"]},
+    {"query": "M.Com finance fresher accounts India",            "courses": ["M.Com"]},
+    {"query": "banking operations associate fresher India",      "courses": ["CA", "B.Com"]},
+    {"query": "P2P procure to pay analyst fresher GCC Bengaluru Hyderabad", "courses": ["CA", "CMA India", "B.Com"]},
+    {"query": "R2R record to report analyst fresher India",      "courses": ["CA", "CMA India", "B.Com"]},
+    {"query": "shared services finance fresher Genpact EXL WNS India", "courses": ["CA", "CMA India", "B.Com"]},
+    {"query": "management consulting analyst fresher Big 4 India", "courses": ["CA", "CFA"]},
+    {"query": "transaction advisory analyst fresher India",      "courses": ["CA", "CFA"]},
+    {"query": "investment banking analyst fresher India",        "courses": ["CA", "CFA"]},
+    {"query": "transfer pricing associate fresher India",        "courses": ["CA"]},
+    {"query": "O2C order to cash analyst fresher GCC India",     "courses": ["CA", "CMA India", "B.Com"]},
+    {"query": "direct tax fresher India",                        "courses": ["CA"]},
+    {"query": "KYC AML analyst fresher India",                   "courses": ["CA", "B.Com"]},
+
+    # ── Articleship + Internship + Trainee (20%) ──────────────────────────
+    {"query": "CA articleship vacancy India",                               "courses": ["CA"]},
+    {"query": "CA articleship Deloitte EY KPMG PwC India",                  "courses": ["CA"]},
+    {"query": "CMA industrial training India",                              "courses": ["CMA India"]},
+    {"query": "CS executive articleship ICSI India",                        "courses": ["CS"]},
+    {"query": "finance internship fresher India",                           "courses": ["CA"]},
+    {"query": "audit internship fresher India",                             "courses": ["CA", "ACCA"]},
+    {"query": "management trainee finance India",                           "courses": ["CA", "CMA India"]},
+    {"query": "graduate trainee Big 4 finance India",                       "courses": ["CA"]},
 ]
 
 SENIOR_RE = re.compile(
@@ -116,33 +177,43 @@ async def _run_actor(api_token: str, payload: dict, timeout_secs: int = 90) -> l
         return items_resp.json() or []
 
 
+async def _fetch_query(api_token: str, q: dict, max_results: int) -> list[dict]:
+    payload = {
+        "queries": [q["query"]],
+        "maxConcurrency": 1,
+        "maxResults": max_results,
+        "country": "IN",
+        "language": "en",
+    }
+    try:
+        return await _run_actor(api_token, payload)
+    except Exception as e:
+        logger.warning(f"[apify_google] Query '{q['query']}' failed: {e}")
+        return []
+
+
 async def fetch() -> list[NormalizedJob]:
     api_token = os.getenv("APIFY_API_TOKEN")
     if not api_token or api_token == "your-apify-api-token":
         raise RuntimeError("APIFY_API_TOKEN not set")
 
     max_results = int(os.getenv("APIFY_GOOGLE_MAX_RESULTS", "25"))
+    # Concurrency capped so we don't exceed Apify's parallel run limit on the free plan
+    sem = asyncio.Semaphore(int(os.getenv("APIFY_CONCURRENCY", "5")))
+
+    async def _bounded(q: dict) -> list[dict]:
+        async with sem:
+            return await _fetch_query(api_token, q, max_results)
+
+    all_results = await asyncio.gather(*[_bounded(q) for q in SEARCH_QUERIES])
 
     seen: set[str] = set()
     jobs: list[NormalizedJob] = []
 
-    for q in SEARCH_QUERIES:
-        payload = {
-            "queries": [q["query"]],
-            "maxConcurrency": 1,
-            "maxResults": max_results,
-            "country": "IN",
-            "language": "en",
-        }
-
-        try:
-            items = await _run_actor(api_token, payload)
-        except Exception as e:
-            logger.warning(f"[apify_google] Query '{q['query']}' failed: {e}")
-            continue
-
+    for q, items in zip(SEARCH_QUERIES, all_results):
         for item in items:
-            uid = str(item.get("id") or item.get("job_id") or item.get("url") or "")[-50:]
+            raw_id = str(item.get("id") or item.get("job_id") or item.get("url") or "")
+            uid = hashlib.md5(raw_id.encode()).hexdigest()[:32] if raw_id else ""
             if not uid or uid in seen:
                 continue
             seen.add(uid)
@@ -159,11 +230,15 @@ async def fetch() -> list[NormalizedJob]:
             location_str = next((str(x) for x in location_parts if x), "India")
 
             courses = await detect_courses(title, desc[:400]) or q["courses"]
-            job_type = (
-                "articleship"
-                if re.search(r"article|articleship|industrial train|trainee", f"{title} {desc}", re.I)
-                else "job"
-            )
+            text = f"{title} {desc[:300]}"
+            if re.search(r"\b(article|articleship|industrial\s+train)\b", text, re.I):
+                job_type = "articleship"
+            elif re.search(r"\b(intern(ship)?)\b", text, re.I):
+                job_type = "internship"
+            elif re.search(r"\b(trainee|graduate\s+trainee|management\s+trainee)\b", text, re.I):
+                job_type = "trainee"
+            else:
+                job_type = "job"
 
             jobs.append(NormalizedJob(
                 source="apify_google_jobs",
@@ -179,10 +254,8 @@ async def fetch() -> list[NormalizedJob]:
                 description=desc[:2000] if desc else None,
                 is_remote=bool(item.get("isRemote") or item.get("remote")),
                 posted_at=_parse_date(item.get("postedAt") or item.get("date_posted")),
-                raw_data=f'{{"source":"google_jobs","id":"{uid[:40]}"}}'
+                raw_data=f'{{"source":"google_jobs","id":"{uid}"}}'
             ))
-
-        await asyncio.sleep(2)
 
     logger.info(f"[apify_google] Total fetched: {len(jobs)} jobs")
     return jobs

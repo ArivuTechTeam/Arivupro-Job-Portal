@@ -62,3 +62,9 @@ test-uploads/
 .codex/
 AGENTS.md
 .agents/skills/
+
+# Old quiz/LMS project folders (not part of ArivuPro portal)
+frontend/
+backend/
+docs/
+Downloads/

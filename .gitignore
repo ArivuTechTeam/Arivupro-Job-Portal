@@ -1,0 +1,75 @@
+# Environment variables — NEVER commit these (but allow .example templates)
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Secrets & credentials
+*.pem
+*.key
+*.p12
+*.pfx
+*credentials*.json
+service-account*.json
+secrets.*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+backend/venv/
+backend/.venv/
+backend/__pycache__/
+backend/**/*.pyc
+backend/.pytest_cache/
+
+# Node
+node_modules/
+dist/
+*.local
+frontend/node_modules/
+frontend/.pnpm-store/
+frontend/.next/
+frontend/out/
+/.pnpm-store/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code agent tooling / skills (local, not product source)
+.claude/
+.tokensave/
+
+# Local scratch scripts
+/_co.py
+
+# Design-review exports (large binaries, not source)
+docs/Multi-tenant product prototype review*
+docs/*.zip
+
+# Uploaded test files
+test-uploads/
+.superdesign/
+/.tmp/
+/supabase/.temp/
+.codex/
+AGENTS.md
+.agents/skills/
+
+# Old quiz/LMS project folders (not part of ArivuPro portal)
+frontend/
+backend/
+docs/
+Downloads/
+
+# Playwright
+test-results/
+playwright-report/
+scraper-dry-run-report.md

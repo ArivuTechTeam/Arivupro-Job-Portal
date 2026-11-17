@@ -1,0 +1,23 @@
+# ArivuPro Finance Career Portal — single-service compose.
+# Separate from docker-compose.yml (that one is the quiz-generator product).
+#
+#   docker compose -f docker-compose.portal.yml up --build
+#
+# Reads secrets from .env: VITE_* are build args (inlined into the SPA at build
+# time); the rest are injected at runtime via env_file.
+services:
+  portal:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+    container_name: arivupro-portal
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      PORT: "8000"
+    restart: unless-stopped

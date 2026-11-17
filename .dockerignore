@@ -1,0 +1,27 @@
+# Secrets — never bake into the image
+.env
+.env.*
+!.env.example
+
+# Build artifacts / deps (rebuilt inside the image)
+node_modules
+dist
+__pycache__
+**/__pycache__
+*.pyc
+.python-version
+
+# The other product (quiz generator) — not part of this portal
+backend
+frontend
+docker-compose.yml
+docs
+Downloads
+prototype.html
+
+# VCS / tooling
+.git
+.gitignore
+.claude
+*.md
+!README.md

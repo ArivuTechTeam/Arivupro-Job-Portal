@@ -713,10 +713,10 @@ export default function App() {
         <div style={{
           position: 'fixed', inset: 0, zIndex: 200,
           background: 'rgba(15,36,25,0.7)', backdropFilter: 'blur(4px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: 24, overflowY: 'auto',
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+          overflowY: 'auto',
         }} onClick={() => setShowRecruiterSignup(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 520 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 520, padding: '24px 24px', flexShrink: 0 }}>
             <RecruiterSignup
               onComplete={(data) => {
                 setShowRecruiterSignup(false);

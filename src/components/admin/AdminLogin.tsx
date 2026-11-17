@@ -18,81 +18,102 @@ export default function AdminLogin({ onLogin }: Props) {
     e.preventDefault();
     setError(null);
     setLoading(true);
-
     const { user, error: authError } = await signInAdmin(email.trim(), password);
-
     if (authError || !user) {
       setError(authError ?? 'Login failed. Try again.');
       setLoading(false);
       return;
     }
-
     onLogin(user);
     setLoading(false);
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
+    <div style={{ minHeight: '100vh', background: '#f0faf4', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px', fontFamily: 'Manrope, system-ui, sans-serif' }}>
+      <div style={{ width: '100%', maxWidth: 420 }}>
+
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-3">
-            <div className="w-9 h-9 rounded-lg bg-amber-400 flex items-center justify-center">
-              <span className="text-slate-900 font-black text-base">A</span>
-            </div>
-            <span className="text-white font-bold text-xl tracking-tight">ArivuPro</span>
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <img
+              src="https://www.arivupro.com/wp-content/uploads/2026/03/ArivuPro-Logo-1-e1786698803352.webp"
+              alt="ArivuPro"
+              style={{ height: 44, width: 'auto' }}
+            />
           </div>
-          <p className="text-slate-400 text-sm">Finance Career Portal — Admin</p>
+          <p style={{ color: '#6b7280', fontSize: 13, margin: 0, fontWeight: 500 }}>Finance Career Portal — Admin</p>
         </div>
 
         {/* Card */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl">
-          <h1 className="text-white text-xl font-semibold mb-6">Sign in to Admin Panel</h1>
+        <div style={{ background: '#fff', border: '1.5px solid #d7f4ea', borderRadius: 18, padding: 36, boxShadow: '0 8px 40px rgba(26,122,74,0.08)' }}>
+          <div style={{ marginBottom: 24 }}>
+            <h1 style={{ fontSize: 20, fontWeight: 800, color: '#0f2419', margin: '0 0 4px', letterSpacing: '-0.02em' }}>Sign in to Admin Panel</h1>
+            <p style={{ fontSize: 13, color: '#9ca3af', margin: 0 }}>Restricted to ArivuPro administrators</p>
+          </div>
 
           {error && (
-            <div className="mb-5 flex items-start gap-2.5 bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3">
-              <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
-              <p className="text-red-300 text-sm">{error}</p>
+            <div style={{ marginBottom: 18, display: 'flex', alignItems: 'flex-start', gap: 10, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '12px 14px' }}>
+              <AlertCircle size={15} color="#dc2626" style={{ flexShrink: 0, marginTop: 1 }} />
+              <p style={{ color: '#dc2626', fontSize: 13, margin: 0, fontWeight: 600 }}>{error}</p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             {/* Email */}
             <div>
-              <label className="block text-sm text-slate-300 mb-1.5">Email</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                Email
+              </label>
+              <div style={{ position: 'relative' }}>
+                <Mail size={15} color="#9ca3af" style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
                 <input
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   required
                   placeholder="admin@arivupro.com"
-                  className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/60 focus:border-transparent"
+                  style={{
+                    width: '100%', paddingLeft: 38, paddingRight: 14, height: 44,
+                    border: '1.5px solid #e5e7eb', borderRadius: 10, fontSize: 14,
+                    fontFamily: 'Manrope, sans-serif', color: '#0f2419', outline: 'none',
+                    background: '#fff', boxSizing: 'border-box',
+                    transition: 'border-color 0.2s',
+                  }}
+                  onFocus={e => { e.currentTarget.style.borderColor = '#1a7a4a'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(26,122,74,0.1)'; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.boxShadow = 'none'; }}
                 />
               </div>
             </div>
 
             {/* Password */}
             <div>
-              <label className="block text-sm text-slate-300 mb-1.5">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                Password
+              </label>
+              <div style={{ position: 'relative' }}>
+                <Lock size={15} color="#9ca3af" style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   required
-                  placeholder="••••••••"
-                  className="w-full bg-slate-800 border border-slate-700 text-white placeholder-slate-500 rounded-lg pl-10 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/60 focus:border-transparent"
+                  placeholder="••••••••••"
+                  style={{
+                    width: '100%', paddingLeft: 38, paddingRight: 44, height: 44,
+                    border: '1.5px solid #e5e7eb', borderRadius: 10, fontSize: 14,
+                    fontFamily: 'Manrope, sans-serif', color: '#0f2419', outline: 'none',
+                    background: '#fff', boxSizing: 'border-box',
+                    transition: 'border-color 0.2s',
+                  }}
+                  onFocus={e => { e.currentTarget.style.borderColor = '#1a7a4a'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(26,122,74,0.1)'; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.boxShadow = 'none'; }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-                  tabIndex={-1}
+                  style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: 2, display: 'flex' }}
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
@@ -100,14 +121,20 @@ export default function AdminLogin({ onLogin }: Props) {
             <button
               type="submit"
               disabled={loading || !email || !password}
-              className="w-full bg-amber-400 hover:bg-amber-300 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 font-semibold rounded-lg py-2.5 text-sm transition-colors"
+              style={{
+                width: '100%', height: 46, borderRadius: 10, border: 'none', cursor: loading || !email || !password ? 'not-allowed' : 'pointer',
+                background: loading || !email || !password ? '#d7f4ea' : '#1a7a4a',
+                color: loading || !email || !password ? '#6b9e82' : '#fff',
+                fontSize: 15, fontWeight: 700, fontFamily: 'Manrope, sans-serif',
+                transition: 'all 0.2s', marginTop: 4,
+              }}
             >
               {loading ? 'Signing in…' : 'Sign In'}
             </button>
           </form>
         </div>
 
-        <p className="text-center text-slate-600 text-xs mt-6">
+        <p style={{ textAlign: 'center', color: '#9ca3af', fontSize: 12, marginTop: 20 }}>
           ArivuPro Finance Career Portal · Admin Access Only
         </p>
       </div>

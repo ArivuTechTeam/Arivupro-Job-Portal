@@ -25,11 +25,13 @@ from scraper.sources.icmai import fetch as fetch_icmai
 from scraper.sources.buddingca import fetch as fetch_buddingca
 from scraper.sources.jsearch import fetch as fetch_jsearch
 from scraper.sources.jobspy_source import fetch as fetch_jobspy
-from scraper.sources.apify_multi_board import fetch as fetch_apify_multi_board
-from scraper.sources.apify_google_jobs import fetch as fetch_apify_google_jobs
+from scraper.sources.apify_all_in_one import fetch as fetch_apify_all_in_one
+from scraper.sources.apify_naukri import fetch as fetch_apify_naukri
+from scraper.sources.apify_linkedin_indeed import fetch as fetch_apify_linkedin_indeed
 from scraper.sources.apify_career_sites import fetch as fetch_apify_career_sites
 from scraper.sources.greenhouse import fetch as fetch_greenhouse
 from scraper.sources.lever import fetch as fetch_lever
+from scraper.sources.workday import fetch as fetch_workday
 
 logger = logging.getLogger(__name__)
 
@@ -44,13 +46,15 @@ SOURCE_FETCHERS: dict = {
     'icai_bangalore': fetch_icai_bangalore,
     'icmai':          fetch_icmai,
     'buddingca':      fetch_buddingca,
-    'jsearch':              fetch_jsearch,
-    'jobspy':               fetch_jobspy,
-    'apify_multi_board':    fetch_apify_multi_board,
-    'apify_google_jobs':    fetch_apify_google_jobs,
-    'apify_career_sites':   fetch_apify_career_sites,
-    'greenhouse':           fetch_greenhouse,
-    'lever':                fetch_lever,
+    'jsearch':                  fetch_jsearch,
+    'jobspy':                   fetch_jobspy,
+    'apify_all_in_one':         fetch_apify_all_in_one,
+    'apify_naukri':             fetch_apify_naukri,
+    'apify_linkedin_indeed':    fetch_apify_linkedin_indeed,
+    'apify_career_sites':       fetch_apify_career_sites,
+    'greenhouse':               fetch_greenhouse,
+    'lever':                    fetch_lever,
+    'workday':                  fetch_workday,
 }
 
 

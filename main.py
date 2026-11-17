@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Optional
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Query, Header, Depends
+from fastapi import FastAPI, HTTPException, Query, Header, Depends, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -60,6 +60,22 @@ async def require_admin(authorization: Optional[str] = Header(default=None)) -> 
     if not admin.data:
         raise HTTPException(status_code=403, detail="Admin access required")
     return admin.data[0]
+
+
+async def require_student(authorization: Optional[str] = Header(default=None)) -> dict:
+    """Validate caller's Supabase access token; return {user_id, email}."""
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Missing bearer token")
+    token = authorization.split(" ", 1)[1].strip()
+    try:
+        user_res = supabase.auth.get_user(token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    user = getattr(user_res, "user", None)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    return {"user_id": str(user.id), "email": user.email or ""}
+
 
 # ---------------------------------------------------------------------------
 # APScheduler — auto-sync every N hours (default 6)
@@ -168,6 +184,12 @@ class ApplicationPost(BaseModel):
     student_id: Optional[str] = None
     primary_course: Optional[str] = None
     cover_note: Optional[str] = None
+    key_skills: Optional[list] = []
+    resume_file_name: Optional[str] = None
+    about_bio: Optional[str] = None
+    qualifications_completed: Optional[list] = []
+    expected_salary: Optional[str] = None
+    articleship_months: Optional[int] = 0
 
 class ApplicationPatch(BaseModel):
     stage: Optional[str] = None
@@ -370,20 +392,51 @@ async def get_applications(_admin: dict = Depends(require_admin)):
     return {"total": len(data), "applications": data}
 
 
+@app.get("/api/applications/mine")
+async def get_my_applications(student: dict = Depends(require_student)):
+    """Return all applications submitted by the authenticated student."""
+    result = (
+        supabase.table("student_leads")
+        .select("*")
+        .eq("user_id", student["user_id"])
+        .order("created_at", desc=True)
+        .execute()
+    )
+    data = result.data or []
+    return {"total": len(data), "applications": data}
+
+
 @app.post("/api/applications", status_code=201)
-async def submit_application(body: ApplicationPost):
-    # Check job exists
-    job_res = supabase.table("jobs").select("*").eq("id", body.job_id).single().execute()
-    if not job_res.data:
-        raise HTTPException(status_code=404, detail="Job not found")
-    job = job_res.data
+async def submit_application(body: ApplicationPost, student: dict = Depends(require_student)):
+    # Extract identity from verified token — do not trust body fields for identity
+    authenticated_email = student["email"]
+    authenticated_user_id = student["user_id"]
+
+    # Check job exists — try recruiter-posted jobs first, then external/scraped jobs
+    job_res = supabase.table("jobs").select("*").eq("id", body.job_id).limit(1).execute()
+    if job_res.data:
+        job = job_res.data[0]
+    else:
+        ext_res = supabase.table("external_jobs").select("*").eq("id", body.job_id).limit(1).execute()
+        if not ext_res.data:
+            raise HTTPException(status_code=404, detail="Job not found")
+        j = ext_res.data[0]
+        # Normalise external job shape to match what the rest of the function expects
+        job = {
+            "id": j["id"],
+            "title": j.get("title"),
+            "company": j.get("company"),
+            "location": j.get("location"),
+            "recruiter_profile_id": None,
+            "applicants_count": j.get("applicants_count") or 0,
+        }
 
     # Check duplicate
     dup = (
         supabase.table("student_leads")
         .select("id")
         .eq("job_id", body.job_id)
-        .eq("student_email", body.student_email)
+        .eq("student_email", authenticated_email)
         .execute()
     )
     if dup.data:
@@ -402,16 +455,18 @@ async def submit_application(body: ApplicationPost):
         "job_title": job.get("title"),
         "company": job.get("company"),
         "student_name": body.student_name,
-        "student_email": body.student_email,
+        "student_email": authenticated_email,
         "student_phone": body.student_phone,
         "student_id": body.student_id,
         "primary_course": body.primary_course,
+        "resume_url": body.resume_file_name or "",
         "ai_match_score": match["overall_score"],
         "match_grade": match["grade"],
         "stage": "applied",
         "status": "new",
         "crm_sync_status": "pending",
         "timeline": timeline,
+        "user_id": authenticated_user_id,
     }
 
     result = supabase.table("student_leads").insert(record).execute()
@@ -451,7 +506,211 @@ async def update_application(app_id: str, body: ApplicationPatch, _admin: dict =
     return {"message": "Application updated", "application": result.data[0]}
 
 # ---------------------------------------------------------------------------
-# COMPANIES
+# STUDENT PROFILES
+# ---------------------------------------------------------------------------
+class StudentProfilePost(BaseModel):
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    primary_course: Optional[str] = None
+    current_level: Optional[str] = None
+    qualifications_completed: Optional[list] = []
+    articleship_months: Optional[int] = 0
+    key_skills: Optional[list] = []
+    preferred_locations: Optional[list] = []
+    expected_salary_lpa: Optional[str] = None
+    target_roles: Optional[list] = []
+    about_bio: Optional[str] = None
+    resume_url: Optional[str] = None
+    arivupro_student_id: Optional[str] = None
+    enrollment_cohort: Optional[str] = None
+
+
+@app.get("/api/students/profile")
+async def get_student_profile(student: dict = Depends(require_student)):
+    result = supabase.table("student_profiles").select("*").eq("id", student["user_id"]).limit(1).execute()
+    if not result.data:
+        return {"profile": None}
+    return {"profile": result.data[0]}
+
+
+@app.put("/api/students/profile", status_code=200)
+async def upsert_student_profile(body: StudentProfilePost, student: dict = Depends(require_student)):
+    record = {
+        "id": student["user_id"],
+        "full_name": body.full_name,
+        "phone": body.phone,
+        "primary_course": body.primary_course,
+        "current_level": body.current_level,
+        "qualifications_completed": body.qualifications_completed or [],
+        "articleship_months": body.articleship_months or 0,
+        "key_skills": body.key_skills or [],
+        "preferred_locations": body.preferred_locations or [],
+        "expected_salary_lpa": body.expected_salary_lpa,
+        "target_roles": body.target_roles or [],
+        "about_bio": body.about_bio,
+        "resume_url": body.resume_url,
+        "arivupro_student_id": body.arivupro_student_id,
+        "enrollment_cohort": body.enrollment_cohort,
+        "updated_at": now_iso(),
+    }
+    result = supabase.table("student_profiles").upsert(record).execute()
+    return {"message": "Profile saved", "profile": result.data[0] if result.data else record}
+
+
+# ---------------------------------------------------------------------------
+# SAVED JOBS
+# ---------------------------------------------------------------------------
+class SaveJobPost(BaseModel):
+    job_id: Optional[str] = None
+    external_job_id: Optional[str] = None
+    job_title: str
+    company: str
+    location: Optional[str] = ""
+    job_type: Optional[str] = "job"
+    source: Optional[str] = ""
+    apply_url: Optional[str] = ""
+
+
+@app.get("/api/saved-jobs/mine")
+async def get_saved_jobs(student: dict = Depends(require_student)):
+    result = (
+        supabase.table("saved_jobs")
+        .select("*")
+        .eq("user_id", student["user_id"])
+        .order("saved_at", desc=True)
+        .execute()
+    )
+    data = result.data or []
+    return {"total": len(data), "saved": data}
+
+
+@app.post("/api/saved-jobs", status_code=201)
+async def save_job(body: SaveJobPost, student: dict = Depends(require_student)):
+    if not body.job_id and not body.external_job_id:
+        raise HTTPException(status_code=400, detail="job_id or external_job_id required")
+
+    record = {
+        "user_id": student["user_id"],
+        "job_id": body.job_id or None,
+        "external_job_id": body.external_job_id or None,
+        "job_title": body.job_title,
+        "company": body.company,
+        "location": body.location or "",
+        "job_type": body.job_type or "job",
+        "source": body.source or "",
+        "apply_url": body.apply_url or "",
+    }
+    try:
+        result = supabase.table("saved_jobs").insert(record).execute()
+        return {"message": "Job saved", "saved": result.data[0]}
+    except Exception as e:
+        if "unique" in str(e).lower():
+            raise HTTPException(status_code=409, detail="Job already saved")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/saved-jobs/{job_ref}", status_code=200)
+async def unsave_job(job_ref: str, student: dict = Depends(require_student)):
+    """job_ref is either a job_id (internal) or external_job_id UUID."""
+    q = supabase.table("saved_jobs").delete().eq("user_id", student["user_id"])
+    # Try both columns — one will be null and won't match
+    result = q.or_(f"job_id.eq.{job_ref},external_job_id.eq.{job_ref}").execute()
+    return {"message": "Job removed from saved list"}
+
+
+# ---------------------------------------------------------------------------
+# COMPANIES (public endpoint — no admin auth needed)
+# ---------------------------------------------------------------------------
+@app.get("/api/companies/public")
+async def get_companies_public(
+    search: Optional[str] = None,
+    industry: Optional[str] = None,
+    limit: int = Query(default=50, le=200),
+    offset: int = Query(default=0, ge=0),
+):
+    """Public company directory — verified companies with live job counts."""
+    q = supabase.table("company_leads").select("*").eq("verification_status", "verified")
+
+    if search and search.strip():
+        q = q.ilike("company_name", f"%{search.strip()}%")
+    if industry and industry != "ALL":
+        q = q.ilike("industry", f"%{industry}%")
+
+    result = q.order("company_name").range(offset, offset + limit - 1).execute()
+    companies = result.data or []
+
+    # Attach live active job count for each company
+    if companies:
+        jobs_result = supabase.table("jobs").select("company, id").eq("status", "active").execute()
+        jobs_data = jobs_result.data or []
+        counts: dict = {}
+        for j in jobs_data:
+            c = j.get("company", "")
+            counts[c] = counts.get(c, 0) + 1
+        for comp in companies:
+            name = comp.get("company_name", "")
+            comp["active_jobs_count"] = counts.get(name, 0)
+
+    return {"total": len(companies), "companies": companies}
+
+
+@app.get("/api/companies/{company_id}/public")
+async def get_company_public(company_id: str):
+    """Single company profile — public, no auth needed."""
+    result = supabase.table("company_leads").select("*").eq("id", company_id).eq("verification_status", "verified").limit(1).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Company not found")
+    company = result.data[0]
+
+    # Active jobs for this company
+    jobs_result = supabase.table("jobs").select("*").eq("company", company["company_name"]).eq("status", "active").execute()
+    jobs = jobs_result.data or []
+
+    return {"company": company, "jobs": jobs, "active_jobs_count": len(jobs)}
+
+
+# ---------------------------------------------------------------------------
+# ADMIN STATS
+# ---------------------------------------------------------------------------
+@app.get("/api/admin/stats")
+async def get_admin_stats(_admin: dict = Depends(require_admin)):
+    """Live metrics for admin dashboard."""
+    jobs_res = supabase.table("jobs").select("id, status").execute()
+    jobs_data = jobs_res.data or []
+    active_jobs = sum(1 for j in jobs_data if j.get("status") == "active")
+    total_jobs = len(jobs_data)
+
+    apps_res = supabase.table("student_leads").select("id, stage, status").execute()
+    apps_data = apps_res.data or []
+    stage_counts: dict = {}
+    for a in apps_data:
+        s = a.get("stage", "applied")
+        stage_counts[s] = stage_counts.get(s, 0) + 1
+
+    placed = stage_counts.get("placed", 0)
+    offer_released = stage_counts.get("offer_released", 0)
+    active_interviews = sum(stage_counts.get(s, 0) for s in ("technical_round", "partner_interview", "recruiter_screen"))
+
+    recruiters_res = supabase.table("recruiter_profiles").select("id, approval_status").execute()
+    recruiters_data = recruiters_res.data or []
+    pending_recruiters = sum(1 for r in recruiters_data if r.get("approval_status") == "pending")
+    approved_recruiters = sum(1 for r in recruiters_data if r.get("approval_status") == "approved")
+
+    return {
+        "active_jobs": active_jobs,
+        "total_jobs": total_jobs,
+        "total_applications": len(apps_data),
+        "applications_by_stage": stage_counts,
+        "placed": placed,
+        "offer_released": offer_released,
+        "active_interviews": active_interviews,
+        "pending_recruiters": pending_recruiters,
+        "approved_recruiters": approved_recruiters,
+    }
+
+
+# ---------------------------------------------------------------------------
+# COMPANIES (admin — full access)
 # ---------------------------------------------------------------------------
 @app.get("/api/companies")
 async def get_companies(_admin: dict = Depends(require_admin)):
@@ -586,31 +845,79 @@ async def recruiter_register(body: RecruiterRegister):
     result = supabase.table("recruiter_profiles").insert(profile).execute()
     recruiter_id = result.data[0]["id"] if result.data else str(auth_user.id)
 
-    # 5. Notify admin
-    admin_panel_url = f"{PORTAL_URL}/?admin"
+    # 5. Notify admin with deep link + approve button
+    admin_review_url = f"{PORTAL_URL}/?admin&tab=recruiters"
     _send_email(
         to=ADMIN_NOTIFY_EMAIL,
         subject=f"[ArivuPro] New Recruiter Registration: {body.company_name}",
         html=f"""
-<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
-  <h2 style="color:#0f2419;">New Recruiter Registration</h2>
-  <table style="width:100%;border-collapse:collapse;font-size:14px;">
-    <tr><td style="padding:6px 0;color:#6b7280;width:140px;">Company</td><td style="font-weight:700;">{body.company_name}</td></tr>
-    <tr><td style="padding:6px 0;color:#6b7280;">Contact</td><td>{body.full_name}</td></tr>
-    <tr><td style="padding:6px 0;color:#6b7280;">Email</td><td>{body.email}</td></tr>
-    <tr><td style="padding:6px 0;color:#6b7280;">Phone</td><td>{body.phone or '—'}</td></tr>
-    <tr><td style="padding:6px 0;color:#6b7280;">Website</td><td>{body.company_website or '—'}</td></tr>
-    <tr><td style="padding:6px 0;color:#6b7280;">Domain</td><td>{body.company_domain or '—'}</td></tr>
-    <tr><td style="padding:6px 0;color:#6b7280;">Address</td><td>{body.office_address or '—'}, {body.city or ''} {body.state or ''}</td></tr>
-    <tr><td style="padding:6px 0;color:#6b7280;">CIN</td><td>{body.cin or '—'}</td></tr>
-    <tr><td style="padding:6px 0;color:#6b7280;">GSTIN</td><td>{body.gstin or '—'}</td></tr>
-  </table>
-  <div style="margin-top:24px;">
-    <a href="{admin_panel_url}" style="background:#1a7a4a;color:#fff;padding:12px 24px;text-decoration:none;border-radius:8px;font-weight:700;display:inline-block;">
-      Review in Admin Panel →
-    </a>
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#f9fafb;padding:0;">
+  <div style="background:#1b5234;padding:28px 32px;border-radius:12px 12px 0 0;">
+    <img src="https://www.arivupro.com/wp-content/uploads/2026/03/ArivuPro-Logo-1-e1786698803352.webp" alt="ArivuPro" style="height:40px;background:#fff;padding:6px 12px;border-radius:6px;" />
   </div>
-  <p style="color:#9ca3af;font-size:12px;margin-top:24px;">ArivuPro Finance Career Portal · Recruiter ID: {recruiter_id}</p>
+  <div style="background:#fff;padding:32px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;">
+    <h2 style="color:#0f2419;margin:0 0 6px;font-size:20px;">New Recruiter Registration</h2>
+    <p style="color:#6b7280;font-size:14px;margin:0 0 24px;">A new recruiter has signed up and is pending your approval.</p>
+
+    <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:24px;">
+      <tr style="background:#f9fafb;"><td style="padding:10px 12px;color:#6b7280;font-weight:600;width:140px;border:1px solid #e5e7eb;">Company</td><td style="padding:10px 12px;font-weight:800;color:#0f2419;border:1px solid #e5e7eb;">{body.company_name}</td></tr>
+      <tr><td style="padding:10px 12px;color:#6b7280;font-weight:600;border:1px solid #e5e7eb;">Contact Person</td><td style="padding:10px 12px;border:1px solid #e5e7eb;">{body.full_name}</td></tr>
+      <tr style="background:#f9fafb;"><td style="padding:10px 12px;color:#6b7280;font-weight:600;border:1px solid #e5e7eb;">Email</td><td style="padding:10px 12px;border:1px solid #e5e7eb;">{body.email}</td></tr>
+      <tr><td style="padding:10px 12px;color:#6b7280;font-weight:600;border:1px solid #e5e7eb;">Phone</td><td style="padding:10px 12px;border:1px solid #e5e7eb;">{body.phone or '—'}</td></tr>
+      <tr style="background:#f9fafb;"><td style="padding:10px 12px;color:#6b7280;font-weight:600;border:1px solid #e5e7eb;">Website</td><td style="padding:10px 12px;border:1px solid #e5e7eb;">{body.company_website or '—'}</td></tr>
+      <tr><td style="padding:10px 12px;color:#6b7280;font-weight:600;border:1px solid #e5e7eb;">City / State</td><td style="padding:10px 12px;border:1px solid #e5e7eb;">{body.city or '—'}, {body.state or '—'}</td></tr>
+      <tr style="background:#f9fafb;"><td style="padding:10px 12px;color:#6b7280;font-weight:600;border:1px solid #e5e7eb;">CIN</td><td style="padding:10px 12px;border:1px solid #e5e7eb;">{body.cin or '—'}</td></tr>
+      <tr><td style="padding:10px 12px;color:#6b7280;font-weight:600;border:1px solid #e5e7eb;">GSTIN</td><td style="padding:10px 12px;border:1px solid #e5e7eb;">{body.gstin or '—'}</td></tr>
+    </table>
+
+    <div style="display:flex;gap:12px;margin-bottom:24px;">
+      <a href="{admin_review_url}" style="background:#1a7a4a;color:#fff;padding:13px 28px;text-decoration:none;border-radius:8px;font-weight:700;font-size:14px;display:inline-block;">
+        Review in Admin Panel →
+      </a>
+    </div>
+
+    <p style="color:#9ca3af;font-size:12px;margin:0;border-top:1px solid #f3f4f6;padding-top:16px;">
+      ArivuPro Finance Career Portal &nbsp;·&nbsp; Recruiter ID: {recruiter_id}
+    </p>
+  </div>
+</div>""",
+    )
+
+    # 6. Send confirmation email to recruiter
+    _send_email(
+        to=body.email,
+        subject="Your ArivuPro Recruiter Application has been Received",
+        html=f"""
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#f9fafb;padding:0;">
+  <div style="background:#1b5234;padding:28px 32px;border-radius:12px 12px 0 0;">
+    <img src="https://www.arivupro.com/wp-content/uploads/2026/03/ArivuPro-Logo-1-e1786698803352.webp" alt="ArivuPro" style="height:40px;background:#fff;padding:6px 12px;border-radius:6px;" />
+  </div>
+  <div style="background:#fff;padding:32px;border-radius:0 0 12px 12px;border:1px solid #e5e7eb;border-top:none;">
+    <h2 style="color:#0f2419;margin:0 0 8px;font-size:20px;">Application Received!</h2>
+    <p style="color:#374151;font-size:14px;line-height:1.6;margin:0 0 20px;">
+      Hi {body.full_name},<br/><br/>
+      Thank you for registering <strong>{body.company_name}</strong> on the ArivuPro Finance Career Portal.
+      Your application is currently under review by our team.
+    </p>
+
+    <div style="background:#f0faf4;border:1px solid #d7f4ea;border-radius:10px;padding:20px;margin-bottom:24px;">
+      <div style="font-size:13px;font-weight:700;color:#1a7a4a;margin-bottom:12px;">What happens next?</div>
+      <ol style="color:#374151;font-size:13px;line-height:1.8;margin:0;padding-left:20px;">
+        <li>Our placement team will verify your company details</li>
+        <li>You will receive an approval or follow-up email within <strong>1–2 business days</strong></li>
+        <li>Once approved, you can log in and start posting jobs</li>
+      </ol>
+    </div>
+
+    <p style="color:#374151;font-size:14px;margin:0 0 24px;">
+      If you have any questions, reply to this email or contact us at
+      <a href="mailto:tech@arivupro.com" style="color:#1a7a4a;">tech@arivupro.com</a>
+    </p>
+
+    <p style="color:#9ca3af;font-size:12px;margin:0;border-top:1px solid #f3f4f6;padding-top:16px;">
+      ArivuPro Finance Career Portal &nbsp;·&nbsp; <a href="https://arivupro.com" style="color:#9ca3af;">arivupro.com</a>
+    </p>
+  </div>
 </div>""",
     )
 
@@ -818,7 +1125,7 @@ async def recruiter_get_jobs(recruiter: dict = Depends(require_recruiter)):
 @app.get("/api/recruiters/applicants")
 async def recruiter_get_applicants(job_id: Optional[str] = None, recruiter: dict = Depends(require_recruiter)):
     """Return applicants for jobs posted by this recruiter."""
-    # Get this recruiter's job IDs
+    # Get this recruiter's job IDs — try recruiter_profile_id first, fall back to company name
     jobs_res = (
         supabase.table("jobs")
         .select("id, title")
@@ -826,6 +1133,18 @@ async def recruiter_get_applicants(job_id: Optional[str] = None, recruiter: dict
         .execute()
     )
     recruiter_job_ids = {j["id"]: j["title"] for j in (jobs_res.data or [])}
+
+    # Fallback: if column not migrated yet or jobs were created before migration,
+    # also include jobs matched by company name + source
+    if not recruiter_job_ids:
+        fallback_res = (
+            supabase.table("jobs")
+            .select("id, title")
+            .eq("company", recruiter["company_name"])
+            .eq("source", "direct_recruiter")
+            .execute()
+        )
+        recruiter_job_ids = {j["id"]: j["title"] for j in (fallback_res.data or [])}
 
     if not recruiter_job_ids:
         return {"applicants": []}
@@ -838,6 +1157,118 @@ async def recruiter_get_applicants(job_id: Optional[str] = None, recruiter: dict
 
     result = q.order("created_at", desc=True).execute()
     return {"applicants": result.data or []}
+
+
+@app.patch("/api/recruiters/applicants/{app_id}")
+async def recruiter_update_applicant_stage(app_id: str, body: ApplicationPatch, recruiter: dict = Depends(require_recruiter)):
+    """Allow recruiter to update stage/notes for an applicant on their own jobs."""
+    # Verify this application belongs to one of this recruiter's jobs
+    app_res = supabase.table("student_leads").select("job_id, timeline").eq("id", app_id).limit(1).execute()
+    if not app_res.data:
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    job_id = app_res.data[0].get("job_id")
+    ownership = supabase.table("jobs").select("id").eq("id", job_id).eq("recruiter_profile_id", recruiter["id"]).limit(1).execute()
+    if not ownership.data:
+        # Fallback: allow if job matches recruiter's company name + source (pre-migration jobs)
+        fallback = supabase.table("jobs").select("id").eq("id", job_id).eq("company", recruiter["company_name"]).eq("source", "direct_recruiter").limit(1).execute()
+        if not fallback.data:
+            raise HTTPException(status_code=403, detail="Not authorized to update this application")
+
+    timeline = app_res.data[0].get("timeline") or []
+    updates: dict = {"updated_at": now_iso()}
+
+    if body.stage:
+        updates["stage"] = body.stage
+        timeline.append({"stage": body.stage, "timestamp": now_str(), "note": body.counselor_notes or f"Stage updated to {body.stage}"})
+        updates["timeline"] = timeline
+    if body.counselor_notes:
+        updates["interview_notes"] = body.counselor_notes
+    if body.interview_date:
+        updates["interview_date"] = body.interview_date
+
+    result = supabase.table("student_leads").update(updates).eq("id", app_id).execute()
+    return {"message": "Application updated", "application": result.data[0] if result.data else {}}
+
+
+class JobPatch(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    location: Optional[str] = None
+    salary_text: Optional[str] = None
+    deadline_date: Optional[str] = None
+    is_urgent: Optional[bool] = None
+
+
+@app.patch("/api/recruiters/jobs/{job_id}")
+async def recruiter_update_job(job_id: str, body: JobPatch, recruiter: dict = Depends(require_recruiter)):
+    """Update an existing job posted by this recruiter."""
+    ownership = supabase.table("jobs").select("id, status").eq("id", job_id).eq("recruiter_profile_id", recruiter["id"]).limit(1).execute()
+    if not ownership.data:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this job")
+    if ownership.data[0].get("status") == "closed":
+        raise HTTPException(status_code=400, detail="Cannot edit a closed job")
+
+    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    updates["updated_at"] = now_iso()
+    result = supabase.table("jobs").update(updates).eq("id", job_id).execute()
+    return {"message": "Job updated", "job": result.data[0] if result.data else {}}
+
+
+@app.post("/api/recruiters/jobs/{job_id}/close")
+async def recruiter_close_job(job_id: str, recruiter: dict = Depends(require_recruiter)):
+    """Close a job so it no longer appears in public listings."""
+    ownership = supabase.table("jobs").select("id").eq("id", job_id).eq("recruiter_profile_id", recruiter["id"]).limit(1).execute()
+    if not ownership.data:
+        raise HTTPException(status_code=403, detail="Not authorized to close this job")
+    supabase.table("jobs").update({"status": "closed", "updated_at": now_iso()}).eq("id", job_id).execute()
+    return {"message": "Job closed successfully"}
+
+
+# ---------------------------------------------------------------------------
+# ADMIN — JOB MANAGEMENT
+# ---------------------------------------------------------------------------
+@app.get("/api/admin/jobs")
+async def admin_get_jobs(
+    search: Optional[str] = None,
+    status: Optional[str] = None,
+    source: Optional[str] = None,
+    page: int = 1,
+    limit: int = 50,
+    _admin: dict = Depends(require_admin),
+):
+    """All jobs with optional search, status filter, and pagination."""
+    query = supabase.table("jobs").select("*").order("created_at", desc=True)
+    if status:
+        query = query.eq("status", status)
+    if source:
+        query = query.eq("source", source)
+    result = query.execute()
+    data = result.data or []
+    if search:
+        q = search.lower()
+        data = [j for j in data if q in (j.get("title") or "").lower() or q in (j.get("company") or "").lower()]
+    total = len(data)
+    offset = (page - 1) * limit
+    return {"total": total, "page": page, "limit": limit, "jobs": data[offset: offset + limit]}
+
+
+@app.patch("/api/admin/jobs/{job_id}")
+async def admin_update_job(
+    job_id: str,
+    body: dict,
+    _admin: dict = Depends(require_admin),
+):
+    """Admin can update status, feature flag, or any field on any job."""
+    allowed = {"status", "is_featured", "is_urgent", "arivupro_exclusive", "title", "description", "deadline_date"}
+    update = {k: v for k, v in body.items() if k in allowed}
+    if not update:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    update["updated_at"] = now_iso()
+    result = supabase.table("jobs").update(update).eq("id", job_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return {"message": "Job updated", "job": result.data[0]}
 
 
 # ---------------------------------------------------------------------------
@@ -861,15 +1292,43 @@ async def crm_stats():
 
 
 def _crm_metrics():
+    apps_res = supabase.table("student_leads").select("id, stage, primary_course, ai_match_score, company").execute()
+    apps = apps_res.data or []
+    stage_counts: dict = {}
+    course_counts: dict = {}
+    scores = []
+    for a in apps:
+        s = (a.get("stage") or "applied").lower()
+        stage_counts[s] = stage_counts.get(s, 0) + 1
+        c = a.get("primary_course") or "Other"
+        course_counts[c] = course_counts.get(c, 0) + 1
+        if a.get("ai_match_score"):
+            scores.append(float(a["ai_match_score"]))
+
+    placed = stage_counts.get("placed", 0)
+    offer_released = stage_counts.get("offer_released", 0)
+    active_interviews = sum(stage_counts.get(s, 0) for s in ("technical_round", "partner_interview", "recruiter_screen"))
+    top_course = max(course_counts, key=lambda k: course_counts[k]) if course_counts else "—"
+
+    # Derive Big 4 share from placed students at known Big 4 companies
+    big4_names = {"deloitte", "pwc", "ey", "ernst", "kpmg", "grant thornton", "bdo"}
+    big4_placed = sum(
+        1 for a in apps
+        if (a.get("stage") or "").lower() in ("placed", "offer_released")
+        and any(b in (a.get("company") or "").lower() for b in big4_names)
+    )
+    total_placed_or_offered = placed + offer_released
+    big4_pct = round((big4_placed / total_placed_or_offered * 100)) if total_placed_or_offered else 0
+
     return {
-        "total_arivupro_applicants": 148,
-        "active_interviews": 26,
-        "offers_released": 19,
-        "total_placed": 87,
-        "avg_package_lpa": 9.8,
-        "highest_package_lpa": 24.5,
-        "big4_placements_count": 64,
-        "top_demanded_course": "ACCA + US CPA Dual Track",
+        "total_arivupro_applicants": len(apps),
+        "active_interviews": active_interviews,
+        "offers_released": offer_released,
+        "total_placed": placed,
+        "top_demanded_course": top_course,
+        "big4_placements_count": big4_pct,
+        "avg_package_lpa": 0,
+        "highest_package_lpa": 0,
     }
 
 
@@ -923,6 +1382,30 @@ async def scrape_trigger(body: ScrapeRequest, _admin: dict = Depends(require_adm
     else:
         asyncio.create_task(run_all_sources(supabase))
         return {"message": "Full sync triggered for all sources", "sources": SOURCE_NAMES}
+
+
+@app.get("/api/scrape/dry-run")
+async def scrape_dry_run(source: str, _admin: dict = Depends(require_admin)):
+    """Fetch jobs from a source WITHOUT saving to DB. Pure diagnostic."""
+    from scraper.orchestrator import SOURCE_FETCHERS
+    # Only free sources — block paid APIs that cost money
+    PAID_SOURCES = {"jsearch", "jobspy", "apify_multi_board", "apify_google_jobs", "apify_career_sites"}
+    if source not in SOURCE_NAMES:
+        raise HTTPException(status_code=400, detail=f"Unknown source '{source}'. Valid: {SOURCE_NAMES}")
+    if source in PAID_SOURCES:
+        raise HTTPException(status_code=400, detail=f"Source '{source}' is a paid API — dry-run disabled to avoid charges")
+    fetcher = SOURCE_FETCHERS.get(source)
+    if not fetcher:
+        raise HTTPException(status_code=400, detail=f"No fetcher registered for '{source}'")
+    try:
+        jobs = await fetcher()
+    except Exception as e:
+        return {"source": source, "fetched": 0, "sample_jobs": [], "error": str(e)}
+    sample = [
+        {"title": j.title, "company": j.company, "location": j.location, "job_type": j.job_type, "apply_url": j.apply_url}
+        for j in jobs[:20]
+    ]
+    return {"source": source, "fetched": len(jobs), "sample_jobs": sample, "error": None}
 
 
 @app.post("/api/scrape/run-sync")
@@ -1082,6 +1565,69 @@ strengths (array of 3), gap_alerts (array of 1-2), counselor_recommendation, per
 
 
 # ---------------------------------------------------------------------------
+# RESUME UPLOAD
+# ---------------------------------------------------------------------------
+@app.post("/api/upload-resume")
+async def upload_resume(
+    file: UploadFile = File(...),
+    authorization: Optional[str] = Header(default=None),
+):
+    # Try to get user_id from token for nicer file naming; fall back to anon
+    user_id = "anon"
+    if authorization and authorization.lower().startswith("bearer "):
+        token = authorization.split(" ", 1)[1]
+        try:
+            user_resp = supabase.auth.get_user(token)
+            user_id = user_resp.user.id
+        except Exception:
+            pass  # unconfirmed email or invalid token — still allow upload
+
+    ext = (file.filename or "resume").rsplit(".", 1)[-1] or "pdf"
+    path = f"{user_id}_{int(datetime.utcnow().timestamp())}.{ext}"
+    content = await file.read()
+    content_type = file.content_type or "application/pdf"
+
+    def _upload():
+        supabase.storage.from_("resumes").upload(
+            path, content, {"content-type": content_type, "upsert": "true"}
+        )
+
+    try:
+        _upload()
+    except Exception:
+        # Bucket may not exist yet — create it then retry
+        try:
+            supabase.storage.create_bucket("resumes", options={"public": False})
+        except Exception:
+            pass  # already exists
+        try:
+            _upload()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Upload failed: {e}")
+
+    public_url = supabase.storage.from_("resumes").get_public_url(path)
+    return {"url": public_url, "path": path}
+
+
+@app.get("/api/recruiters/resume-url")
+async def get_resume_signed_url(
+    path: str,
+    recruiter=Depends(require_recruiter),
+):
+    """Return a short-lived signed URL for a resume file (recruiter only)."""
+    try:
+        result = supabase.storage.from_("resumes").create_signed_url(path, 300)
+        signed = result.get("signedURL") or result.get("signed_url") or result.get("signedUrl", "")
+        if not signed:
+            raise HTTPException(status_code=404, detail="Could not generate signed URL")
+        return {"url": signed}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ---------------------------------------------------------------------------
 # AI INTERVIEW PREP
 # ---------------------------------------------------------------------------
 @app.post("/api/ai/prep")
@@ -1138,14 +1684,27 @@ Return ONLY a JSON array of objects with keys: question, key_concepts_tested, sa
     }
 
 # ---------------------------------------------------------------------------
+# HEALTH CHECK
+# ---------------------------------------------------------------------------
+@app.get("/health")
+async def health():
+    return {"status": "ok", "service": "arivupro-career-portal"}
+
+
+# ---------------------------------------------------------------------------
 # Serve React frontend (production build)
 # ---------------------------------------------------------------------------
 DIST = os.path.join(os.path.dirname(__file__), "dist")
 if os.path.isdir(DIST):
     app.mount("/assets", StaticFiles(directory=os.path.join(DIST, "assets")), name="assets")
+    app.mount("/fonts", StaticFiles(directory=os.path.join(DIST, "fonts")), name="fonts") if os.path.isdir(os.path.join(DIST, "fonts")) else None
 
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
+        # Serve static files from dist root (e.g. logo-white.png, favicon.ico)
+        static_file = os.path.join(DIST, full_path)
+        if full_path and os.path.isfile(static_file):
+            return FileResponse(static_file)
         return FileResponse(os.path.join(DIST, "index.html"))
 
 

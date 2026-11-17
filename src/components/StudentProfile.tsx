@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Edit2, Upload, Plus, CheckCircle2 } from 'lucide-react';
 import { StudentProfile as StudentProfileType } from '../types/index.ts';
+import { supabase } from '../lib/supabase/client';
 
 interface StudentProfileProps {
   student: StudentProfileType;
@@ -19,6 +20,8 @@ export const StudentProfile: React.FC<StudentProfileProps> = ({ student, onUpdat
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [newSkill, setNewSkill] = useState('');
   const [saved, setSaved] = useState(false);
+  const [uploadingResume, setUploadingResume] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const completionFields = [
     !!form.name, !!form.email, !!form.phone, !!form.aboutBio,
@@ -40,6 +43,37 @@ export const StudentProfile: React.FC<StudentProfileProps> = ({ student, onUpdat
 
   const removeSkill = (s: string) =>
     set('keySkills', form.keySkills.filter((k) => k !== s));
+
+  const handleResumeUpload = async (file: File) => {
+    setUploadingResume(true);
+    setUploadError(null);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      const formData = new FormData();
+      formData.append('file', file);
+      const resp = await fetch('/api/upload-resume', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ detail: 'Upload failed' }));
+        throw new Error(err.detail || 'Upload failed');
+      }
+      const { url } = await resp.json();
+      set('resumeFileName', url || file.name);
+    } catch (e: unknown) {
+      set('resumeFileName', file.name);
+      const msg = e instanceof Error ? e.message : '';
+      if (msg.includes('Authentication') || msg.includes('Invalid token') || msg.includes('401')) {
+        setUploadError('Please verify your email first, then sign out and sign back in to upload.');
+      } else {
+        setUploadError('Upload failed — resume name saved locally.');
+      }
+    }
+    setUploadingResume(false);
+  };
 
   const handleSave = () => {
     onUpdate(form);
@@ -353,18 +387,28 @@ export const StudentProfile: React.FC<StudentProfileProps> = ({ student, onUpdat
             onEdit={() => setEditingSection(editingSection === 'docs' ? null : 'docs')}
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {form.resumeFileName ? (
-                <div
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '10px 14px', borderRadius: 9,
-                    background: '#f0faf4', border: '1px solid #d7f4ea',
-                  }}
-                >
+              {uploadingResume ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 9, background: '#f0faf4', border: '1px solid #d7f4ea' }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1a7a4a' }}>Uploading…</span>
+                </div>
+              ) : form.resumeFileName ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 9, background: '#f0faf4', border: '1px solid #d7f4ea' }}>
                   <span style={{ fontSize: 20 }}>📄</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1a7a4a', flex: 1 }}>
-                    {form.resumeFileName}
-                  </span>
+                  {form.resumeFileName.startsWith('http') ? (
+                    <a
+                      href={form.resumeFileName}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      download
+                      style={{ fontSize: 13, fontWeight: 600, color: '#1a7a4a', flex: 1, wordBreak: 'break-all', textDecoration: 'underline' }}
+                    >
+                      View / Download Resume
+                    </a>
+                  ) : (
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#1a7a4a', flex: 1, wordBreak: 'break-all' }}>
+                      {form.resumeFileName}
+                    </span>
+                  )}
                   <button
                     type="button"
                     onClick={() => set('resumeFileName', '')}
@@ -391,10 +435,13 @@ export const StudentProfile: React.FC<StudentProfileProps> = ({ student, onUpdat
                     style={{ display: 'none' }}
                     onChange={(e) => {
                       const file = e.target.files?.[0];
-                      if (file) set('resumeFileName', file.name);
+                      if (file) handleResumeUpload(file);
                     }}
                   />
                 </label>
+              )}
+              {uploadError && (
+                <div style={{ fontSize: 11, color: '#dc2626', fontWeight: 500 }}>{uploadError}</div>
               )}
             </div>
           </Section>

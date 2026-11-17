@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Menu, X, ChevronDown, LogOut, User } from 'lucide-react';
 
 export type NavTab =
+  | 'dashboard'
   | 'jobs'
   | 'articleship'
   | 'internships'
@@ -70,6 +71,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   }, []);
 
   const studentTabs: { id: NavTab; label: string }[] = [
+    { id: 'dashboard', label: 'Dashboard' },
     { id: 'jobs', label: 'Jobs' },
     { id: 'articleship', label: 'Articleship' },
     { id: 'internships', label: 'Internships' },
@@ -125,42 +127,13 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Logo */}
         <button
           onClick={() => { onTabChange('jobs'); setMobileOpen(false); }}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: 0,
-            flexShrink: 0,
-          }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, display: 'flex', alignItems: 'center' }}
         >
-          <div
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 8,
-              background: '#1a7a4a',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 900,
-              fontSize: 18,
-              color: '#fede6d',
-              flexShrink: 0,
-            }}
-          >
-            A
-          </div>
-          <div style={{ textAlign: 'left' }}>
-            <div style={{ fontWeight: 800, fontSize: 15, color: '#0f2419', lineHeight: 1.2, letterSpacing: '-0.02em' }}>
-              ArivuPro
-            </div>
-            <div style={{ fontWeight: 600, fontSize: 11, color: '#1a7a4a', lineHeight: 1 }}>
-              Finance Careers
-            </div>
-          </div>
+          <img
+            src="/logo-white.png"
+            alt="ArivuPro Academy"
+            style={{ height: 36, width: 'auto', display: 'block', background: '#1b5234', borderRadius: 8, padding: '4px 10px' }}
+          />
         </button>
 
         {/* Desktop right side */}

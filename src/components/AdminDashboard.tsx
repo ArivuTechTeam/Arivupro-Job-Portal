@@ -10,48 +10,22 @@ interface AdminDashboardProps {
 
 type AdminTab = 'Dashboard' | 'All Students' | 'All Jobs' | 'Companies' | 'Recruiters';
 
-// ── Seed Data ──────────────────────────────────────────────────────────────
-
-
-const PIPELINE_STAGES = [
-  { label: 'Applied', count: 148 },
-  { label: 'ArivuPro Review', count: 112 },
-  { label: 'Recruiter Screen', count: 64 },
-  { label: 'Interview Stages', count: 26 },
-  { label: 'Offers Released', count: 19 },
-  { label: 'Placed', count: 87 },
+// Pipeline stage display config — labels only, counts come from live API
+const PIPELINE_STAGE_KEYS = [
+  { key: 'applied',          label: 'Applied' },
+  { key: 'arivupro_review',  label: 'ArivuPro Review' },
+  { key: 'recruiter_screen', label: 'Recruiter Screen' },
+  { key: 'technical_round',  label: 'Interview Stages' },
+  { key: 'offer_released',   label: 'Offers Released' },
+  { key: 'placed',           label: 'Placed' },
 ];
 
 const SALARY_BENCHMARKS = [
-  { qualification: 'CA', fresher: '₹7–9 LPA', top: '₹24.5 LPA', big4: '68%' },
-  { qualification: 'ACCA (Affiliate)', fresher: '₹7.5–9.5 LPA', top: '₹18 LPA', big4: '72%' },
-  { qualification: 'US CPA', fresher: '₹8–11 LPA', top: '₹22 LPA', big4: '55%' },
-  { qualification: 'CFA L2/L3', fresher: '₹9–14 LPA', top: '₹28 LPA', big4: '40%' },
-  { qualification: 'US CMA / CMA India', fresher: '₹6.5–9 LPA', top: '₹16 LPA', big4: '30%' },
-  { qualification: 'CA Articleship', fresher: '₹22–30k/mo', top: '—', big4: '100%' },
-];
-
-const ALERTS = [
-  {
-    icon: '🎯',
-    text: 'New application: Rohan Venkatesh applied to Audit Associate @ Deloitte',
-    time: '12 min ago',
-  },
-  {
-    icon: '🏢',
-    text: 'New recruiter signup: Grant Thornton — pending verification',
-    time: '34 min ago',
-  },
-  {
-    icon: '✅',
-    text: 'Offer released: Priya Nair → Goldman Sachs FP&A Analyst · ₹14 LPA',
-    time: '1h ago',
-  },
-  {
-    icon: '🤖',
-    text: 'AI Scraper synced 23 new jobs from JSearch API',
-    time: '2h ago',
-  },
+  { qualification: 'CA Final', fresher: '7–9 LPA', top: '18 LPA', big4: '62%' },
+  { qualification: 'CMA Final', fresher: '5–7 LPA', top: '14 LPA', big4: '28%' },
+  { qualification: 'CS Final', fresher: '4–6 LPA', top: '12 LPA', big4: '18%' },
+  { qualification: 'ACCA', fresher: '5–8 LPA', top: '16 LPA', big4: '44%' },
+  { qualification: 'CFA L2+', fresher: '8–12 LPA', top: '24 LPA', big4: '31%' },
 ];
 
 // ── Badge Helpers ──────────────────────────────────────────────────────────
@@ -155,7 +129,7 @@ function companyStatusBadgeClass(status: string): string {
 const styles: Record<string, React.CSSProperties> = {
   wrapper: {
     fontFamily: "'Manrope', system-ui, sans-serif",
-    background: '#f9fafb',
+    background: '#f7fbf9',
     minHeight: '100vh',
   },
   tabStrip: {
@@ -243,14 +217,14 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'flex-start',
     gap: 12,
     padding: '12px 14px',
-    borderLeft: '3px solid #fbbf24',
-    background: '#fffbeb',
+    borderLeft: '3px solid #1a7a4a',
+    background: '#f0faf4',
     borderRadius: 8,
     marginBottom: 10,
   },
   alertText: {
     fontSize: 13,
-    color: '#1a1a2e',
+    color: '#0f2419',
     fontWeight: 500,
     flex: 1,
   },
@@ -294,13 +268,15 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 13,
   },
   th: {
-    background: '#1a7a4a',
-    color: '#fff',
+    background: '#f0faf4',
+    color: '#1a7a4a',
     padding: '10px 14px',
     textAlign: 'left' as const,
-    fontWeight: 700,
-    fontSize: 12,
-    letterSpacing: '0.03em',
+    fontWeight: 800,
+    fontSize: 11,
+    letterSpacing: '0.05em',
+    textTransform: 'uppercase' as const,
+    borderBottom: '2px solid #d7f4ea',
   },
   thFirst: {
     borderTopLeftRadius: 8,
@@ -319,7 +295,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderBottom: '1px solid #f3f4f6',
     color: '#374151',
     verticalAlign: 'middle' as const,
-    background: '#f9fafb',
+    background: '#f7fbf9',
   },
   filterBar: {
     display: 'flex',
@@ -417,18 +393,19 @@ const styles: Record<string, React.CSSProperties> = {
     position: 'fixed' as const,
     bottom: 32,
     right: 32,
-    background: '#0f2419',
-    color: '#fff',
-    padding: '12px 20px',
+    background: '#fff',
+    color: '#0f2419',
+    padding: '14px 20px',
     borderRadius: 12,
     fontSize: 13,
     fontWeight: 600,
-    boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
+    boxShadow: '0 8px 32px rgba(26,122,74,0.15)',
     zIndex: 9999,
     fontFamily: "'Manrope', sans-serif",
     maxWidth: 340,
     lineHeight: 1.4,
     borderLeft: '4px solid #1a7a4a',
+    border: '1px solid #d7f4ea',
   },
   emptyRow: {
     textAlign: 'center' as const,
@@ -556,11 +533,36 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
   const [liveRecruiters, setLiveRecruiters] = useState<any[]>([]);
   const [recruitersLoading, setRecruitersLoading] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [pendingRecruiterCount, setPendingRecruiterCount] = useState(0);
+  const [liveStats, setLiveStats] = useState<{
+    active_jobs?: number;
+    total_applications?: number;
+    total_placed?: number;
+    active_interviews?: number;
+    applications_by_stage?: Record<string, number>;
+    offer_released?: number;
+  } | null>(null);
+  const [liveJobs, setLiveJobs] = useState<any[]>([]);
+  const [liveJobsTotal, setLiveJobsTotal] = useState(0);
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [jobSearch, setJobSearch] = useState('');
+  const [jobStatusFilter, setJobStatusFilter] = useState('');
+  const [updatingJobId, setUpdatingJobId] = useState<string | null>(null);
 
   const showToast = useCallback((msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 2500);
   }, []);
+
+  // Fetch live stats for Dashboard tab
+  useEffect(() => {
+    if (activeTab === 'Dashboard') {
+      adminFetch('/api/admin/stats')
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) setLiveStats(d); })
+        .catch(() => {});
+    }
+  }, [activeTab]);
 
   // Fetch live companies when Companies tab is active
   useEffect(() => {
@@ -572,13 +574,43 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
     }
   }, [activeTab]);
 
+  // Fetch live jobs when All Jobs tab is active
+  useEffect(() => {
+    if (activeTab === 'All Jobs') {
+      setJobsLoading(true);
+      const params = new URLSearchParams({ limit: '100' });
+      if (jobStatusFilter) params.set('status', jobStatusFilter);
+      if (jobSearch) params.set('search', jobSearch);
+      adminFetch(`/api/admin/jobs?${params}`)
+        .then(r => r.ok ? r.json() : { jobs: [], total: 0 })
+        .then(d => { setLiveJobs(d.jobs || []); setLiveJobsTotal(d.total || 0); })
+        .catch(() => setLiveJobs([]))
+        .finally(() => setJobsLoading(false));
+    }
+  }, [activeTab, jobStatusFilter, jobSearch]);
+
+  // Fetch pending count on mount for badge
+  useEffect(() => {
+    adminFetch('/api/recruiters/pending')
+      .then(r => r.json())
+      .then(d => {
+        const all = d.recruiters || [];
+        setPendingRecruiterCount(all.filter((r: any) => r.approval_status === 'pending').length);
+      })
+      .catch(() => {});
+  }, []);
+
   // Fetch recruiters when Recruiters tab is active
   useEffect(() => {
     if (activeTab === 'Recruiters') {
       setRecruitersLoading(true);
       adminFetch('/api/recruiters/pending')
         .then(r => r.json())
-        .then(d => setLiveRecruiters(d.recruiters || []))
+        .then(d => {
+          const all = d.recruiters || [];
+          setLiveRecruiters(all);
+          setPendingRecruiterCount(all.filter((r: any) => r.approval_status === 'pending').length);
+        })
         .catch(() => setLiveRecruiters([]))
         .finally(() => setRecruitersLoading(false));
     }
@@ -641,7 +673,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
     return matchSearch && matchStage;
   });
 
-  const maxPipelineCount = Math.max(...PIPELINE_STAGES.map((s) => s.count));
+  const handleAdminJobUpdate = useCallback(async (jobId: string, update: Record<string, unknown>) => {
+    setUpdatingJobId(jobId);
+    try {
+      const res = await adminFetch(`/api/admin/jobs/${jobId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(update),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setLiveJobs(prev => prev.map(j => j.id === jobId ? { ...j, ...updated.job } : j));
+        showToast('Job updated');
+      } else {
+        showToast('Update failed');
+      }
+    } catch { showToast('Network error'); }
+    finally { setUpdatingJobId(null); }
+  }, [showToast]);
+
+  const stageCounts = liveStats?.applications_by_stage ?? {};
+  const maxPipelineCount = Math.max(1, ...PIPELINE_STAGE_KEYS.map(s => stageCounts[s.key] ?? 0));
 
   return (
     <div style={styles.wrapper}>
@@ -663,53 +715,54 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
             {/* Stat Cards */}
             <div style={styles.grid4}>
               {/* Total Jobs */}
-              <div
-                style={{
-                  ...styles.statCard,
-                  borderLeft: '4px solid #f59e0b',
-                }}
-              >
+              <div style={{ ...styles.statCard, borderLeft: '4px solid #f59e0b' }}>
                 <div style={styles.statLabel}>Total Jobs (Live)</div>
-                <div style={styles.statNum}>673</div>
-                <div style={styles.statSub}>142 exclusive · 531 scraped</div>
+                <div style={styles.statNum}>{liveStats?.active_jobs ?? '—'}</div>
+                <div style={styles.statSub}>Active jobs on portal</div>
               </div>
 
               {/* Total Placed */}
-              <div
-                style={{
-                  ...styles.statCard,
-                  borderLeft: '4px solid #1a7a4a',
-                }}
-              >
+              <div style={{ ...styles.statCard, borderLeft: '4px solid #1a7a4a' }}>
                 <div style={styles.statLabel}>Total Placed</div>
-                <div style={styles.statNum}>87</div>
-                <div style={styles.statSub}>Avg ₹9.8 LPA · Highest ₹24.5 LPA</div>
+                <div style={styles.statNum}>{liveStats?.total_placed ?? '—'}</div>
+                <div style={styles.statSub}>Confirmed placements</div>
               </div>
 
               {/* Active Interviews */}
-              <div
-                style={{
-                  ...styles.statCard,
-                  borderLeft: '4px solid #3b82f6',
-                }}
-              >
+              <div style={{ ...styles.statCard, borderLeft: '4px solid #3b82f6' }}>
                 <div style={styles.statLabel}>Active Interviews</div>
-                <div style={styles.statNum}>26</div>
-                <div style={styles.statSub}>8 scheduled this week</div>
+                <div style={styles.statNum}>{liveStats?.active_interviews ?? '—'}</div>
+                <div style={styles.statSub}>In interview stage</div>
               </div>
 
               {/* Student Applicants */}
-              <div
-                style={{
-                  ...styles.statCard,
-                  borderLeft: '4px solid #7c3aed',
-                }}
-              >
+              <div style={{ ...styles.statCard, borderLeft: '4px solid #7c3aed' }}>
                 <div style={styles.statLabel}>Student Applicants</div>
-                <div style={styles.statNum}>148</div>
-                <div style={styles.statSub}>19 offers released</div>
+                <div style={styles.statNum}>{liveStats?.total_applications ?? '—'}</div>
+                <div style={styles.statSub}>Total applications submitted</div>
               </div>
             </div>
+
+            {/* Pending Recruiters Alert */}
+            {pendingRecruiterCount > 0 && (
+              <div style={{ background: '#fff8e1', border: '1.5px solid #ffe082', borderRadius: 12, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontSize: 22 }}>🏢</span>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: '#0f2419' }}>
+                      {pendingRecruiterCount} Recruiter{pendingRecruiterCount > 1 ? 's' : ''} Awaiting Approval
+                    </div>
+                    <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>New registrations pending your review</div>
+                  </div>
+                </div>
+                <a
+                  href="/?admin&tab=recruiters"
+                  style={{ background: '#f57f17', color: '#fff', padding: '8px 20px', borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: 'none', display: 'inline-block' }}
+                >
+                  Review Now →
+                </a>
+              </div>
+            )}
 
             {/* Live Alerts */}
             <div style={styles.card}>
@@ -717,35 +770,41 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
                 <span>Live Alerts</span>
                 <span style={styles.pillSmall}>last 2 hours</span>
               </div>
-              {ALERTS.map((alert, i) => (
-                <div key={i} style={styles.alertRow}>
-                  <span style={{ fontSize: 18, lineHeight: 1 }}>{alert.icon}</span>
-                  <span style={styles.alertText}>{alert.text}</span>
-                  <span style={styles.alertTime}>{alert.time}</span>
+              {liveRecruiters.filter((r: any) => r.approval_status === 'pending').slice(0, 5).map((r: any) => (
+                <div key={r.id} style={styles.alertRow}>
+                  <span style={{ fontSize: 18, lineHeight: 1 }}>🏢</span>
+                  <span style={styles.alertText}>New recruiter signup: <strong>{r.company_name}</strong> ({r.full_name}) — pending verification</span>
+                  <span style={styles.alertTime}>{r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN') : ''}</span>
                 </div>
               ))}
+              {liveRecruiters.filter((r: any) => r.approval_status === 'pending').length === 0 && (
+                <div style={{ color: '#9ca3af', fontSize: 13, padding: '12px 0', textAlign: 'center' }}>No pending alerts</div>
+              )}
             </div>
 
             {/* Placement Pipeline */}
             <div style={styles.card}>
               <div style={styles.cardTitle}>Placement Pipeline</div>
-              {PIPELINE_STAGES.map((stage) => (
-                <div key={stage.label} style={styles.pipelineRow}>
-                  <div style={styles.pipelineLabel}>{stage.label}</div>
-                  <div style={styles.pipelineCount}>{stage.count}</div>
-                  <div style={styles.pipelineBarTrack}>
-                    <div
-                      style={{
-                        height: 8,
-                        borderRadius: 4,
-                        background: 'linear-gradient(90deg, #fede6d, #1a7a4a)',
-                        width: `${Math.round((stage.count / maxPipelineCount) * 100)}%`,
-                        transition: 'width 0.4s ease',
-                      }}
-                    />
+              {PIPELINE_STAGE_KEYS.map((s) => {
+                const count = stageCounts[s.key] ?? 0;
+                return (
+                  <div key={s.key} style={styles.pipelineRow}>
+                    <div style={styles.pipelineLabel}>{s.label}</div>
+                    <div style={styles.pipelineCount}>{count}</div>
+                    <div style={styles.pipelineBarTrack}>
+                      <div
+                        style={{
+                          height: 8,
+                          borderRadius: 4,
+                          background: 'linear-gradient(90deg, #fede6d, #1a7a4a)',
+                          width: `${Math.round((count / maxPipelineCount) * 100)}%`,
+                          transition: 'width 0.4s ease',
+                        }}
+                      />
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Salary Benchmarks Table */}
@@ -932,6 +991,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
               </button>
             </div>
 
+            {/* Filter Bar */}
+            <div style={styles.filterBar}>
+              <input
+                style={styles.searchInput}
+                placeholder="Search by title or company…"
+                value={jobSearch}
+                onChange={e => setJobSearch(e.target.value)}
+              />
+              <select
+                style={styles.selectInput}
+                value={jobStatusFilter}
+                onChange={e => setJobStatusFilter(e.target.value)}
+              >
+                <option value="">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="draft">Draft</option>
+                <option value="closed">Closed</option>
+                <option value="expired">Expired</option>
+              </select>
+              <span style={{ fontSize: 13, color: '#6b7280', alignSelf: 'center' }}>
+                {liveJobsTotal} total
+              </span>
+            </div>
+
             <div style={{ ...styles.card, padding: 0 }}>
               <div style={{ overflowX: 'auto' }}>
                 <table style={styles.table}>
@@ -940,62 +1023,67 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
                       <th style={{ ...styles.th, ...styles.thFirst }}>Title</th>
                       <th style={styles.th}>Company</th>
                       <th style={styles.th}>Type</th>
-                      <th style={styles.th}>Source</th>
                       <th style={styles.th}>Applicants</th>
                       <th style={styles.th}>Status</th>
                       <th style={{ ...styles.th, ...styles.thLast }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {jobs.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} style={styles.emptyRow}>
-                          No jobs loaded. Jobs will appear here once fetched.
-                        </td>
-                      </tr>
+                    {jobsLoading ? (
+                      <tr><td colSpan={6} style={styles.emptyRow}>Loading…</td></tr>
+                    ) : liveJobs.length === 0 ? (
+                      <tr><td colSpan={6} style={styles.emptyRow}>No jobs found.</td></tr>
                     ) : (
-                      jobs.map((job, i) => (
+                      liveJobs.map((job, i) => (
                         <tr key={job.id}>
                           <td style={i % 2 === 0 ? styles.td : styles.tdAlt}>
-                            <div style={{ fontWeight: 700, color: '#0f2419', fontSize: 13 }}>
-                              {job.title}
-                            </div>
-                            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
-                              {job.location}
-                            </div>
+                            <div style={{ fontWeight: 700, color: '#0f2419', fontSize: 13 }}>{job.title}</div>
+                            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{job.location}</div>
                           </td>
                           <td style={i % 2 === 0 ? styles.td : styles.tdAlt}>
-                            <span style={{ fontWeight: 600 }}>{job.company}</span>
+                            <span style={{ fontWeight: 600 }}>{job.company_name || job.company}</span>
                           </td>
                           <td style={i % 2 === 0 ? styles.td : styles.tdAlt}>
-                            <span style={{ fontSize: 12, color: '#6b7280' }}>{job.jobType}</span>
+                            <span style={{ fontSize: 12, color: '#6b7280' }}>{job.job_type || job.jobType || '—'}</span>
                           </td>
                           <td style={i % 2 === 0 ? styles.td : styles.tdAlt}>
-                            <span className={sourceBadgeClass(job.source)}>
-                              {sourceLabel(job.source)}
+                            <span style={{ fontWeight: 700, color: '#1a7a4a' }}>{job.applicants_count ?? 0}</span>
+                          </td>
+                          <td style={i % 2 === 0 ? styles.td : styles.tdAlt}>
+                            <span style={{
+                              fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
+                              background: job.status === 'active' ? '#d7f4ea' : job.status === 'closed' ? '#fee2e2' : '#f3f4f6',
+                              color: job.status === 'active' ? '#1a7a4a' : job.status === 'closed' ? '#dc2626' : '#6b7280',
+                            }}>
+                              {job.status ?? 'draft'}
                             </span>
-                          </td>
-                          <td style={i % 2 === 0 ? styles.td : styles.tdAlt}>
-                            <span style={{ fontWeight: 700, color: '#1a7a4a' }}>
-                              {job.applicantsCount}
-                            </span>
-                          </td>
-                          <td style={i % 2 === 0 ? styles.td : styles.tdAlt}>
-                            <span className="badge badge-green">Active</span>
                           </td>
                           <td style={i % 2 === 0 ? styles.td : styles.tdAlt}>
                             <div style={{ display: 'flex', gap: 6 }}>
+                              {job.status !== 'active' && (
+                                <button
+                                  style={styles.btnSmallOutline}
+                                  disabled={updatingJobId === job.id}
+                                  onClick={() => handleAdminJobUpdate(job.id, { status: 'active' })}
+                                >
+                                  Approve
+                                </button>
+                              )}
+                              {job.status === 'active' && (
+                                <button
+                                  style={styles.btnSmallRed}
+                                  disabled={updatingJobId === job.id}
+                                  onClick={() => handleAdminJobUpdate(job.id, { status: 'closed' })}
+                                >
+                                  Close
+                                </button>
+                              )}
                               <button
-                                style={styles.btnSmallOutline}
-                                onClick={() => showToast('Coming soon')}
+                                style={{ ...styles.btnSmallOutline, background: job.arivupro_exclusive ? '#d7f4ea' : undefined }}
+                                disabled={updatingJobId === job.id}
+                                onClick={() => handleAdminJobUpdate(job.id, { arivupro_exclusive: !job.arivupro_exclusive })}
                               >
-                                Edit
-                              </button>
-                              <button
-                                style={styles.btnSmallRed}
-                                onClick={() => showToast('Coming soon')}
-                              >
-                                Close
+                                {job.arivupro_exclusive ? '★ Excl' : '☆ Excl'}
                               </button>
                             </div>
                           </td>
@@ -1020,9 +1108,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
         ══════════════════════════════════════════════════════════ */}
         {activeTab === 'Recruiters' && (
           <>
-            <div style={styles.pageHeader}>
-              <h1 style={styles.pageTitle}>Recruiter Applications</h1>
-              <p style={styles.pageSubtitle}>Review and approve recruiter account registrations</p>
+            <div style={{ ...styles.pageHeader, alignItems: 'center' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <h1 style={styles.pageTitle}>Recruiter Applications</h1>
+                  {pendingRecruiterCount > 0 && (
+                    <span style={{ background: '#dc2626', color: '#fff', fontSize: 11, fontWeight: 800, borderRadius: 999, padding: '2px 9px', lineHeight: 1.6 }}>
+                      {pendingRecruiterCount} pending
+                    </span>
+                  )}
+                </div>
+                <p style={styles.pageSubtitle}>Review and approve recruiter account registrations</p>
+              </div>
             </div>
             {recruitersLoading ? (
               <div style={{ textAlign: 'center', padding: '40px 0', color: '#6b7280' }}>Loading…</div>

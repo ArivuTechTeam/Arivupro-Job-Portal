@@ -1,20 +1,21 @@
-"""ICAI SIRC (Southern Region) articleship vacancy scraper."""
+"""ICAI SIRC (Southern Region) articleship vacancy scraper.
+Vacancies are posted as PDF links on ca_jobvaccancy.php.
+Firm name and date are encoded in the PDF filename.
+"""
 import re
-import asyncio
 import httpx
 from bs4 import BeautifulSoup
 from datetime import datetime
 from scraper.types import NormalizedJob
-from scraper.parse_utils import extract_stipend, extract_articleship_duration
 
 BASE = "https://sirc-icai.org"
-LIST_URL = f"{BASE}/vacancy-advertisement.php"
+LIST_URL = f"{BASE}/ca_jobvaccancy.php"
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; ArivuPro/1.0; +https://arivupro.com)"}
 
 SOUTH_CITIES = [
     "Chennai", "Bangalore", "Bengaluru", "Hyderabad", "Coimbatore",
     "Kochi", "Thiruvananthapuram", "Madurai", "Visakhapatnam", "Vijayawada",
-    "Mysore", "Mangalore", "Salem", "Tiruchirappalli", "Trichy",
+    "Mysore", "Mangalore", "Salem", "Trichy",
 ]
 
 
@@ -25,22 +26,36 @@ def _extract_city(text: str) -> str:
     return 'South India'
 
 
-def _parse_date(text: str) -> datetime:
-    if not text:
-        return datetime.utcnow()
-    try:
-        return datetime.strptime(text.strip(), '%d-%b-%Y')
-    except ValueError:
-        pass
-    try:
-        return datetime.strptime(text.strip(), '%d/%m/%Y')
-    except ValueError:
-        pass
-    try:
-        return datetime.strptime(text.strip(), '%Y-%m-%d')
-    except ValueError:
-        pass
-    return datetime.utcnow()
+def _parse_filename(href: str) -> tuple[str, datetime]:
+    """Extract firm name and date from SIRC PDF filename.
+    Old pattern: /vacancy/2026/FIRM NAME_YYMMDDHHMMSS.pdf
+    New pattern: /ca-jobs/2026/FIRM NAME.pdf  or  FIRM NAME (N)_YYMMDDHHMMSS.pdf
+    """
+    # Try to get year from path segment
+    year_match = re.search(r'/(20\d{2})/', href)
+    path_year = int(year_match.group(1)) if year_match else datetime.utcnow().year
+
+    fname = href.split('/')[-1]
+    base = re.sub(r'\.pdf$', '', fname, flags=re.I)
+    # Try to split timestamp suffix _YYMMDDHHMMSS
+    parts = base.rsplit('_', 1)
+    firm = parts[0].strip()
+    # Clean serial numbers like (2), (3)
+    firm = re.sub(r'\s*\(\d+\)\s*$', '', firm).strip()
+
+    posted_at = datetime(path_year, 1, 1)
+    if len(parts) == 2:
+        ts = parts[1]
+        try:
+            year = 2000 + int(ts[0:2])
+            month = int(ts[2:4])
+            day = int(ts[4:6])
+            if 1 <= month <= 12 and 1 <= day <= 31:
+                posted_at = datetime(year, month, day)
+        except Exception:
+            pass
+
+    return firm, posted_at
 
 
 async def fetch() -> list[NormalizedJob]:
@@ -50,68 +65,49 @@ async def fetch() -> list[NormalizedJob]:
         soup = BeautifulSoup(resp.text, 'html.parser')
 
         jobs: list[NormalizedJob] = []
-        rows = soup.select('table tbody tr, .vacancy-table tbody tr, .table tr')
+        seen: set = set()
 
-        for idx, row in enumerate(rows):
-            cells = row.find_all('td')
-            if len(cells) < 2:
+        # All PDF vacancy links — SIRC uses path /ca-jobs/YEAR/ or /vacancy/YEAR/
+        for a in soup.find_all('a', href=True):
+            href = a['href']
+            if not href.endswith('.pdf'):
                 continue
-            first = cells[0].get_text().strip()
-            if not first or re.search(r'sl\.?\s*no|s\.?\s*no', first, re.I):
+            # Only job/vacancy PDFs, not manuals
+            if not any(k in href for k in ['ca-jobs/', 'vacancy/', 'ca_jobs/', 'vaccancy/']):
+                continue
+            pdf_url = href if href.startswith('http') else f"{BASE}/{href.lstrip('/')}"
+            if pdf_url in seen:
+                continue
+            seen.add(pdf_url)
+
+            firm, posted_at = _parse_filename(href)
+            if not firm:
                 continue
 
-            employer = cells[1].get_text().strip() or first
-            loc_text = cells[2].get_text().strip() if len(cells) > 2 else ''
-            date_text = cells[-1].get_text().strip()
+            # Try to get location from surrounding row text
+            row_text = ''
+            parent = a.find_parent('tr') or a.find_parent('li') or a.find_parent('div')
+            if parent:
+                row_text = parent.get_text(separator=' ', strip=True)
 
-            a_tag = row.find('a', href=True)
-            href = a_tag['href'] if a_tag else ''
-            detail_url = href if href.startswith('http') else (f'{BASE}/{href.lstrip("/")}' if href else '')
-
-            parts = [p for p in (detail_url.split('?')[0].split('#')[0].split('/')) if p]
-            _slug = re.sub(r"\s", "-", employer[:15])
-            external_id = (
-                f'sirc-{parts[-1]}' if detail_url else
-                f'sirc-{idx}-{_slug}'
-            )
+            location = _extract_city(row_text) if row_text else 'South India'
+            external_id = f"sirc-{re.sub(r'[^a-z0-9]', '-', firm.lower()[:30])}-{posted_at.strftime('%Y%m%d')}"
 
             jobs.append(NormalizedJob(
                 source='icai_sirc',
                 external_id=external_id,
                 title='Article Assistant',
-                company=employer or 'CA Firm (SIRC)',
-                location=_extract_city(loc_text) if loc_text else 'South India',
-                stipend=extract_stipend(loc_text),
-                duration=extract_articleship_duration(loc_text),
+                company=firm,
+                location=location,
+                stipend=0,
+                duration='3 years',
                 courses=['CA'],
                 job_type='articleship',
-                apply_url=detail_url or LIST_URL,
-                description=f'Location: {loc_text}' if loc_text else None,
+                apply_url=pdf_url,
+                description=f'Articleship vacancy at {firm}. Download PDF for details.',
                 is_remote=False,
-                posted_at=_parse_date(date_text),
-                raw_data=f'{{"employer":"{employer[:60]}","loc":"{loc_text[:60]}"}}'
+                posted_at=posted_at,
+                raw_data=f'{{"firm":"{firm[:60]}","pdf":"{pdf_url[-80:]}"}}'
             ))
-
-        # Enrich top 10
-        for job in jobs[:10]:
-            if not job.apply_url or job.apply_url == LIST_URL:
-                continue
-            try:
-                dr = await client.get(job.apply_url, timeout=10)
-                if dr.is_success:
-                    body = BeautifulSoup(dr.text, 'html.parser').get_text(separator=' ')
-                    body_clean = re.sub(r'\s+', ' ', body).strip()
-                    s = extract_stipend(body)
-                    if s > 0:
-                        job.stipend = s
-                    job.duration = extract_articleship_duration(body)
-                    if body_clean:
-                        job.description = body_clean[:2000]
-                    city = _extract_city(body)
-                    if city != 'South India':
-                        job.location = city
-            except Exception:
-                pass
-            await asyncio.sleep(1.5)
 
     return jobs

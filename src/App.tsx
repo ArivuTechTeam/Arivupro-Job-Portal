@@ -11,7 +11,9 @@ import { AuthModal } from './components/AuthModal.tsx';
 import { StudentProfile } from './components/StudentProfile.tsx';
 import { RecruiterDashboard } from './components/RecruiterDashboard.tsx';
 import { RecruiterSignup } from './components/RecruiterSignup.tsx';
-import { CompanyProfile } from './components/CompanyProfile.tsx';
+import { CompanyDirectory, ApiCompany } from './components/CompanyDirectory.tsx';
+import { StudentDashboard } from './components/StudentDashboard.tsx';
+import { CompanyProfileFromApi } from './components/CompanyProfileFromApi.tsx';
 import { AIJobMatch } from './components/AIJobMatch.tsx';
 import { AdminDashboard } from './components/AdminDashboard.tsx';
 import AdminLogin from './components/admin/AdminLogin.tsx';
@@ -19,7 +21,7 @@ import {
   JobListing, JobApplication, StudentProfile as StudentProfileType,
   ScraperSourceStatus,
 } from './types/index.ts';
-import { CheckCircle2, X } from 'lucide-react';
+import { CheckCircle2, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from './lib/supabase/client.ts';
 
 const SEED_JOBS: JobListing[] = [];
@@ -52,104 +54,6 @@ const SEED_STUDENT: StudentProfileType = {
   aboutBio: '', verifiedStudent: false, gpaOrScore: '', resumeFileName: '',
 };
 
-const COMPANIES_LIST = [
-  {
-    name: 'Deloitte India', logoText: 'DE', type: 'Big 4 Audit & Advisory', status: 'MoU Partner' as const,
-    industry: 'Professional Services', headquarters: 'Mumbai, MH', companySize: '50,000+ employees',
-    founded: '1845', website: 'deloitte.com',
-    about: 'Deloitte India is a member firm of Deloitte Touche Tohmatsu Limited, one of the Big Four accounting organizations. We serve clients across audit, consulting, tax, and advisory, with a strong focus on campus hiring of CA and ACCA professionals.',
-    specializations: ['Statutory Audit', 'PCAOB Audit', 'SOX Compliance', 'Tax Advisory', 'M&A Advisory'],
-    jobFilter: (j: { company: string }) => j.company.toLowerCase().includes('deloitte'),
-  },
-  {
-    name: 'BDO India LLP', logoText: 'BD', type: 'Mid-tier Audit Firm', status: 'Verified' as const,
-    industry: 'Accounting & Audit', headquarters: 'Bangalore / Chennai', companySize: '5,000–10,000 employees',
-    founded: '1998', website: 'bdo.in',
-    about: 'BDO India LLP is an ICAI registered principal firm offering articleship training with structured exposure to listed and unlisted entity audits, tax compliance, and internal audit assignments.',
-    specializations: ['CA Articleship', 'Ind AS Audit', 'Tax Audit', 'GST Compliance', 'Internal Audit'],
-    jobFilter: (j: { company: string }) => j.company.toLowerCase().includes('bdo'),
-  },
-  {
-    name: 'Goldman Sachs', logoText: 'GO', type: 'Investment Banking', status: 'MoU Partner' as const,
-    industry: 'Investment Banking & GCC', headquarters: 'Bangalore, KA', companySize: '10,000–50,000 employees',
-    founded: '1869', website: 'goldmansachs.com',
-    about: 'Goldman Sachs Bangalore is a Global Capability Centre supporting GS New York in FP&A, risk, and investment banking analytics. Preferred partner for CFA and CA finance professionals.',
-    specializations: ['FP&A', 'Financial Modeling', 'DCF Valuation', 'Investment Banking', 'Risk Analytics'],
-    jobFilter: (j: { company: string }) => j.company.toLowerCase().includes('goldman'),
-  },
-  {
-    name: 'PwC AC', logoText: 'PW', type: 'Big 4 Advisory', status: 'Verified' as const,
-    industry: 'Tax & Advisory', headquarters: 'Hyderabad, TS', companySize: '50,000+ employees',
-    founded: '1998', website: 'pwc.in',
-    about: 'PwC Acceleration Center (AC) Hyderabad delivers US federal, state, and partnership tax compliance and advisory services to multinational clients from India.',
-    specializations: ['US Federal Tax', 'Form 1120 / 1065', 'ASC 740', 'State & Local Tax', 'Transfer Pricing'],
-    jobFilter: (j: { company: string }) => j.company.toLowerCase().includes('pwc'),
-  },
-  {
-    name: 'Avendus Capital', logoText: 'AV', type: 'Boutique Investment Bank', status: 'Verified' as const,
-    industry: 'Investment Banking & M&A', headquarters: 'Mumbai, MH', companySize: '500–1,000 employees',
-    founded: '1999', website: 'avendus.com',
-    about: 'Avendus Capital is India\'s leading boutique investment bank focused on M&A, private equity, and growth capital. Preferred hiring partner for CFA and CA professionals targeting IB roles.',
-    specializations: ['M&A Advisory', 'Private Equity', 'DCF & LBO Modeling', 'Equity Research', 'Capital Markets'],
-    jobFilter: (j: { company: string }) => j.company.toLowerCase().includes('avendus'),
-  },
-  {
-    name: 'Grant Thornton', logoText: 'GR', type: 'Accounting & Advisory', status: 'Verified' as const,
-    industry: 'Audit & Compliance', headquarters: 'Delhi NCR', companySize: '5,000–10,000 employees',
-    founded: '1924', website: 'grantthornton.in',
-    about: 'Grant Thornton Bharat is a leading assurance, tax, and advisory firm in India, offering articleship and full-time roles with exposure to SEBI-listed audit, FEMA compliance, and CS advisory.',
-    specializations: ['Secretarial Compliance', 'SEBI Audit', 'FEMA', 'GST Litigation', 'Ind AS'],
-    jobFilter: (j: { company: string }) => j.company.toLowerCase().includes('grant'),
-  },
-  {
-    name: 'EY India', logoText: 'EY', type: 'Big 4 Audit & Advisory', status: 'Verified' as const,
-    industry: 'Professional Services', headquarters: 'Bangalore / Mumbai', companySize: '50,000+ employees',
-    founded: '1989', website: 'ey.com',
-    about: 'EY India (Ernst & Young Global Delivery Services) provides assurance, tax, consulting and advisory services. Major campus recruiter for CA, ACCA and CS professionals with large articleship and graduate trainee programs.',
-    specializations: ['Assurance', 'Tax Advisory', 'Transaction Advisory', 'Risk Consulting', 'IFRS Reporting'],
-    jobFilter: (j: { company: string }) => j.company.toLowerCase().includes('ey') || j.company.toLowerCase().includes('ernst'),
-  },
-  {
-    name: 'KPMG India', logoText: 'KP', type: 'Big 4 Audit & Advisory', status: 'Verified' as const,
-    industry: 'Professional Services', headquarters: 'Mumbai, MH', companySize: '50,000+ employees',
-    founded: '1993', website: 'kpmg.com/in',
-    about: 'KPMG India offers audit, tax and advisory services with strong campus hiring for CA Articleship, CS trainees and ACCA affiliates. Part of KPMG Global Services network.',
-    specializations: ['Statutory Audit', 'Tax Compliance', 'Risk Advisory', 'Deal Advisory', 'ESG Reporting'],
-    jobFilter: (j: { company: string }) => j.company.toLowerCase().includes('kpmg'),
-  },
-  {
-    name: 'Genpact', logoText: 'GE', type: 'Finance BPO & GCC', status: 'Verified' as const,
-    industry: 'Finance & Accounting Outsourcing', headquarters: 'Hyderabad / Bangalore', companySize: '100,000+ employees',
-    founded: '1997', website: 'genpact.com',
-    about: 'Genpact is a global professional services firm focused on finance & accounting operations, risk management and analytics. Largest employer of B.Com, CMA India and CA freshers in the GCC/BPO space.',
-    specializations: ['P2P', 'O2C', 'R2R', 'FP&A', 'Tax & Compliance', 'Finance Analytics'],
-    jobFilter: (j: { company: string }) => j.company.toLowerCase().includes('genpact'),
-  },
-  {
-    name: 'EXL Service', logoText: 'EX', type: 'Finance Analytics & Operations', status: 'Verified' as const,
-    industry: 'Finance & Accounting Outsourcing', headquarters: 'Noida / Bangalore', companySize: '50,000+ employees',
-    founded: '1999', website: 'exlservice.com',
-    about: 'EXL is a leading analytics and digital operations firm serving insurance, banking and finance clients. Known for F&A shared services roles and finance analytics for CA/CMA freshers.',
-    specializations: ['Finance & Accounting', 'Insurance Operations', 'Banking Analytics', 'Risk & Compliance'],
-    jobFilter: (j: { company: string }) => j.company.toLowerCase().includes('exl'),
-  },
-  {
-    name: 'Zerodha', logoText: 'ZE', type: 'Stock Broker / Fintech', status: 'Verified' as const,
-    industry: 'Fintech & Capital Markets', headquarters: 'Bangalore, KA', companySize: '1,000–5,000 employees',
-    founded: '2010', website: 'zerodha.com',
-    about: "India's largest stock broker by active clients. Hires CFA, CA and finance freshers for fund operations, risk analytics, compliance, accounts and product finance roles.",
-    specializations: ['Trading Operations', 'Fund Accounting', 'Risk & Compliance', 'Financial Analytics', 'Fin-Tech Product Finance'],
-    jobFilter: (j: { company: string }) => j.company.toLowerCase().includes('zerodha'),
-  },
-  {
-    name: 'Razorpay', logoText: 'RA', type: 'Payments Fintech', status: 'Verified' as const,
-    industry: 'Fintech & Payments', headquarters: 'Bangalore, KA', companySize: '5,000–10,000 employees',
-    founded: '2014', website: 'razorpay.com',
-    about: 'Razorpay is India\'s leading full-stack financial services company. Hires CA, CMA and finance freshers for FP&A, accounts, compliance, revenue operations and treasury roles.',
-    specializations: ['FP&A', 'Treasury', 'Revenue Operations', 'Tax & Compliance', 'Financial Controls'],
-    jobFilter: (j: { company: string }) => j.company.toLowerCase().includes('razorpay'),
-  },
-];
 
 type UserRole = 'guest' | 'student' | 'recruiter' | 'admin';
 
@@ -162,17 +66,25 @@ interface AuthState {
 const AUTH_KEY = 'ap_auth';
 const TAB_KEY = 'ap_tab';
 
+// Use sessionStorage so each browser tab has its own independent auth state.
+// localStorage is shared across all tabs in the same origin — logging in as a
+// recruiter in Tab B would overwrite the student session in Tab A on refresh.
 function loadAuth(): AuthState {
   try {
-    const s = localStorage.getItem(AUTH_KEY);
+    const s = sessionStorage.getItem(AUTH_KEY);
     if (s) return JSON.parse(s);
   } catch {}
   return { role: 'guest', name: '', email: '' };
 }
 
 function loadTab(): NavTab {
+  // Map URL path to initial tab on first load / hard refresh
+  const path = window.location.pathname;
+  if (path === '/jobseeker') return 'dashboard';
+  if (path === '/recruiter')  return 'recruiter-jobs';
+  if (path === '/admin')      return 'admin-dashboard';
   try {
-    const t = localStorage.getItem(TAB_KEY) as NavTab | null;
+    const t = sessionStorage.getItem(TAB_KEY) as NavTab | null;
     if (t) return t;
   } catch {}
   return 'jobs';
@@ -185,8 +97,15 @@ export default function App() {
   const [jobs, setJobs] = useState<JobListing[]>(SEED_JOBS);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [applications, setApplications] = useState<JobApplication[]>([]);
+  const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
+  const [studentSessionToken, setStudentSessionToken] = useState<string>('');
   const [sources] = useState<ScraperSourceStatus[]>(SEED_SOURCES);
-  const [student, setStudent] = useState<StudentProfileType>(SEED_STUDENT);
+  const [student, setStudent] = useState<StudentProfileType>(() => {
+    try {
+      const saved = localStorage.getItem('arivupro_student_profile');
+      return saved ? { ...SEED_STUDENT, ...JSON.parse(saved) } : SEED_STUDENT;
+    } catch { return SEED_STUDENT; }
+  });
 
   const [authModal, setAuthModal] = useState<{ open: boolean; mode: 'login' | 'signup'; role: 'student' | 'recruiter' } | null>(null);
   const [showProfile, setShowProfile] = useState(false);
@@ -194,8 +113,8 @@ export default function App() {
   const [applyBlockJob, setApplyBlockJob] = useState<JobListing | null>(null);
   const [selectedJob, setSelectedJob] = useState<JobListing | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [filters, setFilters] = useState({ search: '', type: '', city: '', qualification: '', workplace: '', salary: '', department: '' });
-  const [selectedCompany, setSelectedCompany] = useState<typeof COMPANIES_LIST[0] | null>(null);
+  const [filters, setFilters] = useState({ search: '', type: '', city: '', qualification: '', workplace: '', salary: '', department: '', experience: '' });
+  const [selectedCompany, setSelectedCompany] = useState<ApiCompany | null>(null);
   const [showRecruiterPortal, setShowRecruiterPortal] = useState(false);
   const [showRecruiterSignup, setShowRecruiterSignup] = useState(false);
   const [recruiterApprovalStatus, setRecruiterApprovalStatus] = useState<'pending' | 'approved' | 'rejected' | null>(null);
@@ -204,10 +123,62 @@ export default function App() {
   const [showAdminLogin, setShowAdminLogin] = useState(
     () => window.location.search.includes('admin') || window.location.pathname === '/admin'
   );
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
+    Overview: true, People: true, Listings: true, Placement: true, System: true,
+  });
 
-  // Persist auth and tab to localStorage so refresh doesn't log out
-  useEffect(() => { localStorage.setItem(AUTH_KEY, JSON.stringify(auth)); }, [auth]);
-  useEffect(() => { localStorage.setItem(TAB_KEY, currentTab); }, [currentTab]);
+  // Persist auth and tab to sessionStorage (tab-isolated — no cross-tab contamination)
+  useEffect(() => { sessionStorage.setItem(AUTH_KEY, JSON.stringify(auth)); }, [auth]);
+  useEffect(() => { sessionStorage.setItem(TAB_KEY, currentTab); }, [currentTab]);
+
+  // Keep browser URL in sync with the active role so the address bar always
+  // shows the right path and hard-refresh lands on the correct view.
+  useEffect(() => {
+    let path = '/';
+    if (auth.role === 'student')   path = '/jobseeker';
+    if (auth.role === 'recruiter') path = '/recruiter';
+    if (auth.role === 'admin')     path = '/admin';
+    if (window.location.pathname !== path) {
+      window.history.replaceState({}, '', path);
+    }
+  }, [auth.role]);
+
+  // On mount: restore tokens for the role stored in this tab's sessionStorage.
+  // We do NOT clear auth if there is no Supabase session — the session may have
+  // expired or the tab may have been opened before the JWT was written (race).
+  // The role stored in sessionStorage is the source of truth; we only use the
+  // Supabase session to obtain a fresh access token for API calls.
+  useEffect(() => {
+    if (auth.role === 'guest') return; // nothing to restore
+
+    import('./lib/supabase/client').then(({ supabase }) => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        const token = session?.access_token ?? null;
+
+        if (auth.role === 'student') {
+          if (token) {
+            setStudentSessionToken(token);
+            loadStudentData(token);
+          }
+          if (['jobs', 'articleship', 'internships'].includes(currentTab as string)) {
+            setCurrentTab('dashboard');
+          }
+        } else if (auth.role === 'recruiter') {
+          if (token) setRecruiterSessionToken(token);
+          // Re-verify approval status so the dashboard loads correctly
+          fetch(`/api/recruiters/status?email=${encodeURIComponent(auth.email)}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(d => {
+              if (d?.approval_status) setRecruiterApprovalStatus(d.approval_status);
+              if (d?.company_name) setRecruiterCompanyName(d.company_name);
+              if (d?.full_name) setAuth(prev => ({ ...prev, name: d.full_name }));
+            })
+            .catch(() => {});
+        }
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Load jobs from backend: merge internal (recruiter-posted + exclusive) + scraped external
   useEffect(() => {
@@ -310,16 +281,95 @@ export default function App() {
 
   const handleSignOut = () => {
     import('./lib/supabase/client').then(({ supabase }) => supabase.auth.signOut());
-    localStorage.removeItem(AUTH_KEY);
-    localStorage.removeItem(TAB_KEY);
+    sessionStorage.removeItem(AUTH_KEY);
+    sessionStorage.removeItem(TAB_KEY);
+    localStorage.removeItem('arivupro_student_profile');
+    setStudent(SEED_STUDENT);
     setAuth({ role: 'guest', name: '', email: '' });
     setRecruiterApprovalStatus(null);
     setRecruiterCompanyName('');
     setRecruiterSessionToken('');
+    setStudentSessionToken('');
+    setApplications([]);
+    setSavedJobIds(new Set());
     setCurrentTab('jobs');
     setShowProfileNudge(false);
     setApplyBlockJob(null);
     showToast('Signed out successfully.');
+  };
+
+  const loadStudentData = (token: string) => {
+    // Load applications from backend
+    fetch('/api/applications/mine', {
+      headers: { 'Authorization': `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : { applications: [] })
+      .then(d => {
+        const apps: JobApplication[] = (d.applications || []).map((a: any) => ({
+          id: a.id,
+          jobId: a.job_id || '',
+          jobTitle: a.job_title || '',
+          company: a.company || '',
+          location: '',
+          studentId: a.student_id || '',
+          studentName: a.student_name || '',
+          studentRoll: a.student_id || '',
+          studentCourse: a.primary_course || '',
+          appliedDate: a.created_at || '',
+          status: (a.stage ? a.stage.charAt(0).toUpperCase() + a.stage.slice(1).replace(/_/g, ' ') : 'Applied') as JobApplication['status'],
+          aiMatchScore: a.ai_match_score || 0,
+          matchGrade: (a.match_grade || 'Moderate') as JobApplication['matchGrade'],
+          crmLeadId: a.crm_lead_id || '',
+          crmSyncStatus: 'Synced' as const,
+          assignedCounselor: a.assigned_counselor || 'ArivuPro Placement Desk',
+          lastUpdated: a.updated_at || a.created_at || '',
+          timeline: a.timeline || [],
+        }));
+        setApplications(apps);
+      })
+      .catch(() => {});
+
+    // Load saved jobs
+    fetch('/api/saved-jobs/mine', {
+      headers: { 'Authorization': `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : { saved: [] })
+      .then(d => {
+        const ids = new Set<string>((d.saved || []).map((s: any) => s.job_id || s.external_job_id).filter(Boolean));
+        setSavedJobIds(ids);
+      })
+      .catch(() => {});
+
+    // Load student profile from DB (overrides localStorage if DB has data)
+    fetch('/api/students/profile', {
+      headers: { 'Authorization': `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : { profile: null })
+      .then(d => {
+        if (d.profile) {
+          setStudent(prev => {
+            const updated = {
+              ...prev,
+              phone: d.profile.phone || prev.phone,
+              primaryCourse: d.profile.primary_course || prev.primaryCourse,
+              currentLevel: d.profile.current_level || prev.currentLevel,
+              qualificationsCompleted: d.profile.qualifications_completed?.length ? d.profile.qualifications_completed : prev.qualificationsCompleted,
+              articleshipCompletedMonths: d.profile.articleship_months ?? prev.articleshipCompletedMonths,
+              keySkills: d.profile.key_skills?.length ? d.profile.key_skills : prev.keySkills,
+              preferredLocations: d.profile.preferred_locations?.length ? d.profile.preferred_locations : prev.preferredLocations,
+              expectedSalaryLPA: d.profile.expected_salary_lpa || prev.expectedSalaryLPA,
+              targetRoles: d.profile.target_roles?.length ? d.profile.target_roles : prev.targetRoles,
+              aboutBio: d.profile.about_bio || prev.aboutBio,
+              resumeFileName: d.profile.resume_url || prev.resumeFileName,
+              arivuproStudentId: d.profile.arivupro_student_id || prev.arivuproStudentId,
+              enrollmentCohort: d.profile.enrollment_cohort || prev.enrollmentCohort,
+            };
+            localStorage.setItem('arivupro_student_profile', JSON.stringify(updated));
+            return updated;
+          });
+        }
+      })
+      .catch(() => {});
   };
 
   const handleAuthSuccess = (user: { name: string; email: string; role: 'student' | 'recruiter' | 'admin'; course?: string }) => {
@@ -327,16 +377,26 @@ export default function App() {
     setAuthModal(null);
     setSelectedCompany(null);
     if (user.role === 'student') {
-      // Pre-fill profile with known signup data
-      setStudent(prev => ({
-        ...prev,
-        name: prev.name || user.name,
-        email: prev.email || user.email,
-        primaryCourse: prev.primaryCourse || user.course || '',
-        qualificationsCompleted: (prev.qualificationsCompleted.length === 0 && user.course)
-          ? [user.course as StudentProfileType['qualificationsCompleted'][0]]
-          : prev.qualificationsCompleted,
-      }));
+      setStudent(prev => {
+        const updated = {
+          ...prev,
+          name: user.name || prev.name,
+          email: user.email || prev.email,
+          primaryCourse: prev.primaryCourse || user.course || '',
+          qualificationsCompleted: (prev.qualificationsCompleted.length === 0 && user.course)
+            ? [user.course as StudentProfileType['qualificationsCompleted'][0]]
+            : prev.qualificationsCompleted,
+        };
+        localStorage.setItem('arivupro_student_profile', JSON.stringify(updated));
+        return updated;
+      });
+      // Load applications, saved jobs, and DB profile after student login
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.access_token) {
+          setStudentSessionToken(session.access_token);
+          loadStudentData(session.access_token);
+        }
+      });
       // Show profile completion nudge after a short delay
       setTimeout(() => setShowProfileNudge(true), 1200);
     }
@@ -356,7 +416,7 @@ export default function App() {
         .catch(() => {});
       setCurrentTab('recruiter-jobs');
     } else if (user.role === 'admin') setCurrentTab('admin-dashboard');
-    else setCurrentTab('jobs');
+    else setCurrentTab('dashboard');
     showToast(`Welcome back, ${user.name.split(' ')[0]}! 👋`);
   };
 
@@ -408,11 +468,23 @@ export default function App() {
     setSelectedJob(null);
     showToast(`Applied to ${job.title} at ${job.company}!`);
 
-    // Persist to backend (fire-and-forget — don't block the UX)
+    // Persist to backend — always get a fresh token directly from Supabase so
+    // we don't depend on studentSessionToken state being set yet.
     try {
-      await fetch('/api/applications', {
+      const { supabase: sb } = await import('./lib/supabase/client');
+      const { data: { session: freshSession } } = await sb.auth.getSession();
+      const token = freshSession?.access_token || studentSessionToken;
+      if (!token) {
+        console.error('[apply] no auth token — application not saved to backend');
+        return;
+      }
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      };
+      const res = await fetch('/api/applications', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           job_id: job.id,
           student_name: student.name,
@@ -420,10 +492,68 @@ export default function App() {
           student_phone: student.phone,
           student_id: student.id,
           primary_course: student.primaryCourse,
+          key_skills: student.keySkills,
+          resume_file_name: student.resumeFileName,
+          about_bio: student.aboutBio,
+          qualifications_completed: student.qualificationsCompleted,
+          expected_salary: student.expectedSalaryLPA,
+          articleship_months: student.articleshipCompletedMonths,
         }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        console.error('[apply] backend error:', res.status, err);
+        // If duplicate, that's fine — local state already shows applied
+      }
+    } catch (err) {
+      console.error('[apply] network error:', err);
+    }
+  };
+
+  const handleSaveToggle = async (job: JobListing) => {
+    if (auth.role !== 'student' || !studentSessionToken) return;
+    const jobKey = job.id;
+    const alreadySaved = savedJobIds.has(jobKey);
+
+    // Optimistic update
+    setSavedJobIds(prev => {
+      const next = new Set(prev);
+      if (alreadySaved) next.delete(jobKey); else next.add(jobKey);
+      return next;
+    });
+    showToast(alreadySaved ? `Removed from saved` : `Saved: ${job.title}`);
+
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${studentSessionToken}`,
+      };
+      if (alreadySaved) {
+        await fetch(`/api/saved-jobs/${jobKey}`, { method: 'DELETE', headers });
+      } else {
+        const isExternal = job.source !== 'direct_recruiter' && job.source !== 'arivupro_exclusive';
+        await fetch('/api/saved-jobs', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            job_id: isExternal ? undefined : job.id,
+            external_job_id: isExternal ? job.id : undefined,
+            job_title: job.title,
+            company: job.company,
+            location: job.location,
+            job_type: job.jobType,
+            source: job.source,
+            apply_url: job.sourceUrl || '',
+          }),
+        });
+      }
     } catch {
-      // Backend unavailable — local state already updated, silently continue
+      // Revert on failure
+      setSavedJobIds(prev => {
+        const next = new Set(prev);
+        if (alreadySaved) next.add(jobKey); else next.delete(jobKey);
+        return next;
+      });
     }
   };
 
@@ -438,6 +568,7 @@ export default function App() {
       const matchQual = !filters.qualification || j.qualifications.includes(filters.qualification as any);
       const matchWorkplace = !filters.workplace || j.workplaceType === filters.workplace;
       const matchDepartment = !filters.department || j.department === filters.department;
+      const matchExperience = !filters.experience || j.experienceLevel === filters.experience;
       const matchSalary = (() => {
         if (!filters.salary) return true;
         const min = j.salaryMinLPA ?? 0;
@@ -451,7 +582,7 @@ export default function App() {
       })();
       if (currentTab === 'articleship') return j.jobType.includes('Articleship') && matchSearch && matchCity && matchQual && matchSalary;
       if (currentTab === 'internships') return j.jobType === 'Internship' && matchSearch && matchCity && matchQual && matchSalary;
-      return matchSearch && matchType && matchCity && matchQual && matchWorkplace && matchSalary && matchDepartment;
+      return matchSearch && matchType && matchCity && matchQual && matchWorkplace && matchSalary && matchDepartment && matchExperience;
     });
   }, [jobs, filters, currentTab]);
 
@@ -492,30 +623,59 @@ export default function App() {
       {showRecruiterPortal && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 200,
-          background: 'rgba(15,36,25,0.7)', backdropFilter: 'blur(4px)',
+          background: 'rgba(10,24,16,0.75)', backdropFilter: 'blur(6px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
         }} onClick={() => setShowRecruiterPortal(false)}>
           <div onClick={e => e.stopPropagation()} style={{
-            background: '#fff', borderRadius: 20, padding: '36px 32px', maxWidth: 500, width: '100%',
-            boxShadow: '0 24px 64px rgba(15,36,25,0.2)',
+            background: '#fff', borderRadius: 16, width: '100%', maxWidth: 460,
+            boxShadow: '0 32px 80px rgba(10,24,16,0.28)',
+            overflow: 'hidden',
           }}>
-            <div style={{ textAlign: 'center', marginBottom: 28 }}>
-              <div style={{ width: 56, height: 56, background: '#0f2419', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: 24 }}>🏢</div>
-              <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f2419', margin: '0 0 8px' }}>Recruit Finance Talent</h2>
-              <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>Access pre-vetted CA, ACCA, CFA, CS & CMA professionals through ArivuPro's placement network.</p>
+            {/* Header band */}
+            <div style={{ background: '#0f2419', padding: '28px 32px 24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <img src="/logo-white.png" alt="ArivuPro" style={{ height: 36, width: 'auto', flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.2 }}>Recruit Finance Talent</div>
+                  <div style={{ fontSize: 12, color: '#86efac', fontWeight: 500, marginTop: 3 }}>ArivuPro Employer Portal</div>
+                </div>
+              </div>
+              <p style={{ fontSize: 13, color: '#d1fae5', margin: '14px 0 0', lineHeight: 1.6 }}>
+                Access pre-vetted CA, ACCA, CFA, CS & CMA professionals through India's dedicated finance placement network.
+              </p>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
-              {['✅ AI-matched candidates with verified qualifications', '✅ Direct access to articleship & full-time hiring', '✅ Post jobs, review applicants, advance pipeline', '✅ MoU partnership for Big 4 & top-tier firms'].map(pt => (
-                <div key={pt} style={{ fontSize: 13, color: '#374151', fontWeight: 600 }}>{pt}</div>
+
+            {/* Features list */}
+            <div style={{ padding: '20px 32px', borderBottom: '1px solid #f1f5f9' }}>
+              {[
+                'AI-matched candidates with verified qualifications',
+                'Direct access to articleship & full-time hiring',
+                'Post jobs, review applicants, advance pipeline',
+                'MoU partnership for Big 4 & top-tier firms',
+              ].map(pt => (
+                <div key={pt} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0' }}>
+                  <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </div>
+                  <span style={{ fontSize: 13, color: '#1e293b', fontWeight: 500 }}>{pt}</span>
+                </div>
               ))}
             </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button className="btn-primary" style={{ flex: 1, fontSize: 14, padding: '12px' }}
-                onClick={() => { setShowRecruiterPortal(false); setShowRecruiterSignup(true); }}>
+
+            {/* Actions */}
+            <div style={{ padding: '20px 32px 24px', display: 'flex', gap: 10 }}>
+              <button
+                className="btn-primary"
+                style={{ flex: 2, justifyContent: 'center', fontSize: 14, padding: '11px 0' }}
+                onClick={() => { setShowRecruiterPortal(false); setShowRecruiterSignup(true); }}
+              >
                 Create Account →
               </button>
-              <button className="btn-outline" style={{ flex: 1, fontSize: 14, padding: '12px' }}
-                onClick={() => { setShowRecruiterPortal(false); setAuthModal({ open: true, mode: 'login', role: 'student' }); }}>
+              <button
+                className="btn-outline"
+                style={{ flex: 1, justifyContent: 'center', fontSize: 14, padding: '11px 0' }}
+                onClick={() => { setShowRecruiterPortal(false); setAuthModal({ open: true, mode: 'login', role: 'student' }); }}
+              >
                 Login
               </button>
             </div>
@@ -525,7 +685,7 @@ export default function App() {
 
       {/* Admin Login — full page, triggered by ?admin in URL */}
       {showAdminLogin && auth.role !== 'admin' && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: '#0a0f0d' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: '#f0faf4' }}>
           <AdminLogin
             onLogin={(user) => {
               setAuth({ role: 'admin', name: user.name, email: user.email });
@@ -606,62 +766,57 @@ export default function App() {
                   <p style={{ color: '#6b7280', fontSize: 14, margin: 0 }}>Paid internships for finance students — B.Com, M.Com, MBA and more</p>
                 </div>
               )}
+              {/* Results header */}
+              {filteredJobs.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ fontSize: 13, color: '#6b7280', fontWeight: 500 }}>
+                    Showing <span style={{ fontWeight: 800, color: '#0f2419' }}>{filteredJobs.length}</span> jobs
+                  </div>
+                  <div style={{ fontSize: 12, color: '#9ca3af', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block', animation: 'pulse-dot 2s ease-in-out infinite' }} />
+                    Updated just now
+                  </div>
+                </div>
+              )}
+
               {filteredJobs.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '60px 20px', background: '#fff', borderRadius: 14, border: '1px solid #e5e7eb' }}>
                   <div style={{ fontSize: 36, marginBottom: 12 }}>🔍</div>
                   <div style={{ fontWeight: 700, color: '#0f2419', marginBottom: 6 }}>No jobs found</div>
                   <p style={{ color: '#9ca3af', fontSize: 13, marginBottom: 16 }}>Try adjusting your filters</p>
-                  <button className="btn-outline" onClick={() => setFilters({ search: '', type: '', city: '', qualification: '', workplace: '', salary: '', department: '' })}>Clear filters</button>
+                  <button className="btn-outline" onClick={() => setFilters({ search: '', type: '', city: '', qualification: '', workplace: '', salary: '', department: '', experience: '' })}>Clear filters</button>
                 </div>
               ) : (
-                <div style={{ display: 'grid', gap: 14 }}>
+                <div className="jobs-grid">
                   {filteredJobs.map(job => (
-                    <JobCard key={job.id} job={job} onViewDetails={setSelectedJob} onApply={handleApply} isApplied={appliedIds.has(job.id)} />
+                    <JobCard key={job.id} job={job} onViewDetails={setSelectedJob} onApply={handleApply} isApplied={appliedIds.has(job.id)} isSaved={savedJobIds.has(job.id)} onSaveToggle={auth.role === 'student' ? handleSaveToggle : undefined} />
                   ))}
                 </div>
               )}
+              <style>{`
+                .jobs-grid {
+                  display: grid;
+                  gap: 14px;
+                  grid-template-columns: 1fr;
+                }
+                @media (min-width: 1024px) {
+                  .jobs-grid {
+                    grid-template-columns: 1fr 1fr;
+                  }
+                }
+              `}</style>
             </div>
           </>
         )}
 
         {/* ── COMPANIES TAB ── */}
         {currentTab === 'companies' && !selectedCompany && (
-          <div style={{ maxWidth: 1180, margin: '0 auto', padding: '40px 24px' }}>
-            <div style={{ marginBottom: 28 }}>
-              <h2 style={{ fontSize: 24, fontWeight: 800, color: '#0f2419', margin: '0 0 6px' }}>Hiring Companies</h2>
-              <p style={{ color: '#6b7280', fontSize: 14, margin: 0 }}>Verified recruiters and MoU partners of ArivuPro Finance Academy</p>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
-              {COMPANIES_LIST.map(co => {
-                const coJobs = jobs.filter(co.jobFilter);
-                return (
-                  <div
-                    key={co.name}
-                    className="card"
-                    style={{ padding: 20, cursor: 'pointer' }}
-                    onClick={() => setSelectedCompany(co)}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                      <div style={{ width: 44, height: 44, borderRadius: 10, background: '#f0faf4', border: '1px solid #d7f4ea', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: '#1a7a4a', fontSize: 13, flexShrink: 0 }}>
-                        {co.logoText}
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: 14, color: '#0f2419' }}>{co.name}</div>
-                        <div style={{ fontSize: 12, color: '#9ca3af' }}>{co.type} · {coJobs.length} active jobs</div>
-                      </div>
-                    </div>
-                    <span className={co.status === 'MoU Partner' ? 'badge badge-yellow' : 'badge badge-green'}>{co.status}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <CompanyDirectory onSelectCompany={setSelectedCompany} />
         )}
 
         {currentTab === 'companies' && selectedCompany && (
-          <CompanyProfile
+          <CompanyProfileFromApi
             company={selectedCompany}
-            jobs={jobs.filter(selectedCompany.jobFilter)}
             onBack={() => setSelectedCompany(null)}
             onApply={(job) => {
               if (auth.role === 'guest') {
@@ -672,6 +827,19 @@ export default function App() {
             }}
             appliedIds={appliedIds}
             isGuest={auth.role === 'guest'}
+          />
+        )}
+
+        {/* ── STUDENT: DASHBOARD ── */}
+        {auth.role === 'student' && currentTab === 'dashboard' && (
+          <StudentDashboard
+            student={student}
+            applications={applications}
+            savedJobIds={savedJobIds}
+            jobs={jobs}
+            onGoToTab={(tab) => setCurrentTab(tab as NavTab)}
+            onOpenProfile={() => setShowProfile(true)}
+            onViewJob={setSelectedJob}
           />
         )}
 
@@ -717,54 +885,123 @@ export default function App() {
 
         {/* ── ADMIN LAYOUT (sidebar + content) ── */}
         {auth.role === 'admin' && (
-          <div style={{ display: 'flex', minHeight: 'calc(100vh - 64px)' }}>
+          <div style={{ display: 'flex', minHeight: 'calc(100vh - 64px)', background: '#f7fbf9' }}>
             {/* Sidebar */}
             <aside style={{
               width: 220,
               flexShrink: 0,
-              background: '#0f2419',
-              padding: '24px 12px',
+              background: '#1a7a4a',
               display: 'flex',
               flexDirection: 'column',
-              gap: 4,
             }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#6b9e82', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '0 10px 12px' }}>
-                Admin Panel
+              {/* Branding strip */}
+              <div style={{ padding: '22px 20px 18px', borderBottom: '1px solid rgba(255,255,255,0.12)' }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', letterSpacing: '-0.01em' }}>ArivuPro</div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginTop: 3, fontWeight: 500, letterSpacing: '0.03em' }}>Administration</div>
               </div>
-              {([
-                { id: 'admin-dashboard', label: 'Dashboard', icon: '📊' },
-                { id: 'admin-students', label: 'All Students', icon: '🎓' },
-                { id: 'admin-jobs', label: 'All Jobs', icon: '💼' },
-                { id: 'admin-companies', label: 'Companies', icon: '🏢' },
-                { id: 'admin-recruiters', label: 'Recruiters', icon: '🏷️' },
-                { id: 'crm', label: 'Placement CRM', icon: '👥' },
-                { id: 'scraper', label: 'Scraper', icon: '🤖' },
-              ] as { id: NavTab; label: string; icon: string }[]).map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => setCurrentTab(item.id)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '10px 12px',
-                    borderRadius: 8,
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontFamily: 'Manrope, sans-serif',
-                    fontSize: 13,
-                    fontWeight: currentTab === item.id ? 700 : 500,
-                    color: currentTab === item.id ? '#fede6d' : '#d7f4ea',
-                    background: currentTab === item.id ? 'rgba(254,222,109,0.12)' : 'transparent',
-                    textAlign: 'left',
-                    width: '100%',
-                    transition: 'background 0.15s, color 0.15s',
-                  }}
-                >
-                  <span style={{ fontSize: 15 }}>{item.icon}</span>
-                  {item.label}
-                </button>
-              ))}
+
+              {/* Nav groups */}
+              <nav style={{ flex: 1, padding: '10px 0', overflowY: 'auto' }}>
+                {([
+                  {
+                    group: 'Overview',
+                    items: [{ id: 'admin-dashboard', label: 'Dashboard' }],
+                  },
+                  {
+                    group: 'People',
+                    items: [
+                      { id: 'admin-students', label: 'Students' },
+                      { id: 'admin-recruiters', label: 'Recruiters' },
+                    ],
+                  },
+                  {
+                    group: 'Listings',
+                    items: [
+                      { id: 'admin-jobs', label: 'Job Postings' },
+                      { id: 'admin-companies', label: 'Companies' },
+                    ],
+                  },
+                  {
+                    group: 'Placement',
+                    items: [{ id: 'crm', label: 'Placement CRM' }],
+                  },
+                  {
+                    group: 'System',
+                    items: [{ id: 'scraper', label: 'Job Scraper' }],
+                  },
+                ] as { group: string; items: { id: NavTab; label: string }[] }[]).map((section) => {
+                  const isOpen = expandedGroups[section.group] !== false;
+                  return (
+                    <div key={section.group} style={{ marginBottom: 2 }}>
+                      {/* Group header — collapsible */}
+                      <button
+                        onClick={() => setExpandedGroups(prev => ({ ...prev, [section.group]: !isOpen }))}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          width: '100%',
+                          padding: '8px 16px 5px',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontFamily: 'Manrope, sans-serif',
+                        }}
+                      >
+                        <span style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          color: 'rgba(255,255,255,0.55)',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.1em',
+                        }}>
+                          {section.group}
+                        </span>
+                        {isOpen
+                          ? <ChevronUp size={12} color="rgba(255,255,255,0.45)" />
+                          : <ChevronDown size={12} color="rgba(255,255,255,0.45)" />
+                        }
+                      </button>
+
+                      {/* Items */}
+                      {isOpen && section.items.map((item) => {
+                        const active = currentTab === item.id;
+                        return (
+                          <button
+                            key={item.id}
+                            onClick={() => setCurrentTab(item.id)}
+                            style={{
+                              display: 'block',
+                              width: '100%',
+                              padding: '8px 16px',
+                              border: 'none',
+                              background: active ? 'rgba(255,255,255,0.18)' : 'transparent',
+                              cursor: 'pointer',
+                              fontFamily: 'Manrope, sans-serif',
+                              fontSize: 13,
+                              fontWeight: active ? 700 : 400,
+                              color: active ? '#fff' : 'rgba(255,255,255,0.78)',
+                              textAlign: 'left',
+                              borderRadius: 0,
+                              transition: 'background 0.1s',
+                            }}
+                            onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+                            onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+                          >
+                            {item.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </nav>
+
+              {/* Footer */}
+              <div style={{ padding: '14px 16px', borderTop: '1px solid rgba(255,255,255,0.12)' }}>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{auth.name}</div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{auth.email}</div>
+              </div>
             </aside>
 
             {/* Admin content */}
@@ -786,7 +1023,12 @@ export default function App() {
                 />
               )}
               {currentTab === 'crm' && (
-                <PlacementCrmDashboard onSyncAll={async () => { showToast('All records synced!'); return {}; }} />
+                <PlacementCrmDashboard onSyncAll={async () => {
+                  const { adminFetch } = await import('./lib/supabase/auth');
+                  const res = await adminFetch('/api/crm/sync-all', { method: 'POST' });
+                  if (!res.ok) throw new Error('Sync failed');
+                  return res.json();
+                }} />
               )}
               {(['admin-dashboard', 'admin-students', 'admin-jobs', 'admin-companies', 'admin-recruiters'] as string[]).includes(currentTab as string) && (
                 <AdminDashboard
@@ -831,6 +1073,8 @@ export default function App() {
         onClose={() => setSelectedJob(null)}
         onApply={handleApply}
         isApplied={selectedJob ? appliedIds.has(selectedJob.id) : false}
+        isSaved={selectedJob ? savedJobIds.has(selectedJob.id) : false}
+        onSaveToggle={auth.role === 'student' ? handleSaveToggle : undefined}
       />
 
       {/* Auth Modal */}
@@ -849,7 +1093,35 @@ export default function App() {
       {auth.role === 'student' && showProfile && (
         <StudentProfile
           student={student}
-          onUpdate={(s) => { setStudent(s); setShowProfile(false); showToast('✅ Profile updated!'); }}
+          onUpdate={(s) => {
+            setStudent(s);
+            localStorage.setItem('arivupro_student_profile', JSON.stringify(s));
+            // Also persist to backend if we have a session token
+            if (studentSessionToken) {
+              fetch('/api/students/profile', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${studentSessionToken}` },
+                body: JSON.stringify({
+                  full_name: s.name,
+                  phone: s.phone,
+                  primary_course: s.primaryCourse,
+                  current_level: s.currentLevel,
+                  qualifications_completed: s.qualificationsCompleted,
+                  articleship_months: s.articleshipCompletedMonths,
+                  key_skills: s.keySkills,
+                  preferred_locations: s.preferredLocations,
+                  expected_salary_lpa: s.expectedSalaryLPA,
+                  target_roles: s.targetRoles,
+                  about_bio: s.aboutBio,
+                  resume_url: s.resumeFileName,
+                  arivupro_student_id: s.arivuproStudentId,
+                  enrollment_cohort: s.enrollmentCohort,
+                }),
+              }).catch(() => {});
+            }
+            setShowProfile(false);
+            showToast('✅ Profile updated!');
+          }}
           onClose={() => setShowProfile(false)}
         />
       )}
@@ -901,22 +1173,220 @@ export default function App() {
         </div>
       )}
 
-      {/* Footer */}
-      <footer style={{ background: '#0f2419', color: '#d7f4ea', padding: '48px 24px', marginTop: 80 }}>
-        <div style={{ maxWidth: 1180, margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: 32, justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 8, background: '#1a7a4a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: '#fede6d', fontSize: 18 }}>A</div>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: 15, color: '#fff', letterSpacing: '-0.02em' }}>ArivuPro Finance Careers</div>
-              <div style={{ fontSize: 11, color: '#6b9e82', marginTop: 2 }}>India's #1 Portal for Commerce & Finance Students</div>
+      {/* Footer — 100% matches arivupro.com */}
+      <footer style={{ background: '#1b5234', color: '#fff', fontFamily: 'Manrope, sans-serif', marginTop: 80 }}>
+
+        {/* ── Top section: Logo + 3 nav columns ── */}
+        <div style={{ maxWidth: 1180, margin: '0 auto', padding: '60px 32px 48px', display: 'grid', gridTemplateColumns: '280px 1fr 1fr 1fr', gap: 48 }} className="footer-main-grid">
+
+          {/* Col 1 — Logo + tagline + corporate office */}
+          <div>
+            <a href="https://arivupro.com" target="_blank" rel="noopener noreferrer"
+              style={{ display: 'inline-block', marginBottom: 18 }}>
+              <img
+                src="/logo-white.png"
+                alt="ArivuPro Academy"
+                style={{ height: 44, width: 'auto', display: 'block' }}
+              />
+            </a>
+            <p style={{ fontSize: 13, color: '#c8e6d4', lineHeight: 1.65, margin: '0 0 20px', fontWeight: 400 }}>
+              Commerce and finance education,<br />
+              with a learning plan that fits your goals.
+            </p>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#f5c518', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Corporate Office</div>
+            <p style={{ fontSize: 12, color: '#a8d4bc', lineHeight: 1.7, margin: '0 0 12px', fontWeight: 400 }}>
+              <strong style={{ color: '#fff', fontWeight: 700 }}>Arivu Educational Consultants Private Limited</strong><br />
+              2nd Floor, Sai Prema, Christ Lane No. 39,<br />
+              Krishnanagar, Hosur Rd, Industrial Area,<br />
+              Koramangala, Bengaluru, Karnataka – 560029.
+            </p>
+            <a href="https://maps.app.goo.gl/NKZB4khx59MVVyCUA" target="_blank" rel="noopener noreferrer"
+              style={{ fontSize: 12, color: '#f5c518', textDecoration: 'underline', fontWeight: 600 }}>
+              View on Google Maps
+            </a>
+          </div>
+
+          {/* Col 2 — Professional Courses (2-column grid) */}
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: '#f5c518', letterSpacing: '0.04em', marginBottom: 18 }}>Professional Courses</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 24px' }}>
+              {[
+                ['CA',                  'https://www.arivupro.com/ca-coaching-classes-institute-center-in-bangalore'],
+                ['CS',                  'https://www.arivupro.com/best-cs-coaching-classes-institute-center-in-bangalore'],
+                ['CMA India',           'https://www.arivupro.com/best-icwa-cma-india-coaching-classes-institute-center-in-bangalore'],
+                ['ACCA',                'https://www.arivupro.com/acca-coaching-classes-institute-center-in-bangalore'],
+                ['CMA USA',             'https://www.arivupro.com/best-cma-usa-coaching-classes-institute-center-in-bangalore'],
+                ['CPA US',              'https://www.arivupro.com/best-cpa-usa-coaching-classes-institute-center-in-bangalore'],
+                ['CFA',                 'https://www.arivupro.com/cfa-course-in-bangalore'],
+                ['FRM',                 'https://www.arivupro.com/frm-coaching-classes-in-bangalore'],
+                ['Enrolled Agent (EA)', 'https://www.arivupro.com/enrolled-agent-course-in-bangalore'],
+                ['CIA',                 'https://www.arivupro.com/cia-course-in-bangalore'],
+              ].map(([label, href]) => (
+                <a key={label} href={href} target="_blank" rel="noopener noreferrer"
+                  style={{ fontSize: 13, color: '#c8e6d4', textDecoration: 'none', fontWeight: 400, lineHeight: 1.4 }}
+                  className="ap-footer-link">
+                  {label}
+                </a>
+              ))}
+            </div>
+
+            {/* ArivuPro ONE accent block */}
+            <div style={{ marginTop: 20, borderLeft: '3px solid #f5c518', paddingLeft: 12 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#fff', marginBottom: 3 }}>ArivuPro ONE</div>
+              <div style={{ fontSize: 12, color: '#a8d4bc', marginBottom: 6 }}>B.Com with a professional pathway</div>
+              <a href="https://www.arivupro.com/arivupro-one" target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: 12, color: '#f5c518', textDecoration: 'none', fontWeight: 700 }}
+                className="ap-footer-link">
+                Explore Integrated Programmes →
+              </a>
             </div>
           </div>
-          <div style={{ fontSize: 12, color: '#6b9e82' }}>CA · ACCA · US CPA · US CMA · CFA · CS · CMA India · B.Com</div>
-          <div style={{ fontSize: 12, color: '#6b9e82' }}>
-            © 2026 ArivuPro Academy ·{' '}
-            <a href="https://arivupro.com" style={{ color: '#fede6d', textDecoration: 'none' }}>arivupro.com</a>
+
+          {/* Col 3 — Learn & Get Support */}
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: '#f5c518', letterSpacing: '0.04em', marginBottom: 18 }}>Learn & Get Support</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {[
+                ['Live & Recorded Classes',   'https://online.arivupro.com/learn'],
+                ['Books & Study Materials',   'https://www.arivupro.com/shop'],
+                ['Articleship Opportunities', 'https://articleship.arivupro.com/'],
+                ['Student Login',             'https://online.arivupro.com/learn/account/signin'],
+                ['Help Portal',               'https://help.arivupro.com/portal/en/kb'],
+                ['Track Book Delivery',       'https://arivupro.shiprocket.co/'],
+              ].map(([label, href]) => (
+                <a key={label} href={href} target="_blank" rel="noopener noreferrer"
+                  style={{ fontSize: 13, color: '#c8e6d4', textDecoration: 'none', fontWeight: 400 }}
+                  className="ap-footer-link">
+                  {label}
+                </a>
+              ))}
+            </div>
+          </div>
+
+          {/* Col 4 — Discover ArivuPro */}
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: '#f5c518', letterSpacing: '0.04em', marginBottom: 18 }}>Discover ArivuPro</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {[
+                ['About ArivuPro',    'https://www.arivupro.com/about-us'],
+                ['Blogs & Resources', 'https://www.arivupro.com/blogs'],
+                ['Contact Us',        'https://www.arivupro.com/contact'],
+                ['Careers',           'https://www.arivupro.com/careers'],
+              ].map(([label, href]) => (
+                <a key={label} href={href} target="_blank" rel="noopener noreferrer"
+                  style={{ fontSize: 13, color: '#c8e6d4', textDecoration: 'none', fontWeight: 400 }}
+                  className="ap-footer-link">
+                  {label}
+                </a>
+              ))}
+            </div>
           </div>
         </div>
+
+        {/* ── Mid section: Learning Centres + Admissions ── */}
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.12)', borderBottom: '1px solid rgba(255,255,255,0.12)' }}>
+          <div style={{ maxWidth: 1180, margin: '0 auto', padding: '32px 32px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48 }} className="footer-mid-grid">
+
+            {/* Learning Centres */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#f5c518', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 20 }}>Visit Our Learning Centres</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+                {[
+                  { city: 'Bengaluru', areas: ['Koramangala', 'Malleshwaram'] },
+                  { city: 'Chennai',   areas: ['Nungambakkam', 'Tambaram'] },
+                  { city: 'Coimbatore', areas: ['Ram Nagar'] },
+                ].map(({ city, areas }) => (
+                  <div key={city}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 6 }}>{city}</div>
+                    {areas.map(a => (
+                      <div key={a} style={{ fontSize: 12, color: '#a8d4bc', lineHeight: 1.6 }}>{a}</div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Admissions & Support */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#f5c518', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 20 }}>Admissions & Support</div>
+              <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', marginBottom: 8 }}>
+                <a href="tel:+919686665253" style={{ fontSize: 15, fontWeight: 700, color: '#fff', textDecoration: 'none' }} className="ap-footer-link">
+                  +91 9686665253
+                </a>
+                <a href="mailto:help@arivupro.com" style={{ fontSize: 15, fontWeight: 700, color: '#fff', textDecoration: 'none' }} className="ap-footer-link">
+                  help@arivupro.com
+                </a>
+              </div>
+              <div style={{ fontSize: 12, color: '#a8d4bc' }}>10 AM – 8 PM · Open all days</div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Bottom bar: Stay connected + social icons + legal ── */}
+        <div style={{ maxWidth: 1180, margin: '0 auto', padding: '24px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span style={{ fontSize: 13, color: '#c8e6d4', fontWeight: 500 }}>Stay connected with ArivuPro.</span>
+            <span style={{ fontSize: 11, color: '#7aad8e' }}>© 2026 ArivuPro Academy. All rights reserved.</span>
+          </div>
+
+          {/* Social icons — matching arivupro.com style */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {[
+              { label: 'YouTube',   href: 'https://www.youtube.com/channel/UCP8wEbtqYPaPT6iS_9T6A1Q',
+                svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8zM9.75 15.5v-7l6.25 3.5-6.25 3.5z"/></svg> },
+              { label: 'Instagram', href: 'https://www.instagram.com/arivupro/',
+                svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.2c3.2 0 3.6 0 4.9.1 3.3.1 4.8 1.7 4.9 4.9.1 1.3.1 1.6.1 4.8 0 3.2 0 3.6-.1 4.8-.1 3.2-1.7 4.8-4.9 4.9-1.3.1-1.6.1-4.9.1-3.2 0-3.6 0-4.8-.1-3.3-.1-4.8-1.7-4.9-4.9C2.2 15.6 2.2 15.3 2.2 12c0-3.2 0-3.6.1-4.8C2.4 3.9 4 2.3 7.2 2.3c1.2-.1 1.6-.1 4.8-.1zm0 2.2c-3.2 0-3.5 0-4.7.1-2.2.1-3.2 1.1-3.3 3.3C4 8.9 4 9.3 4 12c0 3.2 0 3.5.1 4.7.1 2.2 1.1 3.2 3.3 3.3C8.5 20 8.8 20 12 20c3.2 0 3.5 0 4.7-.1 2.2-.1 3.2-1.1 3.3-3.3.1-1.2.1-1.5.1-4.7 0-3.2 0-3.5-.1-4.7-.1-2.2-1.1-3.2-3.3-3.3C15.5 4.4 15.2 4.4 12 4.4zm0 3.6a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm0 6.6a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2zm5.2-6.8a.95.95 0 1 1-1.9 0 .95.95 0 0 1 1.9 0z"/></svg> },
+              { label: 'Facebook',  href: 'https://www.facebook.com/arivupro/',
+                svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.04V9.41c0-3.02 1.8-4.7 4.54-4.7 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.95.93-1.95 1.88v2.27h3.32l-.53 3.5h-2.79V24C19.62 23.1 24 18.1 24 12.07z"/></svg> },
+              { label: 'X',         href: 'https://x.com/ArivuPro',
+                svg: <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.911-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> },
+              { label: 'WhatsApp',  href: 'https://whatsapp.com/channel/0029Va4FvCxHVvTTyU8PvP17',
+                svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg> },
+            ].map(s => (
+              <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer"
+                title={s.label}
+                style={{
+                  width: 36, height: 36, borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#fff', textDecoration: 'none',
+                  transition: 'background 0.15s',
+                }}
+                className="ap-footer-social">
+                {s.svg}
+              </a>
+            ))}
+          </div>
+
+          {/* Legal links */}
+          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+            {[
+              ['Privacy Policy',     'https://www.arivupro.com/privacy-policy'],
+              ['Terms & Conditions', 'https://www.arivupro.com/terms-and-conditions'],
+              ['Refund Policy',      'https://www.arivupro.com/refund-policy'],
+            ].map(([label, href]) => (
+              <a key={label} href={href} target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: 11, color: '#7aad8e', textDecoration: 'none', fontWeight: 500 }}
+                className="ap-footer-link">
+                {label}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <style>{`
+          .ap-footer-link:hover { color: #f5c518 !important; }
+          .ap-footer-social:hover { background: rgba(245,197,24,0.25) !important; }
+          @media (max-width: 900px) {
+            .footer-main-grid { grid-template-columns: 1fr 1fr !important; }
+            .footer-mid-grid  { grid-template-columns: 1fr !important; }
+          }
+          @media (max-width: 540px) {
+            .footer-main-grid { grid-template-columns: 1fr !important; }
+          }
+        `}</style>
       </footer>
     </div>
   );

@@ -282,7 +282,7 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
             <div>
               <label className="block font-semibold text-slate-900 mb-1">Verified Resume Document</label>
               <div className="p-2 bg-slate-50 border border-slate-200 rounded text-slate-600 flex items-center justify-between">
-                <span className="truncate">{student.resumeFileName || 'ArivuPro_Student_CV.pdf'}</span>
+                <span className="truncate">{student.resumeFileName ? (student.resumeFileName.startsWith('http') ? 'Resume uploaded ✓' : student.resumeFileName) : 'ArivuPro_Student_CV.pdf'}</span>
                 <span className="font-mono text-[10px] text-emerald-700 font-bold">Uploaded</span>
               </div>
             </div>

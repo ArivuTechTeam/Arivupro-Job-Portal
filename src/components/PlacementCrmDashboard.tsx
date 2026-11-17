@@ -16,8 +16,24 @@ export const PlacementCrmDashboard: React.FC<PlacementCrmDashboardProps> = ({ on
     fetch('/api/crm/stats')
       .then((res) => res.json())
       .then((data) => {
-        setMetrics(data.metrics);
-        setBenchmarks(data.courseWiseSalaryBenchmarks || []);
+        const m = data.metrics || {};
+        setMetrics({
+          totalArivuProApplicants: m.total_arivupro_applicants ?? 0,
+          activeInterviews:        m.active_interviews ?? 0,
+          offersReleased:          m.offers_released ?? 0,
+          totalPlaced:             m.total_placed ?? 0,
+          topDemandedCourse:       m.top_demanded_course ?? '—',
+          big4PlacementsCount:     m.big4_placements_count ?? 0,
+          avgPackageLPA:           m.avg_package_lpa ?? 0,
+          highestPackageLPA:       m.highest_package_lpa ?? 0,
+        });
+        const raw = data.course_wise_salary_benchmarks || [];
+        setBenchmarks(raw.map((r: any) => ({
+          course:        r.course,
+          fresherAvgLPA: r.fresher_avg_lpa,
+          topOffersLPA:  r.top_offers_lpa,
+          big4Share:     r.big4_share,
+        })));
       })
       .catch((err) => console.error(err));
   };
@@ -75,171 +91,241 @@ export const PlacementCrmDashboard: React.FC<PlacementCrmDashboardProps> = ({ on
     }
   ];
 
+  const card: React.CSSProperties = {
+    background: '#fff',
+    border: '1px solid #e2e8e5',
+    borderRadius: 12,
+    padding: 24,
+  };
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      
-      {/* Top Banner & Sync Trigger */}
-      <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 text-white shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-1.5 max-w-2xl">
-          <div className="flex items-center gap-2 text-xs font-semibold text-amber-400">
-            <Database className="w-4 h-4 text-amber-400" />
-            <span>ArivuPro Institutional CRM Integration</span>
-            <span aria-hidden="true">·</span>
-            <span>LeadSquared & Zoho Placement Portal</span>
+    <div style={{ background: '#f4f7f5', minHeight: '100%', padding: '32px 32px 48px', fontFamily: 'Manrope, sans-serif' }}>
+      <div style={{ maxWidth: 1120, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+        {/* ── Hero Banner ── */}
+        <div style={{
+          background: '#1a7a4a',
+          borderRadius: 14,
+          padding: '28px 32px',
+          color: '#fff',
+          backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.04) 1px, transparent 0)',
+          backgroundSize: '24px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 24,
+        }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <Database size={13} color="#fff" />
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', letterSpacing: '0.07em', textTransform: 'uppercase' }}>
+                ArivuPro Institutional CRM Integration
+              </span>
+              <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10 }}>·</span>
+              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>LeadSquared & Zoho Placement Portal</span>
+            </div>
+            <h2 style={{ fontSize: 18, fontWeight: 800, margin: '0 0 6px', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+              Placement Cell Pipeline & CRM
+            </h2>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, margin: 0 }}>
+              Real-time webhook syncing student applications, interview rounds, and offer letters with ArivuPro's placement database.
+            </p>
           </div>
 
-          <h2 className="text-2xl font-bold tracking-tight text-white font-display">
-            Placement Cell Pipeline & CRM Synchronization
-          </h2>
-
-          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-            Direct real-time webhook connector syncing student applications, interview rounds, counselor verifications, and corporate offer letters between the portal and ArivuPro’s central placement database.
-          </p>
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
           <button
             onClick={handleSyncClick}
             disabled={isSyncing}
-            className="px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs rounded transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm"
+            style={{
+              padding: '11px 20px',
+              background: '#fff',
+              color: '#1a7a4a',
+              border: 'none',
+              borderRadius: 8,
+              fontWeight: 800,
+              fontSize: 13,
+              cursor: isSyncing ? 'not-allowed' : 'pointer',
+              opacity: isSyncing ? 0.65 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              flexShrink: 0,
+              alignSelf: 'flex-start',
+              fontFamily: 'Manrope, sans-serif',
+              whiteSpace: 'nowrap',
+            }}
           >
-            <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-            <span>{isSyncing ? 'Pushing to CRM...' : 'Trigger Full CRM Push'}</span>
+            <RefreshCw size={15} style={{ animation: isSyncing ? 'spin 1s linear infinite' : 'none' }} />
+            {isSyncing ? 'Pushing to CRM...' : 'Trigger Full CRM Push'}
           </button>
         </div>
-      </div>
 
-      {syncFeedback && (
-        <div className="p-3.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>{syncFeedback}</span>
-          </div>
-          <span className="font-mono text-[11px] text-emerald-700 font-bold">Webhook 200 OK</span>
-        </div>
-      )}
-
-      {/* 4 KPI Metrics */}
-      {metrics && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="p-4 bg-white border border-slate-200 rounded-lg shadow-2xs">
-            <div className="text-slate-500 text-xs font-medium">Total Active Applicants</div>
-            <div className="text-2xl font-bold font-mono text-slate-900 mt-1 tabular-nums">
-              {metrics.totalArivuProApplicants}
+        {/* Sync feedback */}
+        {syncFeedback && (
+          <div style={{
+            padding: '12px 16px',
+            background: '#ecfdf5',
+            border: '1px solid #a7f3d0',
+            borderRadius: 10,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CheckCircle2 size={15} color="#059669" />
+              <span style={{ fontSize: 13, color: '#065f46', fontWeight: 500 }}>{syncFeedback}</span>
             </div>
-            <div className="text-[11px] text-slate-500 mt-1">Across CA, ACCA, US CPA</div>
+            <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#059669', fontWeight: 700 }}>Webhook 200 OK</span>
           </div>
+        )}
 
-          <div className="p-4 bg-white border border-slate-200 rounded-lg shadow-2xs">
-            <div className="text-slate-500 text-xs font-medium">Active Interview Panels</div>
-            <div className="text-2xl font-bold font-mono text-blue-600 mt-1 tabular-nums">
-              {metrics.activeInterviews}
-            </div>
-            <div className="text-[11px] text-slate-500 mt-1">Technical & Partner rounds</div>
-          </div>
-
-          <div className="p-4 bg-white border border-slate-200 rounded-lg shadow-2xs">
-            <div className="text-slate-500 text-xs font-medium">Big 4 & GCC Share</div>
-            <div className="text-2xl font-bold font-mono text-emerald-600 mt-1 tabular-nums">
-              {metrics.big4PlacementsCount}%
-            </div>
-            <div className="text-[11px] text-slate-500 mt-1">Deloitte, EY, PwC, KPMG</div>
-          </div>
-
-          <div className="p-4 bg-white border border-slate-200 rounded-lg shadow-2xs">
-            <div className="text-slate-500 text-xs font-medium">Highest Offered CTC</div>
-            <div className="text-2xl font-bold font-mono text-amber-600 mt-1 tabular-nums">
-              ₹{metrics.highestPackageLPA} LPA
-            </div>
-            <div className="text-[11px] text-slate-500 mt-1">Investment Banking Analyst</div>
-          </div>
-        </div>
-      )}
-
-      {/* Salary & Qualification Benchmarking (Competitive analysis vs Quintedge & Indian Portals) */}
-      <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-2xs space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div>
-            <h3 className="text-base font-bold text-slate-900 font-display">
-              ArivuPro Course-Wise Salary & Big 4 Placement Benchmarks
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Verified starting package metrics for freshers & articles across Bangalore, Mumbai, and Delhi NCR.
-            </p>
-          </div>
-          <span className="text-xs font-mono text-slate-500">FY 2025-26 Cohorts</span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 font-semibold">
-                <th className="py-2.5 px-3">Professional Course</th>
-                <th className="py-2.5 px-3">Fresher Average CTC</th>
-                <th className="py-2.5 px-3">Top Offers Bracket</th>
-                <th className="py-2.5 px-3">Big 4 & Top-10 Share</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {benchmarks.map((row, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-3 px-3 font-bold text-slate-900">
-                    {row.course}
-                  </td>
-                  <td className="py-3 px-3 font-mono font-semibold text-slate-800 tabular-nums">
-                    ₹{row.fresherAvgLPA} LPA
-                  </td>
-                  <td className="py-3 px-3 font-mono font-bold text-emerald-700 tabular-nums">
-                    ₹{row.topOffersLPA} LPA
-                  </td>
-                  <td className="py-3 px-3 font-mono text-slate-700">
-                    {row.big4Share}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* High-Finance Career Paths Explorer (Quintedge benchmark) */}
-      <div className="space-y-4">
-        <h3 className="text-base font-bold text-slate-900 font-display">
-          Finance & Accounting Career Trajectories at ArivuPro
-        </h3>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {careerTracks.map((track, i) => (
-            <div
-              key={i}
-              className="p-5 bg-white border border-slate-200 rounded-lg shadow-2xs hover:border-slate-300 transition-all space-y-3"
-            >
-              <div className="flex items-start justify-between">
-                <h4 className="font-bold text-slate-900 text-sm">{track.title}</h4>
-                <span className="font-mono text-xs font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded tabular-nums">
-                  {track.avgPackage}
-                </span>
+        {/* ── KPI Cards ── */}
+        {metrics && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }} className="crm-kpi-grid">
+            {/* Total Applicants */}
+            <div style={card}>
+              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 8 }}>Total Active Applicants</div>
+              <div style={{ fontSize: 30, fontWeight: 800, fontFamily: 'monospace', color: '#0f2419', letterSpacing: '-0.02em', lineHeight: 1 }}>
+                {metrics.totalArivuProApplicants}
               </div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Across CA, ACCA, US CPA</div>
+            </div>
 
-              <p className="text-xs text-slate-600 leading-relaxed">
-                {track.description}
+            {/* Active Interviews */}
+            <div style={card}>
+              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 8 }}>Active Interview Panels</div>
+              <div style={{ fontSize: 30, fontWeight: 800, fontFamily: 'monospace', color: '#2563eb', letterSpacing: '-0.02em', lineHeight: 1 }}>
+                {metrics.activeInterviews}
+              </div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Technical & Partner rounds</div>
+            </div>
+
+            {/* Big 4 share */}
+            <div style={card}>
+              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 8 }}>Big 4 & GCC Share</div>
+              <div style={{ fontSize: 30, fontWeight: 800, fontFamily: 'monospace', color: '#1a7a4a', letterSpacing: '-0.02em', lineHeight: 1 }}>
+                {metrics.big4PlacementsCount}%
+              </div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Deloitte, EY, PwC, KPMG</div>
+            </div>
+
+            {/* Highest CTC */}
+            <div style={card}>
+              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 8 }}>Highest Offered CTC</div>
+              <div style={{ fontSize: 30, fontWeight: 800, fontFamily: 'monospace', color: '#d97706', letterSpacing: '-0.02em', lineHeight: 1 }}>
+                ₹{metrics.highestPackageLPA} LPA
+              </div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Investment Banking Analyst</div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Salary Benchmarks Table ── */}
+        <div style={card}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 18, paddingBottom: 14, borderBottom: '1px solid #f1f5f9' }}>
+            <div>
+              <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0f2419', margin: '0 0 4px' }}>
+                ArivuPro Course-Wise Salary & Big 4 Placement Benchmarks
+              </h3>
+              <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
+                Verified starting package metrics for freshers & articles across Bangalore, Mumbai, and Delhi NCR.
               </p>
+            </div>
+            <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#64748b', flexShrink: 0 }}>FY 2025-26 Cohorts</span>
+          </div>
 
-              <div className="p-2.5 bg-slate-50 rounded border border-slate-200 text-[11px] space-y-1">
-                <div>
-                  <span className="font-semibold text-slate-800">Primary Eligibility: </span>
-                  <span className="text-slate-700">{track.primaryCourses}</span>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: '#f8faf9', borderBottom: '1px solid #e2e8e5' }}>
+                  {['Professional Course', 'Fresher Average CTC', 'Top Offers Bracket', 'Big 4 & Top-10 Share'].map(h => (
+                    <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, color: '#475569', fontSize: 11, letterSpacing: '0.03em' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {benchmarks.map((row, idx) => (
+                  <tr
+                    key={idx}
+                    style={{ borderBottom: '1px solid #f1f5f9' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f8faf9'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <td style={{ padding: '12px 14px', fontWeight: 700, color: '#0f2419' }}>{row.course}</td>
+                    <td style={{ padding: '12px 14px', fontFamily: 'monospace', fontWeight: 600, color: '#1e293b' }}>₹{row.fresherAvgLPA} LPA</td>
+                    <td style={{ padding: '12px 14px', fontFamily: 'monospace', fontWeight: 800, color: '#1a7a4a' }}>₹{row.topOffersLPA} LPA</td>
+                    <td style={{ padding: '12px 14px', fontFamily: 'monospace', color: '#475569' }}>{row.big4Share}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* ── Career Tracks ── */}
+        <div>
+          <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0f2419', margin: '0 0 14px' }}>
+            Finance & Accounting Career Trajectories at ArivuPro
+          </h3>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }} className="crm-tracks-grid">
+            {careerTracks.map((track, i) => (
+              <div key={i} style={{ ...card, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Title row */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+                  <h4 style={{ fontSize: 14, fontWeight: 800, color: '#0f2419', margin: 0, lineHeight: 1.3 }}>{track.title}</h4>
+                  <span style={{
+                    fontSize: 12,
+                    fontFamily: 'monospace',
+                    fontWeight: 700,
+                    color: '#1e293b',
+                    background: '#f1f5f9',
+                    padding: '3px 10px',
+                    borderRadius: 20,
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}>
+                    {track.avgPackage}
+                  </span>
                 </div>
-                <div>
-                  <span className="font-semibold text-slate-800">Key Employers: </span>
-                  <span className="text-slate-700">{track.keyEmployers}</span>
+
+                {/* Description */}
+                <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.6, margin: 0 }}>
+                  {track.description}
+                </p>
+
+                {/* Detail chips */}
+                <div style={{ background: '#f4f7f5', borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ fontSize: 12 }}>
+                    <span style={{ fontWeight: 700, color: '#1a7a4a' }}>Courses: </span>
+                    <span style={{ color: '#374151' }}>{track.primaryCourses}</span>
+                  </div>
+                  <div style={{ fontSize: 12 }}>
+                    <span style={{ fontWeight: 700, color: '#1a7a4a' }}>Key Employers: </span>
+                    <span style={{ color: '#374151' }}>{track.keyEmployers}</span>
+                  </div>
+                  <div style={{ fontSize: 12 }}>
+                    <span style={{ fontWeight: 700, color: '#1a7a4a' }}>Entry Path: </span>
+                    <span style={{ color: '#374151' }}>{track.articleshipApplicable}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
+
       </div>
 
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @media (max-width: 900px) {
+          .crm-kpi-grid { grid-template-columns: 1fr 1fr !important; }
+          .crm-tracks-grid { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 540px) {
+          .crm-kpi-grid { grid-template-columns: 1fr 1fr !important; }
+        }
+      `}</style>
     </div>
   );
 };

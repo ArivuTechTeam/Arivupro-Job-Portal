@@ -68,3 +68,8 @@ frontend/
 backend/
 docs/
 Downloads/
+
+# Playwright
+test-results/
+playwright-report/
+scraper-dry-run-report.md

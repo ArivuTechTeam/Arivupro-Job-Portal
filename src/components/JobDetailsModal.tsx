@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X, MapPin, CheckCircle2, ExternalLink, Star, Zap, Briefcase, Globe } from 'lucide-react';
+import { X, MapPin, CheckCircle2, ExternalLink, Star, Zap, Briefcase, Globe, Bookmark, BookmarkCheck } from 'lucide-react';
 import { JobListing } from '../types/index.ts';
 
 interface JobDetailsModalProps {
@@ -7,6 +7,8 @@ interface JobDetailsModalProps {
   onClose: () => void;
   onApply: (job: JobListing) => void;
   isApplied: boolean;
+  isSaved?: boolean;
+  onSaveToggle?: (job: JobListing) => void;
 }
 
 function getJobTypeBadgeClass(jobType: string): string {
@@ -22,6 +24,8 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   onClose,
   onApply,
   isApplied,
+  isSaved,
+  onSaveToggle,
 }) => {
   const isScraped = job
     ? job.source !== 'arivupro_exclusive' && job.source !== 'direct_recruiter'
@@ -269,6 +273,22 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           <button onClick={onClose} className="btn-ghost">
             Close
           </button>
+
+          {onSaveToggle && job && (
+            <button
+              onClick={() => onSaveToggle(job)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '8px 16px', borderRadius: 8, cursor: 'pointer',
+                fontSize: 13, fontWeight: 700, fontFamily: 'Manrope, sans-serif',
+                border: `1.5px solid ${isSaved ? '#d7f4ea' : '#e5e7eb'}`,
+                background: isSaved ? '#f0faf4' : '#fff',
+                color: isSaved ? '#1a7a4a' : '#6b7280',
+              }}
+            >
+              {isSaved ? <><BookmarkCheck size={14} /> Saved</> : <><Bookmark size={14} /> Save</>}
+            </button>
+          )}
 
           {isApplied ? (
             <span

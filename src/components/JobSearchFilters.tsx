@@ -9,6 +9,7 @@ interface Filters {
   workplace: string;
   salary: string;
   department: string;
+  experience: string;
 }
 
 interface JobSearchFiltersProps {
@@ -36,6 +37,7 @@ const DEPARTMENTS = [
   'Articleship Desk',
 ];
 const JOB_TYPES = ['All Types', 'Full-Time', 'Articleship / Industrial Training', 'Internship', 'Contract'];
+const EXPERIENCE_LEVELS = ['All Experience', 'Articleship / 0 yrs', '0-1 yr (Fresher)', '1-3 yrs', '3-5 yrs', '5+ yrs'];
 
 export const JobSearchFilters: React.FC<JobSearchFiltersProps> = ({
   filters,
@@ -52,10 +54,12 @@ export const JobSearchFilters: React.FC<JobSearchFiltersProps> = ({
     filters.city !== '' ||
     filters.qualification !== '' ||
     filters.workplace !== '' ||
-    filters.salary !== '' || filters.department !== '';
+    filters.salary !== '' ||
+    filters.department !== '' ||
+    filters.experience !== '';
 
   const clearAll = () =>
-    onFiltersChange({ search: '', type: '', city: '', qualification: '', workplace: '', salary: '', department: '' });
+    onFiltersChange({ search: '', type: '', city: '', qualification: '', workplace: '', salary: '', department: '', experience: '' });
 
   return (
     <div
@@ -185,6 +189,19 @@ export const JobSearchFilters: React.FC<JobSearchFiltersProps> = ({
             {SALARY_RANGES.map((s) => (
               <option key={s} value={s === 'Any Salary' ? '' : s}>
                 {s}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="input-field"
+            style={{ width: 'auto', paddingRight: 32 }}
+            value={filters.experience}
+            onChange={(e) => set('experience', e.target.value)}
+          >
+            {EXPERIENCE_LEVELS.map((e) => (
+              <option key={e} value={e === 'All Experience' ? '' : e}>
+                {e}
               </option>
             ))}
           </select>

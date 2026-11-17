@@ -48,13 +48,21 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
   const [viewingApplicant, setViewingApplicant] = useState<any | null>(null);
   const [jobs, setJobs] = useState<any[]>([]);
   const [applicants, setApplicants] = useState<any[]>([]);
+  const [editingJob, setEditingJob] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({ title: '', location: '', salary_text: '', deadline_date: '', description: '', is_urgent: false });
+  const [editSaving, setEditSaving] = useState(false);
   const tokenRef = useRef(sessionToken);
 
-  // Always use latest token from Supabase session (handles race on mount)
+  // Always fetch a fresh token from Supabase — never rely on the prop being set yet.
+  // The prop may arrive late (async setState in parent) causing all API calls to fire
+  // with an empty token and silently return nothing.
   const getToken = async () => {
-    if (tokenRef.current) return tokenRef.current;
     const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token ?? '';
+    if (session?.access_token) {
+      tokenRef.current = session.access_token;
+      return session.access_token;
+    }
+    return tokenRef.current ?? '';
   };
 
   const fetchJobs = async () => {
@@ -83,12 +91,12 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
 
   useEffect(() => {
     tokenRef.current = sessionToken;
-    if (sessionToken) { fetchJobs(); fetchApplicants(); }
   }, [sessionToken]);
-  // Also try on mount after a short delay to handle cases where token arrives late
+
+  // Load data on mount — getToken() fetches fresh from Supabase, no prop dependency
   useEffect(() => {
-    const t = setTimeout(() => { fetchJobs(); fetchApplicants(); }, 1500);
-    return () => clearTimeout(t);
+    fetchJobs();
+    fetchApplicants();
   }, []);
   const [stages, setStages] = useState<Record<string, string>>({});
   const [toast, setToast] = useState<string | null>(null);
@@ -96,7 +104,86 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
   const getStage = (id: string, def: string) => stages[id] ?? def;
-  const setStage = (id: string, s: string) => setStages(p => ({ ...p, [id]: s }));
+
+  const setStage = async (id: string, s: string) => {
+    setStages(p => ({ ...p, [id]: s })); // optimistic
+    try {
+      const headers = { 'Content-Type': 'application/json', ...(await authHeader()) };
+      await fetch(`/api/recruiters/applicants/${id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ stage: s }),
+      });
+    } catch { /* silent — optimistic state already set */ }
+  };
+
+  const handleResumeOpen = async (resumeUrl: string, candidateName: string) => {
+    if (!resumeUrl) { showToast('No resume uploaded by this candidate.'); return; }
+    // Extract storage path from URL (last segment after /resumes/ or the raw value)
+    const pathMatch = resumeUrl.match(/\/resumes\/([^?#]+)/);
+    const storagePath = pathMatch ? decodeURIComponent(pathMatch[1]) : resumeUrl;
+    try {
+      const headers = await authHeader();
+      const res = await fetch(`/api/recruiters/resume-url?path=${encodeURIComponent(storagePath)}`, { headers });
+      if (res.ok) {
+        const { url } = await res.json();
+        window.open(url, '_blank', 'noopener,noreferrer');
+      } else {
+        // Fallback: try opening original URL directly
+        window.open(resumeUrl, '_blank', 'noopener,noreferrer');
+        showToast(`Opening ${candidateName}'s resume…`);
+      }
+    } catch {
+      window.open(resumeUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const openEditJob = (job: any) => {
+    setEditingJob(job);
+    setEditForm({
+      title: job.title || '',
+      location: job.location || '',
+      salary_text: job.salary_text || '',
+      deadline_date: job.deadline_date ? job.deadline_date.slice(0, 10) : '',
+      description: job.description || '',
+      is_urgent: job.is_urgent ?? false,
+    });
+  };
+
+  const handleEditSave = async () => {
+    if (!editingJob) return;
+    setEditSaving(true);
+    try {
+      const headers = { 'Content-Type': 'application/json', ...(await authHeader()) };
+      const res = await fetch(`/api/recruiters/jobs/${editingJob.id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(editForm),
+      });
+      if (res.ok) {
+        showToast('Job updated.');
+        setEditingJob(null);
+        fetchJobs();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.detail || 'Failed to update job.');
+      }
+    } catch { showToast('Network error.'); }
+    finally { setEditSaving(false); }
+  };
+
+  const handleCloseJob = async (jobId: string, jobTitle: string) => {
+    try {
+      const headers = { 'Content-Type': 'application/json', ...(await authHeader()) };
+      const res = await fetch(`/api/recruiters/jobs/${jobId}/close`, { method: 'POST', headers });
+      if (res.ok) {
+        showToast(`Job "${jobTitle}" closed.`);
+        fetchJobs();
+      } else {
+        showToast(`❌ Failed to close job.`);
+      }
+    } catch { showToast('❌ Network error.'); }
+  };
 
   const toggleQual = (q: string) => setForm(p => ({
     ...p,
@@ -146,8 +233,12 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
     match: a.ai_match_score ?? 0,
     stage: a.stage || 'applied',
     applied: a.created_at ? new Date(a.created_at).toLocaleDateString('en-IN') : '—',
-    about: a.cover_note || '',
-    skills: [],
+    about: a.about_bio || a.cover_note || '',
+    skills: Array.isArray(a.key_skills) ? a.key_skills : [],
+    resumeUrl: a.resume_url || a.resume_file_name || '',
+    qualifications: Array.isArray(a.qualifications_completed) ? a.qualifications_completed : [],
+    expectedSalary: a.expected_salary || '',
+    articleshipMonths: a.articleship_months || 0,
   });
   const normalizedApplicants = applicants.map(normalizeApplicant);
   // Which applicants to show (filtered by job)
@@ -169,6 +260,73 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
       {toast && (
         <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, background: '#0f2419', color: '#fff', borderRadius: 12, padding: '14px 20px', fontSize: 13, fontWeight: 600, boxShadow: '0 8px 32px rgba(15,36,25,0.3)', display: 'flex', alignItems: 'center', gap: 10 }}>
           <CheckCircle2 size={15} color="#fede6d" />{toast}
+        </div>
+      )}
+
+      {/* ── EDIT JOB MODAL ───────────────────────────────────────── */}
+      {editingJob && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(15,36,25,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+          onClick={e => { if (e.target === e.currentTarget) setEditingJob(null); }}>
+          <div style={{ background: '#fff', borderRadius: 18, padding: 32, width: '100%', maxWidth: 520, boxShadow: '0 20px 60px rgba(15,36,25,0.2)', fontFamily: 'Manrope, sans-serif', display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f2419', margin: 0 }}>Edit Job</h2>
+              <button onClick={() => setEditingJob(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#9ca3af', lineHeight: 1 }}>✕</button>
+            </div>
+
+            {[
+              { label: 'Job Title', key: 'title', type: 'text' },
+              { label: 'Location', key: 'location', type: 'text' },
+              { label: 'Salary / Stipend', key: 'salary_text', type: 'text' },
+              { label: 'Application Deadline', key: 'deadline_date', type: 'date' },
+            ].map(f => (
+              <div key={f.key}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>{f.label}</label>
+                <input
+                  type={f.type}
+                  value={(editForm as any)[f.key]}
+                  onChange={e => setEditForm(p => ({ ...p, [f.key]: e.target.value }))}
+                  style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, fontFamily: 'Manrope, sans-serif', boxSizing: 'border-box', outline: 'none', color: '#0f2419' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = '#1a7a4a'; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = '#e5e7eb'; }}
+                />
+              </div>
+            ))}
+
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Description</label>
+              <textarea
+                value={editForm.description}
+                onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))}
+                rows={4}
+                style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 13, fontFamily: 'Manrope, sans-serif', boxSizing: 'border-box', outline: 'none', resize: 'vertical', color: '#0f2419' }}
+                onFocus={e => { e.currentTarget.style.borderColor = '#1a7a4a'; }}
+                onBlur={e => { e.currentTarget.style.borderColor = '#e5e7eb'; }}
+              />
+            </div>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: '#374151', fontWeight: 600 }}>
+              <input
+                type="checkbox"
+                checked={editForm.is_urgent}
+                onChange={e => setEditForm(p => ({ ...p, is_urgent: e.target.checked }))}
+                style={{ width: 16, height: 16, accentColor: '#1a7a4a' }}
+              />
+              Mark as Urgent
+            </label>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setEditingJob(null)} style={{ padding: '10px 20px', borderRadius: 8, border: '1.5px solid #e5e7eb', background: 'transparent', cursor: 'pointer', fontWeight: 700, fontSize: 13, fontFamily: 'Manrope, sans-serif', color: '#6b7280' }}>
+                Cancel
+              </button>
+              <button
+                onClick={handleEditSave}
+                disabled={editSaving || !editForm.title.trim()}
+                style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: editSaving || !editForm.title.trim() ? '#d7f4ea' : '#1a7a4a', color: editSaving || !editForm.title.trim() ? '#6b9e82' : '#fff', cursor: editSaving || !editForm.title.trim() ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 13, fontFamily: 'Manrope, sans-serif' }}
+              >
+                {editSaving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -337,16 +495,25 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                             className="btn-primary"
                             style={{ fontSize: 12, padding: '6px 14px' }}
                             onClick={() => { setViewingJobId(job.id); fetchApplicants(job.id); }}
-                            disabled={(job.applicants_count ?? 0) === 0}
                           >
                             View Apps {(job.applicants_count ?? 0) > 0 && `(${job.applicants_count})`}
                           </button>
-                          <button
-                            style={{ fontSize: 12, padding: '6px 12px', borderRadius: 999, border: '1px solid #fca5a5', background: 'transparent', color: '#dc2626', fontWeight: 700, cursor: 'pointer', fontFamily: 'Manrope, sans-serif' }}
-                            onClick={() => showToast(`Job "${job.title}" closed.`)}
-                          >
-                            Close
-                          </button>
+                          {job.status !== 'closed' && (
+                            <>
+                              <button
+                                style={{ fontSize: 12, padding: '6px 12px', borderRadius: 999, border: '1px solid #d7f4ea', background: 'transparent', color: '#1a7a4a', fontWeight: 700, cursor: 'pointer', fontFamily: 'Manrope, sans-serif' }}
+                                onClick={() => openEditJob(job)}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                style={{ fontSize: 12, padding: '6px 12px', borderRadius: 999, border: '1px solid #fca5a5', background: 'transparent', color: '#dc2626', fontWeight: 700, cursor: 'pointer', fontFamily: 'Manrope, sans-serif' }}
+                                onClick={() => handleCloseJob(job.id, job.title)}
+                              >
+                                Close
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -400,7 +567,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                             <div style={{ position: 'relative' }}>
                               <select
                                 value={currentStage}
-                                onChange={e => { setStage(ap.id, e.target.value); showToast(`${ap.name} → ${e.target.value}`); }}
+                                onChange={e => { setStage(ap.id, e.target.value); showToast(`${ap.name} → ${e.target.value}`); void 0; }}
                                 style={{ fontSize: 11, border: '1px solid #e5e7eb', borderRadius: 6, padding: '3px 20px 3px 8px', cursor: 'pointer', outline: 'none', fontFamily: 'Manrope, sans-serif', background: '#fff', appearance: 'none', color: '#374151' }}
                               >
                                 {STAGES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -418,7 +585,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                             <button
                               className="btn-outline"
                               style={{ fontSize: 11, padding: '6px 12px' }}
-                              onClick={() => showToast(`Downloading ${ap.name}'s resume...`)}
+                              onClick={() => handleResumeOpen(ap.resumeUrl, ap.name)}
                             >
                               <Download size={11} /> Resume
                             </button>
@@ -448,7 +615,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap' }}>
                 {/* Avatar */}
                 <div style={{ width: 64, height: 64, borderRadius: 14, background: '#1a7a4a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 22, flexShrink: 0 }}>
-                  {viewingApplicant.name.split(' ').map(n => n[0]).slice(0, 2).join('')}
+                  {viewingApplicant.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('')}
                 </div>
 
                 {/* Name + meta */}
@@ -470,9 +637,22 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                     {getStage(viewingApplicant.id, viewingApplicant.stage)}
                   </span>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn-outline" style={{ fontSize: 12, padding: '7px 16px' }} onClick={() => showToast(`Downloading ${viewingApplicant.name}'s resume...`)}>
-                      <Download size={13} /> Download Resume
-                    </button>
+                    {viewingApplicant.resumeUrl ? (
+                      <a
+                        href={viewingApplicant.resumeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download
+                        className="btn-outline"
+                        style={{ fontSize: 12, padding: '7px 16px', display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}
+                      >
+                        <Download size={13} /> Download Resume
+                      </a>
+                    ) : (
+                      <button className="btn-outline" style={{ fontSize: 12, padding: '7px 16px', opacity: 0.5, cursor: 'not-allowed' }} disabled>
+                        <Download size={13} /> No Resume
+                      </button>
+                    )}
                     <button className="btn-primary" style={{ fontSize: 12, padding: '7px 16px' }} onClick={() => showToast(`Interview scheduled for ${viewingApplicant.name}!`)}>
                       Schedule Interview
                     </button>
@@ -493,10 +673,43 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                 {/* Skills */}
                 <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '20px' }}>
                   <div style={{ fontSize: 14, fontWeight: 800, color: '#0f2419', marginBottom: 12 }}>Key Skills</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {viewingApplicant.skills.map(s => (
-                      <span key={s} style={{ padding: '5px 14px', borderRadius: 999, background: '#f0faf4', border: '1px solid #d7f4ea', fontSize: 12, fontWeight: 700, color: '#1a7a4a' }}>{s}</span>
-                    ))}
+                  {viewingApplicant.skills.length > 0 ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {viewingApplicant.skills.map((s: string) => (
+                        <span key={s} style={{ padding: '5px 14px', borderRadius: 999, background: '#f0faf4', border: '1px solid #d7f4ea', fontSize: 12, fontWeight: 700, color: '#1a7a4a' }}>{s}</span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: 13, color: '#9ca3af', margin: 0 }}>No skills listed</p>
+                  )}
+                </div>
+
+                {/* Qualifications + Salary */}
+                <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '20px' }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: '#0f2419', marginBottom: 12 }}>Academic & Compensation</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', marginBottom: 6 }}>Qualifications</div>
+                      {viewingApplicant.qualifications.length > 0 ? (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {viewingApplicant.qualifications.map((q: string) => (
+                            <span key={q} style={{ padding: '3px 10px', borderRadius: 6, background: '#f3e5f5', border: '1px solid #e1bee7', fontSize: 11, fontWeight: 700, color: '#6a1b9a' }}>{q.replace(/_/g, ' ')}</span>
+                          ))}
+                        </div>
+                      ) : <span style={{ fontSize: 13, color: '#9ca3af' }}>—</span>}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', marginBottom: 6 }}>Expected Salary</div>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: '#0f2419' }}>{viewingApplicant.expectedSalary || '—'}</span>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', marginBottom: 6 }}>Articleship Months</div>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: '#0f2419' }}>{viewingApplicant.articleshipMonths || '—'}</span>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', marginBottom: 6 }}>Course</div>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: '#0f2419' }}>{viewingApplicant.course || '—'}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -505,13 +718,31 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                   <div style={{ fontSize: 14, fontWeight: 800, color: '#0f2419', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <FileText size={16} color="#1a7a4a" /> Resume
                   </div>
-                  <div style={{ background: '#f9fafb', border: '2px dashed #d7f4ea', borderRadius: 10, padding: '28px', textAlign: 'center' }}>
-                    <FileText size={32} color="#d7f4ea" style={{ marginBottom: 8 }} />
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#6b7280', marginBottom: 12 }}>{viewingApplicant.name}_Resume.pdf</div>
-                    <button className="btn-primary" style={{ fontSize: 12, padding: '8px 20px' }} onClick={() => showToast(`Downloading ${viewingApplicant.name}'s resume...`)}>
-                      <Download size={13} /> Download PDF
-                    </button>
-                  </div>
+                  {viewingApplicant.resumeUrl ? (
+                    <div style={{ background: '#f0faf4', border: '1.5px solid #d7f4ea', borderRadius: 10, padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <FileText size={28} color="#1a7a4a" />
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#0f2419' }}>
+                            {viewingApplicant.resumeUrl.startsWith('http') ? viewingApplicant.resumeUrl.split('/').pop() : viewingApplicant.resumeUrl}
+                          </div>
+                          <div style={{ fontSize: 11, color: '#6b7280' }}>Resume on file</div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleResumeOpen(viewingApplicant.resumeUrl, viewingApplicant.name)}
+                        className="btn-primary"
+                        style={{ fontSize: 12, padding: '8px 20px' }}
+                      >
+                        <Download size={13} /> View / Download
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ background: '#f9fafb', border: '2px dashed #e5e7eb', borderRadius: 10, padding: '28px', textAlign: 'center' }}>
+                      <FileText size={32} color="#d1d5db" style={{ marginBottom: 8 }} />
+                      <div style={{ fontSize: 13, color: '#9ca3af' }}>No resume uploaded by candidate</div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -620,7 +851,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                             <button className="btn-primary" style={{ fontSize: 11, padding: '6px 12px' }} onClick={() => setViewingApplicant(ap)}>
                               <Eye size={11} /> View Profile
                             </button>
-                            <button className="btn-outline" style={{ fontSize: 11, padding: '6px 12px' }} onClick={() => showToast(`Downloading ${ap.name}'s resume...`)}>
+                            <button className="btn-outline" style={{ fontSize: 11, padding: '6px 12px' }} onClick={() => handleResumeOpen(ap.resumeUrl, ap.name)}>
                               <Download size={11} /> Resume
                             </button>
                           </div>
@@ -718,7 +949,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
               <div style={{ display: 'flex', gap: 12 }}>
                 <button className="btn-primary" style={{ fontSize: 14, padding: '11px 28px' }} onClick={() => handlePublish(false)}>Publish Job</button>
                 <button className="btn-outline" style={{ fontSize: 14, padding: '11px 24px' }} onClick={() => handlePublish(true)}>Save Draft</button>
-                <button className="btn-ghost" style={{ fontSize: 13, marginLeft: 'auto' }} onClick={() => setForm({ title: '', company: '', type: 'Full-Time', workplace: 'Hybrid', experience: 'Fresher / 0-1 yr', location: '', salary: '', description: '', qualifications: [] })}>Clear</button>
+                <button className="btn-ghost" style={{ fontSize: 13, marginLeft: 'auto' }} onClick={() => setForm({ title: '', company: '', type: 'Full-Time', workplace: 'Hybrid', experience: 'Fresher / 0-1 yr', location: '', salary: '', skills: '', deadline: '', description: '', qualifications: [] as string[] })}>Clear</button>
               </div>
             </div>
           </div>

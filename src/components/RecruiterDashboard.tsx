@@ -439,9 +439,6 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                             <button className="btn-ghost" style={{ fontSize: 11, padding: '5px 10px' }} onClick={() => { setViewingApplicant(ap); setPage('applicants'); }}>
                               <Eye size={11} /> View
                             </button>
-                            <button className="btn-primary" style={{ fontSize: 11, padding: '5px 12px' }} onClick={() => showToast(`Interview scheduled for ${ap.name}`)}>
-                              Schedule
-                            </button>
                           </div>
                         </td>
                       </tr>
@@ -653,9 +650,6 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                         <Download size={13} /> No Resume
                       </button>
                     )}
-                    <button className="btn-primary" style={{ fontSize: 12, padding: '7px 16px' }} onClick={() => showToast(`Interview scheduled for ${viewingApplicant.name}!`)}>
-                      Schedule Interview
-                    </button>
                   </div>
                 </div>
               </div>
@@ -773,28 +767,32 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
 
                 {/* Stage updater */}
                 <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '20px' }}>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: '#0f2419', marginBottom: 12 }}>Update Stage</div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: '#0f2419', marginBottom: 4 }}>Update Stage</div>
+                  <p style={{ fontSize: 11, color: '#9ca3af', marginBottom: 12 }}>Applied & ArivuPro Review are handled by ArivuPro team.</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {STAGES.map(s => {
                       const current = getStage(viewingApplicant.id, viewingApplicant.stage);
                       const isActive = current === s;
+                      const locked = s === 'Applied' || s === 'ArivuPro Review';
                       return (
                         <button
                           key={s}
-                          onClick={() => { setStage(viewingApplicant.id, s); showToast(`${viewingApplicant.name} → ${s}`); }}
+                          onClick={() => { if (!locked) { setStage(viewingApplicant.id, s); showToast(`${viewingApplicant.name} → ${s}`); } }}
+                          disabled={locked}
                           style={{
                             display: 'flex', alignItems: 'center', gap: 8, width: '100%',
                             padding: '8px 12px', borderRadius: 8, border: `1px solid ${isActive ? stageColor(s) : '#e5e7eb'}`,
-                            background: isActive ? stageColor(s) + '12' : '#fff',
-                            cursor: 'pointer', textAlign: 'left', fontFamily: 'Manrope, sans-serif',
+                            background: isActive ? stageColor(s) + '12' : locked ? '#f9fafb' : '#fff',
+                            cursor: locked ? 'not-allowed' : 'pointer', textAlign: 'left', fontFamily: 'Manrope, sans-serif',
                             fontSize: 12, fontWeight: isActive ? 800 : 600,
-                            color: isActive ? stageColor(s) : '#6b7280',
+                            color: isActive ? stageColor(s) : locked ? '#d1d5db' : '#6b7280',
                             transition: 'all 0.15s',
                           }}
                         >
                           <div style={{ width: 7, height: 7, borderRadius: '50%', background: isActive ? stageColor(s) : '#d1d5db', flexShrink: 0 }} />
                           {s}
-                          {isActive && <span style={{ marginLeft: 'auto', fontSize: 10 }}>✓ Current</span>}
+                          {locked && <span style={{ marginLeft: 'auto', fontSize: 10, color: '#d1d5db' }}>ArivuPro</span>}
+                          {isActive && !locked && <span style={{ marginLeft: 'auto', fontSize: 10 }}>✓ Current</span>}
                         </button>
                       );
                     })}

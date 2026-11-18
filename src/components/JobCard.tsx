@@ -15,36 +15,55 @@ function relativeTime(dateStr: string): string {
   if (!dateStr) return '';
   const date = new Date(dateStr);
   const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000);
   if (diffDays === 0) return 'Today';
   if (diffDays === 1) return '1 day ago';
   if (diffDays < 7) return `${diffDays} days ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
-  return `${Math.floor(diffDays / 30)}mo ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+  return `${Math.floor(diffDays / 30)} months ago`;
 }
 
 function getCompanyInitials(company: string): string {
-  return company.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+  return company.split(' ').filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase();
 }
 
-function JobTypePill({ jobType }: { jobType: string }) {
-  const styles: Record<string, { bg: string; color: string; border: string }> = {
-    'Full-Time':                      { bg: '#e8f5e9', color: '#2e7d32', border: '#c8e6c9' },
-    'Articleship / Industrial Training': { bg: '#fff8e1', color: '#f57f17', border: '#ffe082' },
-    'Internship':                     { bg: '#e3f2fd', color: '#1565c0', border: '#bbdefb' },
-    'Contract':                       { bg: '#f3e5f5', color: '#6a1b9a', border: '#e1bee7' },
+// Qualification badge — matches the real portal's credential pills
+function QualBadge({ qual }: { qual: string }) {
+  const map: Record<string, { bg: string; color: string }> = {
+    'CA':       { bg: '#eff6ff', color: '#1d4ed8' },
+    'ACCA':     { bg: '#f0fdf4', color: '#15803d' },
+    'CMA':      { bg: '#fef3c7', color: '#b45309' },
+    'CMA India':{ bg: '#fef3c7', color: '#b45309' },
+    'CS':       { bg: '#f3e8ff', color: '#7c3aed' },
+    'CFA':      { bg: '#fff1f2', color: '#be123c' },
+    'US CPA':   { bg: '#f0f9ff', color: '#0369a1' },
+    'US CMA':   { bg: '#fdf4ff', color: '#7e22ce' },
   };
-  const s = styles[jobType] ?? { bg: '#f5f5f5', color: '#616161', border: '#e0e0e0' };
-  const label = jobType === 'Articleship / Industrial Training' ? 'Articleship' : jobType;
+  const s = map[qual] ?? { bg: '#f3f4f6', color: '#374151' };
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center',
-      padding: '3px 10px', borderRadius: 6,
-      background: s.bg, color: s.color, border: `1px solid ${s.border}`,
-      fontSize: 11, fontWeight: 700, letterSpacing: '0.01em',
+      padding: '2px 8px', borderRadius: 4,
+      background: s.bg, color: s.color,
+      fontSize: 11, fontWeight: 700, letterSpacing: '0.03em',
     }}>
-      {label}
+      {qual}
+    </span>
+  );
+}
+
+// Tier badge
+function TierBadge({ jobType }: { jobType: string }) {
+  const isArticleship = jobType === 'Articleship / Industrial Training';
+  if (!isArticleship) return null;
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center',
+      padding: '2px 8px', borderRadius: 4,
+      background: '#f0faf4', color: '#1a7a4a',
+      fontSize: 11, fontWeight: 700, letterSpacing: '0.03em',
+    }}>
+      Articleship
     </span>
   );
 }
@@ -54,214 +73,112 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onApply, onViewDetails, i
   const companyInitials = getCompanyInitials(job.company);
   const postedLabel = relativeTime(job.postedDate);
 
-  return (
-    <div
-      className="job-card-pro"
-      style={{
-        background: '#fff',
-        border: '1px solid #e5e7eb',
-        borderRadius: 12,
-        padding: '20px 22px',
-        transition: 'box-shadow 0.18s ease, border-color 0.18s ease, transform 0.18s ease',
-        cursor: 'default',
-        position: 'relative',
-      }}
-    >
-      {/* Top: logo + title/company + badges */}
-      <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+  // Show qualification badges — up to 3
+  const quals = job.qualifications.slice(0, 3).map(q => q.replace(/_/g, ' '));
 
-        {/* Company Logo */}
-        <div style={{
-          width: 48, height: 48, borderRadius: 10, flexShrink: 0,
-          background: '#f3f4f6', border: '1px solid #e5e7eb',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontWeight: 800, fontSize: 13, color: '#374151',
-          letterSpacing: '-0.01em', fontFamily: 'Manrope, sans-serif',
-        }}>
+  return (
+    <div className="ap-job-card">
+      {/* ── Row 1: Logo + all content ── */}
+      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+
+        {/* Company logo — 72×72 like the real portal */}
+        <div className="ap-company-logo">
           {job.logoText || companyInitials}
         </div>
 
-        {/* Title + Company + Badges */}
+        {/* Right column */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-            <button
-              onClick={() => onViewDetails(job)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
-            >
-              <span className="job-title-link" style={{
-                fontSize: 15, fontWeight: 800, color: '#111827',
-                lineHeight: 1.3, letterSpacing: '-0.01em', display: 'block',
-                marginBottom: 2,
-              }}>
-                {job.title}
-              </span>
-            </button>
 
-            {/* Top-right badges */}
-            <div style={{ display: 'flex', gap: 5, flexShrink: 0, flexWrap: 'wrap' }}>
-              {job.arivuproExclusive && (
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center',
-                  padding: '3px 9px', borderRadius: 6,
-                  background: '#f0faf4', border: '1px solid #d7f4ea',
-                  color: '#1a7a4a', fontSize: 10, fontWeight: 700,
-                }}>
-                  ArivuPro
-                </span>
-              )}
-              {job.isUrgent && (
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center',
-                  padding: '3px 9px', borderRadius: 6,
-                  background: '#fef2f2', border: '1px solid #fecaca',
-                  color: '#dc2626', fontSize: 10, fontWeight: 700,
-                }}>
-                  Urgent
-                </span>
-              )}
-            </div>
+          {/* Badges row — qualification + job type */}
+          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 6 }}>
+            {quals.map(q => <QualBadge key={q} qual={q} />)}
+            <TierBadge jobType={job.jobType} />
+            {job.isUrgent && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 4, background: '#fef2f2', color: '#dc2626', fontSize: 11, fontWeight: 700 }}>
+                Urgent
+              </span>
+            )}
+            {job.arivuproExclusive && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 4, background: '#fede6d', color: '#5a4a00', fontSize: 11, fontWeight: 700 }}>
+                ArivuPro
+              </span>
+            )}
           </div>
 
-          {/* Company name + location */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 1 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>
-              {job.company}
-            </span>
-            <span style={{ color: '#d1d5db', fontSize: 12 }}>·</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#6b7280', fontWeight: 500 }}>
-              <MapPin size={11} color="#9ca3af" />
+          {/* Job title */}
+          <button
+            onClick={() => onViewDetails(job)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', display: 'block', marginBottom: 4 }}
+          >
+            <span className="ap-job-title">{job.title}</span>
+          </button>
+
+          {/* Company name */}
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 10 }}>
+            {job.company}
+          </div>
+
+          {/* Meta row: location · stipend · duration · posted */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 0, alignItems: 'center' }}>
+            <span className="ap-meta-item">
+              <MapPin size={12} color="#9ca3af" />
               {job.city}{job.workplaceType === 'Remote' ? ' (Remote)' : job.workplaceType === 'Hybrid' ? ' (Hybrid)' : ''}
             </span>
+            <span className="ap-meta-sep">·</span>
+            <span className="ap-meta-item" style={{ fontWeight: 700, color: '#0f2419' }}>
+              {job.salaryText}
+            </span>
+            {job.jobType === 'Articleship / Industrial Training' && (
+              <>
+                <span className="ap-meta-sep">·</span>
+                <span className="ap-meta-item">2 years</span>
+              </>
+            )}
+            {postedLabel && (
+              <>
+                <span className="ap-meta-sep">·</span>
+                <span className="ap-meta-item" style={{ color: '#9ca3af' }}>
+                  <Clock size={11} color="#d1d5db" />
+                  Posted {postedLabel}
+                </span>
+              </>
+            )}
+            {job.applicantsCount > 0 && (
+              <>
+                <span className="ap-meta-sep">·</span>
+                <span className="ap-meta-item" style={{ color: '#9ca3af' }}>{job.applicantsCount} applicants</span>
+              </>
+            )}
           </div>
         </div>
-      </div>
 
-      {/* ── Key Details row ── */}
-      <div style={{
-        display: 'flex', flexWrap: 'wrap', gap: 16,
-        margin: '12px 0 10px',
-        fontSize: 13, color: '#374151',
-      }}>
-        <span><span style={{ color: '#9ca3af', fontWeight: 500 }}>Stipend/CTC </span><strong style={{ fontWeight: 700, color: '#111827' }}>{job.salaryText}</strong></span>
-        <span style={{ color: '#e5e7eb' }}>·</span>
-        <span><span style={{ color: '#9ca3af', fontWeight: 500 }}>Exp </span><strong style={{ fontWeight: 600, color: '#374151' }}>{job.experienceLevel}</strong></span>
-        <span style={{ color: '#e5e7eb' }}>·</span>
-        <span style={{ fontWeight: 600, color: '#374151' }}>{job.qualifications.slice(0, 3).map(q => q.replace(/_/g, ' ')).join(', ') || 'Open'}</span>
-      </div>
-
-      {/* ── Type + Department tags ── */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
-        <JobTypePill jobType={job.jobType} />
-        {job.department && (
-          <span style={{
-            padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-            background: '#f5f5f5', color: '#616161', border: '1px solid #e0e0e0',
-          }}>
-            {job.department}
-          </span>
-        )}
-        {job.workplaceType !== 'Onsite' && (
-          <span style={{
-            padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-            background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb',
-          }}>
-            {job.workplaceType}
-          </span>
-        )}
-      </div>
-
-      {/* ── Footer: posted time + action buttons ── */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        paddingTop: 12, borderTop: '1px solid #f3f4f6', gap: 10, flexWrap: 'wrap',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {postedLabel && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#9ca3af', fontWeight: 500 }}>
-              <Clock size={11} color="#d1d5db" />
-              {postedLabel}
-            </span>
-          )}
-          {job.applicantsCount > 0 && (
-            <span style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500 }}>
-              {job.applicantsCount} applicants
-            </span>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* Action buttons — right aligned on desktop */}
+        <div className="ap-card-actions">
           {onSaveToggle && (
             <button
               onClick={e => { e.stopPropagation(); onSaveToggle(job); }}
-              title={isSaved ? 'Remove from saved' : 'Save job'}
-              style={{
-                background: isSaved ? '#f0faf4' : 'none',
-                border: `1.5px solid ${isSaved ? '#d7f4ea' : '#e5e7eb'}`,
-                borderRadius: 8, padding: '7px 10px',
-                cursor: 'pointer', display: 'flex', alignItems: 'center',
-                color: isSaved ? '#1a7a4a' : '#9ca3af',
-                transition: 'all 0.15s',
-              }}
-              className="save-btn"
+              className={`ap-save-btn${isSaved ? ' saved' : ''}`}
+              title={isSaved ? 'Remove from saved' : 'Save'}
             >
-              {isSaved ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
+              {isSaved ? <BookmarkCheck size={15} /> : <Bookmark size={15} />}
             </button>
           )}
-          <button
-            onClick={() => onViewDetails(job)}
-            style={{
-              background: 'none', border: '1.5px solid #e5e7eb',
-              borderRadius: 8, padding: '7px 14px',
-              fontSize: 12, fontWeight: 700, color: '#374151',
-              cursor: 'pointer', fontFamily: 'Manrope, sans-serif',
-              transition: 'border-color 0.15s, color 0.15s',
-            }}
-            className="view-details-btn"
-          >
-            Details
-          </button>
 
           {isApplied ? (
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-              background: '#e8f5e9', color: '#2e7d32',
-              borderRadius: 8, padding: '7px 14px',
-              fontSize: 12, fontWeight: 700, border: '1.5px solid #c8e6c9',
-            }}>
-              <CheckCircle2 size={13} />
-              Applied
+            <span className="ap-applied-chip">
+              <CheckCircle2 size={13} /> Applied
             </span>
           ) : isScraped ? (
             <a
               href={job.sourceUrl || '#'}
               target="_blank"
               rel="noopener noreferrer"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 5,
-                background: '#1a7a4a', color: '#fff',
-                borderRadius: 8, padding: '7px 16px',
-                fontSize: 12, fontWeight: 700, textDecoration: 'none',
-                border: '1.5px solid #1a7a4a', fontFamily: 'Manrope, sans-serif',
-                transition: 'background 0.15s',
-              }}
-              className="apply-btn-external"
+              className="ap-btn-view"
             >
-              Apply Now
-              <ExternalLink size={11} />
+              View <ExternalLink size={11} />
             </a>
           ) : (
-            <button
-              onClick={() => onApply(job)}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 5,
-                background: '#1a7a4a', color: '#fff',
-                borderRadius: 8, padding: '7px 16px',
-                fontSize: 12, fontWeight: 700,
-                border: 'none', cursor: 'pointer', fontFamily: 'Manrope, sans-serif',
-                transition: 'background 0.15s',
-              }}
-              className="apply-btn-easy"
-            >
+            <button onClick={() => onApply(job)} className="ap-btn-apply">
               Apply
             </button>
           )}
@@ -269,18 +186,86 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onApply, onViewDetails, i
       </div>
 
       <style>{`
-        .job-card-pro:hover {
-          box-shadow: 0 4px 24px rgba(15,36,25,0.10);
-          border-color: #d7f4ea;
-          transform: translateY(-1px);
+        .ap-job-card {
+          background: #fff;
+          border: 1px solid #e5e7eb;
+          border-radius: 10px;
+          padding: 20px 24px;
+          transition: box-shadow 0.15s ease, border-color 0.15s ease;
+          cursor: default;
         }
-        .job-title-link:hover { color: #1a7a4a !important; }
-        .view-details-btn:hover { border-color: #1a7a4a !important; color: #1a7a4a !important; }
-        .apply-btn-external:hover, .apply-btn-easy:hover { background: #155f39 !important; }
-        .save-btn:hover { border-color: #1a7a4a !important; color: #1a7a4a !important; background: #f0faf4 !important; }
+        .ap-job-card:hover {
+          border-color: #c8e6d6;
+          box-shadow: 0 2px 16px rgba(15,36,25,0.07);
+        }
+        .ap-company-logo {
+          width: 72px; height: 72px;
+          border-radius: 8px; flex-shrink: 0;
+          background: #f8f9fa;
+          border: 1px solid #e9ecef;
+          display: flex; align-items: center; justify-content: center;
+          font-weight: 800; font-size: 15px; color: #495057;
+          letter-spacing: -0.01em; font-family: Manrope, sans-serif;
+        }
+        .ap-job-title {
+          font-size: 15px; font-weight: 700; color: #111827;
+          line-height: 1.35; display: block;
+          font-family: Manrope, sans-serif;
+          text-transform: uppercase; letter-spacing: 0.01em;
+        }
+        .ap-job-title:hover { color: #1a7a4a; }
+        .ap-meta-item {
+          display: inline-flex; align-items: center; gap: 4px;
+          font-size: 13px; color: #6b7280; font-weight: 500;
+        }
+        .ap-meta-sep {
+          margin: 0 8px; color: #d1d5db; font-size: 13px;
+        }
+        .ap-card-actions {
+          display: flex; flex-direction: column; gap: 8px;
+          align-items: flex-end; flex-shrink: 0;
+        }
+        .ap-save-btn {
+          background: none; border: 1px solid #e5e7eb;
+          border-radius: 6px; padding: 6px 8px;
+          cursor: pointer; color: #9ca3af;
+          display: flex; align-items: center;
+          transition: all 0.15s;
+        }
+        .ap-save-btn:hover, .ap-save-btn.saved {
+          border-color: #1a7a4a; color: #1a7a4a; background: #f0faf4;
+        }
+        .ap-btn-view {
+          display: inline-flex; align-items: center; gap: 5px;
+          padding: 7px 18px; border-radius: 6px;
+          background: #0f2419; color: #fff;
+          font-size: 13px; font-weight: 700;
+          text-decoration: none; font-family: Manrope, sans-serif;
+          border: none; cursor: pointer;
+          transition: background 0.15s;
+          white-space: nowrap;
+        }
+        .ap-btn-view:hover { background: #1a7a4a; }
+        .ap-btn-apply {
+          display: inline-flex; align-items: center;
+          padding: 7px 18px; border-radius: 6px;
+          background: #0f2419; color: #fff;
+          font-size: 13px; font-weight: 700;
+          border: none; cursor: pointer; font-family: Manrope, sans-serif;
+          transition: background 0.15s;
+        }
+        .ap-btn-apply:hover { background: #1a7a4a; }
+        .ap-applied-chip {
+          display: inline-flex; align-items: center; gap: 5px;
+          background: #f0faf4; color: #1a7a4a;
+          border-radius: 6px; padding: 7px 14px;
+          font-size: 13px; font-weight: 700;
+          border: 1px solid #d7f4ea;
+        }
         @media (max-width: 640px) {
-          .job-card-pro { padding: 14px 14px !important; }
-          .job-card-pro:hover { transform: none !important; }
+          .ap-job-card { padding: 14px 14px; }
+          .ap-company-logo { width: 48px; height: 48px; font-size: 12px; }
+          .ap-card-actions { flex-direction: row; }
         }
       `}</style>
     </div>

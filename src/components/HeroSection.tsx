@@ -38,20 +38,110 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onSearch
     <div>
       {/* ── HERO ── */}
       <section style={{
-        background: 'linear-gradient(160deg, #f0faf4 0%, #ffffff 50%, #f5f3ff 100%)',
+        background: 'linear-gradient(135deg, #e8f5ee 0%, #f0faf4 30%, #fdf8ee 70%, #fef3e2 100%)',
         borderBottom: '1px solid #e5e7eb',
         padding: '64px 24px 56px',
         textAlign: 'center',
         position: 'relative',
         overflow: 'hidden',
+        minHeight: 480,
       }}>
-        {/* decorative blobs */}
-        <div style={{ position: 'absolute', top: -60, right: -80, width: 320, height: 320, borderRadius: '50%', background: 'radial-gradient(circle, rgba(26,122,74,0.07) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: -40, left: -60, width: 240, height: 240, borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,58,237,0.05) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ maxWidth: 760, margin: '0 auto' }}>
+
+        {/* ── SVG background scene — dotted path + flag ── */}
+        <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} viewBox="0 0 1400 480" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          {/* dotted curved journey path */}
+          <path d="M 80 420 Q 300 480 500 360 Q 650 280 700 300 Q 760 320 900 260 Q 1050 200 1200 140 Q 1300 110 1380 80"
+            fill="none" stroke="#1a7a4a" strokeWidth="2.5" strokeDasharray="6 10" strokeLinecap="round" opacity="0.35" />
+          {/* path waypoint dots */}
+          {[[140,445],[360,400],[580,330],[700,300],[900,260],[1100,185],[1240,135]].map(([cx,cy],i) => (
+            <circle key={i} cx={cx} cy={cy} r={i===0||i===6?7:5} fill={i===0||i===6?'#1a7a4a':'#b8dfc8'} stroke="#fff" strokeWidth="2" opacity="0.8" />
+          ))}
+          {/* goal flag at end of path */}
+          <rect x="1232" y="82" width="4" height="52" fill="#1a7a4a" rx="2" opacity="0.7" />
+          <path d="M1236 82 L1268 93 L1236 104 Z" fill="#f59e0b" opacity="0.9" />
+          {/* green checkmark circle on flag */}
+          <circle cx="1232" cy="140" r="10" fill="#1a7a4a" opacity="0.8" />
+          <path d="M1227 140 L1230 143 L1237 136" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+
+        {/* ── Left floating job card illustration ── */}
+        <div style={{
+          position: 'absolute', left: '3%', top: '8%',
+          background: '#fff', borderRadius: 14, padding: '14px 16px',
+          boxShadow: '0 8px 32px rgba(15,36,25,0.10)',
+          width: 190, pointerEvents: 'none',
+          transform: 'rotate(-3deg)',
+        }} className="hero-float-card">
+          {/* checkmark badge */}
+          <div style={{ position: 'absolute', top: -8, right: -8, width: 22, height: 22, borderRadius: '50%', background: '#1a7a4a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="11" height="11" viewBox="0 0 11 11"><path d="M2 5.5 L4.5 8 L9 3" stroke="#fff" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 6, background: '#f0faf4', border: '1px solid #d7f4ea', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#1a7a4a', flexShrink: 0 }}>CA</div>
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 800, color: '#0f2419', fontFamily: 'Manrope,sans-serif', lineHeight: 1.2 }}>CA Articleship</div>
+              <div style={{ fontSize: 9, color: '#9ca3af', fontFamily: 'Manrope,sans-serif' }}>Big 4 Firm · Mumbai</div>
+            </div>
+          </div>
+          <div style={{ height: 6, background: '#f3f4f6', borderRadius: 3, marginBottom: 5 }}><div style={{ height: '100%', width: '75%', background: '#d7f4ea', borderRadius: 3 }} /></div>
+          <div style={{ height: 5, background: '#f3f4f6', borderRadius: 3, width: '55%' }} />
+        </div>
+
+        {/* ── Right floating job card illustration ── */}
+        <div style={{
+          position: 'absolute', right: '3%', top: '6%',
+          background: '#fff', borderRadius: 14, padding: '14px 16px',
+          boxShadow: '0 8px 32px rgba(15,36,25,0.10)',
+          width: 200, pointerEvents: 'none',
+          transform: 'rotate(2.5deg)',
+        }} className="hero-float-card">
+          <div style={{ position: 'absolute', top: -8, right: -8, width: 22, height: 22, borderRadius: '50%', background: '#1a7a4a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="11" height="11" viewBox="0 0 11 11"><path d="M2 5.5 L4.5 8 L9 3" stroke="#fff" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 6, background: '#fff7ed', border: '1px solid #fed7aa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, color: '#c2410c', flexShrink: 0 }}>CMA</div>
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 800, color: '#0f2419', fontFamily: 'Manrope,sans-serif', lineHeight: 1.2 }}>Finance Analyst</div>
+              <div style={{ fontSize: 9, color: '#9ca3af', fontFamily: 'Manrope,sans-serif' }}>MNC · Bengaluru</div>
+            </div>
+          </div>
+          <div style={{ height: 6, background: '#f3f4f6', borderRadius: 3, marginBottom: 5 }}><div style={{ height: '100%', width: '60%', background: '#fde68a', borderRadius: 3 }} /></div>
+          <div style={{ height: 5, background: '#f3f4f6', borderRadius: 3, width: '45%' }} />
+        </div>
+
+        {/* ── Bottom-left mini card ── */}
+        <div style={{
+          position: 'absolute', left: '6%', bottom: '14%',
+          background: '#fff', borderRadius: 10, padding: '10px 12px',
+          boxShadow: '0 4px 16px rgba(15,36,25,0.08)',
+          width: 150, pointerEvents: 'none',
+          transform: 'rotate(1.5deg)',
+        }} className="hero-float-card">
+          <div style={{ height: 6, background: '#f3f4f6', borderRadius: 3, marginBottom: 5, width: '80%' }}><div style={{ height: '100%', width: '90%', background: '#bfdbfe', borderRadius: 3 }} /></div>
+          <div style={{ height: 5, background: '#f3f4f6', borderRadius: 3, width: '55%', marginBottom: 8 }} />
+          <div style={{ display: 'flex', gap: 4 }}>
+            <div style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: '#f0faf4', color: '#1a7a4a', fontFamily: 'Manrope,sans-serif' }}>CS</div>
+            <div style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: '#fef3c7', color: '#b45309', fontFamily: 'Manrope,sans-serif' }}>Delhi</div>
+          </div>
+        </div>
+
+        {/* ── Bottom-right mini card ── */}
+        <div style={{
+          position: 'absolute', right: '8%', bottom: '10%',
+          background: '#0f2419', borderRadius: 10, padding: '10px 14px',
+          boxShadow: '0 4px 16px rgba(15,36,25,0.15)',
+          width: 160, pointerEvents: 'none',
+          transform: 'rotate(-2deg)',
+        }} className="hero-float-card">
+          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontFamily: 'Manrope,sans-serif', marginBottom: 4 }}>New today</div>
+          <div style={{ height: 6, background: 'rgba(255,255,255,0.12)', borderRadius: 3, marginBottom: 5 }}><div style={{ height: '100%', width: '70%', background: '#4ade80', borderRadius: 3 }} /></div>
+          <div style={{ height: 5, background: 'rgba(255,255,255,0.08)', borderRadius: 3, width: '50%' }} />
+        </div>
+
+        <div style={{ maxWidth: 760, margin: '0 auto', position: 'relative', zIndex: 1 }}>
 
           {/* Eyebrow */}
-          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#1a7a4a', background: '#f0faf4', border: '1px solid #d7f4ea', borderRadius: 20, padding: '4px 12px' }}>
+          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: '#1a7a4a', background: '#f0faf4', border: '1px solid #d7f4ea', borderRadius: 20, padding: '4px 12px' }}>
             Trusted by 10,000+ finance students
           </span>
 
@@ -91,7 +181,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onSearch
               />
             </div>
             <div className="hero-search-divider" style={{ width: 1, height: 26, background: '#e5e7eb', flexShrink: 0, margin: '0 10px' }} />
-            <div className="hero-search-location" style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 140 }}>
+            <div className="hero-search-location" style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 130 }}>
               <MapPin size={14} color="#9ca3af" style={{ flexShrink: 0 }} />
               <select
                 value={location}
@@ -100,7 +190,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onSearch
                   border: 'none', outline: 'none', fontSize: 14,
                   fontFamily: 'Manrope, sans-serif', color: location ? '#0f2419' : '#9ca3af',
                   background: 'transparent', cursor: 'pointer',
-                  appearance: 'none', width: '100%',
+                  width: '100%', padding: '2px 0',
                 }}
               >
                 <option value="">All cities</option>
@@ -136,6 +226,12 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onSearch
             ))}
           </div>
         </div>
+
+        <style>{`
+          @media (max-width: 900px) {
+            .hero-float-card { display: none !important; }
+          }
+        `}</style>
       </section>
 
       {/* ── STATS STRIP ── */}

@@ -104,8 +104,8 @@ export const Navbar: React.FC<NavbarProps> = ({
         height: 60, display: 'flex', alignItems: 'center',
         justifyContent: 'space-between', gap: 12,
       }}>
-        {/* Left slot — back button */}
-        <div style={{ flex: '0 0 34px' }}>
+        {/* Left — back button + logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           <button
             onClick={onBack}
             aria-label="Go back within ArivuPro"
@@ -115,28 +115,25 @@ export const Navbar: React.FC<NavbarProps> = ({
               width: 34, height: 34, borderRadius: 9,
               border: '1px solid #e5e7eb', background: canGoBack ? '#fff' : '#f9fafb',
               color: canGoBack ? '#0f2419' : '#9ca3af',
-              cursor: canGoBack ? 'pointer' : 'default', padding: 0,
+              cursor: canGoBack ? 'pointer' : 'default', padding: 0, flexShrink: 0,
             }}
           >
             <ArrowLeft size={18} />
           </button>
+          <button
+            onClick={() => onTabChange('jobs')}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
+          >
+            <img
+              src="/logo-white.png"
+              alt="ArivuPro Academy"
+              style={{ height: 40, width: 'auto', background: '#1b5234', borderRadius: 10, padding: '6px 14px' }}
+            />
+          </button>
         </div>
-        {/* Centre slot — logo always perfectly centred */}
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-        <button
-          onClick={() => onTabChange('jobs')}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-        >
-          <img
-            src="/logo-white.png"
-            alt="ArivuPro Academy"
-            style={{ height: 40, width: 'auto', background: '#1b5234', borderRadius: 10, padding: '6px 14px' }}
-          />
-        </button>
-        </div>{/* end centre slot */}
 
-        {/* Right slot — user controls */}
-        <div className="nav-desktop-right" style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flex: '0 0 auto' }}>
+        {/* Right — user controls */}
+        <div className="nav-desktop-right" style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           {userRole === 'guest' ? (
             <>
               <button

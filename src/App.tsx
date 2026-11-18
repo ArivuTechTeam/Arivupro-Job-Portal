@@ -116,6 +116,7 @@ export default function App() {
     Overview: true, People: true, Listings: true, Placement: true, System: true,
   });
   const [adminSidebarOpen, setAdminSidebarOpen] = useState(false);
+  const [recruiterProfileSignal, setRecruiterProfileSignal] = useState(0);
 
   // Persist auth and tab to sessionStorage (tab-isolated — no cross-tab contamination)
   useEffect(() => { sessionStorage.setItem(AUTH_KEY, JSON.stringify(auth)); }, [auth]);
@@ -175,6 +176,10 @@ export default function App() {
   }, [auth.role]);
 
   const navigateToTab = (tab: NavTab, options?: { replace?: boolean }) => {
+    if (tab === 'profile' && auth.role === 'recruiter') {
+      setRecruiterProfileSignal(s => s + 1);
+      return;
+    }
     if (tab === 'profile' && auth.role !== 'student') return;
     setCurrentTab(tab);
     setSelectedCompany(null);
@@ -1108,6 +1113,7 @@ export default function App() {
               recruiterEmail={auth.email}
               companyName={recruiterCompanyName}
               sessionToken={recruiterSessionToken}
+              openProfileSignal={recruiterProfileSignal}
             />
           )
         )}

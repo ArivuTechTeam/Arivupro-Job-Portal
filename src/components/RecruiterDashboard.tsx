@@ -11,6 +11,7 @@ interface RecruiterDashboardProps {
   recruiterEmail: string;
   companyName: string;
   sessionToken: string;
+  openProfileSignal?: number;
 }
 
 type RecruiterPage = 'dashboard' | 'jobs' | 'applicants' | 'post' | 'profile';
@@ -42,8 +43,13 @@ function matchBadge(score: number) {
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
-export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruiterName, recruiterEmail, companyName, sessionToken }) => {
+export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruiterName, recruiterEmail, companyName, sessionToken, openProfileSignal }) => {
   const [page, setPage] = useState<RecruiterPage>('dashboard');
+
+  // When parent increments openProfileSignal (e.g. Navbar "My Profile" click), open profile page
+  React.useEffect(() => {
+    if (openProfileSignal) setPage('profile');
+  }, [openProfileSignal]);
   const [viewingJobId, setViewingJobId] = useState<string | null>(null);
   const [viewingApplicant, setViewingApplicant] = useState<any | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -105,6 +111,22 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
   const [logoUploading, setLogoUploading] = useState(false);
   const [logoError, setLogoError] = useState<string | null>(null);
   const [logoSuccess, setLogoSuccess] = useState(false);
+  const [profileData, setProfileData] = useState<Record<string, string>>({});
+
+  // Fetch full profile once on mount
+  useEffect(() => {
+    getToken().then(token => {
+      if (!token) return;
+      fetch('/api/recruiters/profile', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data) {
+            setProfileData(data);
+            if (data.logo_url) setLogoPreview(data.logo_url);
+          }
+        }).catch(() => {});
+    });
+  }, []);
   const [form, setForm] = useState({ title: '', company: '', type: 'Full-Time', workplace: 'Hybrid', experience: 'Fresher / 0-1 yr', location: '', salary: '', skills: '', deadline: '', description: '', qualifications: [] as string[] });
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
@@ -1113,20 +1135,32 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
               {logoSuccess && <div style={{ marginTop: 8, fontSize: 12, color: '#1a7a4a' }}>Logo saved successfully.</div>}
             </div>
 
-            {/* Company details read-only */}
+            {/* Full company details */}
             <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '24px' }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#0f2419', marginBottom: 16 }}>Company Details</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#0f2419', marginBottom: 20 }}>Company Details</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 24px' }} className="rd-form-row">
                 {[
-                  { label: 'Company Name', value: companyName },
-                  { label: 'Email', value: recruiterEmail || '—' },
-                  { label: 'Name', value: recruiterName || '—' },
+                  { label: 'Company Name',   value: profileData.company_name   || companyName },
+                  { label: 'Contact Name',   value: profileData.full_name      || recruiterName || '—' },
+                  { label: 'Email',          value: profileData.email          || recruiterEmail || '—' },
+                  { label: 'Phone',          value: profileData.phone          || '—' },
+                  { label: 'City',           value: profileData.city           || '—' },
+                  { label: 'State',          value: profileData.state          || '—' },
+                  { label: 'Company Website',value: profileData.company_website|| '—' },
+                  { label: 'Industry Domain',value: profileData.company_domain || '—' },
+                  { label: 'Office Address', value: profileData.office_address || '—' },
+                  { label: 'CIN',            value: profileData.cin            || '—' },
+                  { label: 'GSTIN',          value: profileData.gstin          || '—' },
+                  { label: 'LinkedIn Page',  value: profileData.linkedin_page  || '—' },
                 ].map(({ label, value }) => (
                   <div key={label}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: 3 }}>{label}</div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: '#0f2419' }}>{value}</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' as const, letterSpacing: '0.07em', marginBottom: 3 }}>{label}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0f2419', wordBreak: 'break-word' as const }}>{value}</div>
                   </div>
                 ))}
+              </div>
+              <div style={{ marginTop: 20, padding: '12px 16px', background: '#f8faf9', borderRadius: 8, border: '1px solid #e5e7eb' }}>
+                <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600 }}>To update company details, contact <span style={{ color: '#1a7a4a' }}>support@arivupro.com</span></div>
               </div>
             </div>
           </div>

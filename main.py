@@ -1370,6 +1370,20 @@ async def scrape_logs(_admin: dict = Depends(require_admin)):
     return {"logs": data, "last_run": data[0].get("started_at") if data else None}
 
 
+@app.get("/api/scrape/source-status")
+async def scrape_source_status(_admin: dict = Depends(require_admin)):
+    """Return the most recent completed sync_run per source, so the dashboard can show real last-sync times."""
+    result = supabase.table("sync_runs").select("source,started_at,status,created,fetched").order("started_at", desc=True).limit(500).execute()
+    data = result.data or []
+    # Keep only the most recent row per source
+    seen: dict = {}
+    for row in data:
+        src = row.get("source")
+        if src and src not in seen:
+            seen[src] = row
+    return {"sources": list(seen.values())}
+
+
 @app.post("/api/scrape/trigger")
 async def scrape_trigger(body: ScrapeRequest, authorization: Optional[str] = Header(default=None)):
     """Trigger one source or all sources. Runs in background."""

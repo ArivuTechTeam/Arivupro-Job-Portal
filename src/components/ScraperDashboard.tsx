@@ -3,18 +3,55 @@ import { Bot, RefreshCw, Globe, CheckCircle2, ArrowRight, Layers, FileCode, Cloc
 import { ScraperSourceStatus, ScraperLog, JobListing } from '../types/index.ts';
 import { adminFetch } from '../lib/supabase/auth.ts';
 
+const SEED_SOURCES: ScraperSourceStatus[] = [
+  { id: 'caclubindia',       name: 'CA Club India',       url: 'caclubindia.com',          lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'RSS Feed — Articleship & CA Jobs' },
+  { id: 'buddingca',         name: 'BuddingCA',           url: 'buddingca.com',             lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'WordPress REST API' },
+  { id: 'jsearch',           name: 'JSearch API',         url: 'jsearch.p.rapidapi.com',    lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: '61 finance-focused search queries' },
+  { id: 'icai_eirc',         name: 'ICAI EIRC',           url: 'icaieirc.org',              lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'ICAI East — Articleship vacancies' },
+  { id: 'icai_sirc',         name: 'ICAI SIRC',           url: 'icai-sirc.org',             lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'ICAI South — Articleship vacancies' },
+  { id: 'icai_wirc',         name: 'ICAI WIRC',           url: 'icaiwirc.org',              lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'ICAI West — Articleship vacancies' },
+  { id: 'icai_kochi',        name: 'ICAI Kochi',          url: 'icaikochi.org',             lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'ICAI Kochi branch' },
+  { id: 'icai_pune',         name: 'ICAI Pune',           url: 'icaipune.org',              lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'ICAI Pune branch' },
+  { id: 'icai_bangalore',    name: 'ICAI Bangalore',      url: 'icaibangalore.com',         lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'ICAI Bangalore branch' },
+  { id: 'icai_nirc',         name: 'ICAI NIRC',           url: 'nirc.icai.org',             lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'ICAI North — Delhi NCR Articleship vacancies' },
+  { id: 'icmai',             name: 'ICMAI',               url: 'icmai.in',                  lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'CMA — Cost Accountant training' },
+  { id: 'jobspy',            name: 'JobSpy (Indeed/Glassdoor/Naukri)', url: 'python-jobspy', lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'Free scraper — Indeed, Glassdoor, Naukri' },
+  { id: 'apify_google_jobs', name: 'Google Jobs (Apify)', url: 'apify.com',                 lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: '39 queries via Google for Jobs — weekly' },
+  { id: 'apify_multi_board', name: 'Multi-Board (Apify)', url: 'apify.com',                 lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'Naukri via vero-api actor — weekly' },
+  { id: 'apify_career_sites',name: 'Career Sites (Apify)',url: 'apify.com',                 lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'Big 4 ATS (Workday/Greenhouse) — weekly' },
+  { id: 'greenhouse',        name: 'Greenhouse API',      url: 'boards-api.greenhouse.io',  lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'Free — Groww, TCS, Stripe, 60+ company boards' },
+  { id: 'lever',             name: 'Lever API',           url: 'api.lever.co',              lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'Free — CRED, Meesho, fintech career boards' },
+];
+
+function formatSyncTime(isoStr: string): string {
+  if (!isoStr) return '—';
+  const d = new Date(isoStr);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHrs = Math.floor(diffMins / 60);
+  if (diffHrs < 24) return `${diffHrs}h ago`;
+  const diffDays = Math.floor(diffHrs / 24);
+  if (diffDays === 1) return '1 day ago';
+  if (diffDays < 7) return `${diffDays} days ago`;
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+}
+
 interface ScraperDashboardProps {
-  sources: ScraperSourceStatus[];
+  sources?: ScraperSourceStatus[];
   onTriggerScrape: (sourceId?: string) => Promise<any>;
   totalScrapedJobs: number;
 }
 
 export const ScraperDashboard: React.FC<ScraperDashboardProps> = ({
-  sources,
   onTriggerScrape,
   totalScrapedJobs
 }) => {
+  const [sources, setSources] = useState<ScraperSourceStatus[]>(SEED_SOURCES);
   const [isRunning, setIsRunning] = useState(false);
+  const [runningSources, setRunningSources] = useState<Set<string>>(new Set());
   const [autoScrapeInterval, setAutoScrapeInterval] = useState('15');
   const [autoScrapeEnabled, setAutoScrapeEnabled] = useState(true);
   const [logs, setLogs] = useState<ScraperLog[]>([]);
@@ -47,8 +84,30 @@ export const ScraperDashboard: React.FC<ScraperDashboardProps> = ({
       .catch((err) => console.error(err));
   };
 
+  // Fetch last-sync time per source from sync_runs and merge into source cards
+  const fetchSourceStatus = () => {
+    adminFetch('/api/scrape/source-status')
+      .then((res) => res.json())
+      .then((data) => {
+        const bySource: Record<string, any> = {};
+        (data.sources || []).forEach((r: any) => { bySource[r.source] = r; });
+        setSources(prev => prev.map(s => {
+          const run = bySource[s.id];
+          if (!run) return s;
+          return {
+            ...s,
+            lastRun: formatSyncTime(run.started_at),
+            jobsCount: run.created ?? s.jobsCount,
+            status: run.status === 'success' ? 'Active' : run.status === 'running' ? 'Syncing' : s.status,
+          };
+        }));
+      })
+      .catch(() => {}); // silent — not critical
+  };
+
   useEffect(() => {
     fetchLogs();
+    fetchSourceStatus();
   }, []);
 
   const handleDryRun = async () => {
@@ -67,15 +126,24 @@ export const ScraperDashboard: React.FC<ScraperDashboardProps> = ({
 
   const handleRunScraper = async (sourceId?: string) => {
     setIsRunning(true);
+    if (sourceId) setRunningSources(prev => new Set(prev).add(sourceId));
     setLastScrapeResult(null);
+    // Optimistically mark the source as "Running"
+    if (sourceId) {
+      setSources(prev => prev.map(s => s.id === sourceId ? { ...s, status: 'Syncing' as const } : s));
+    }
     try {
       const res = await onTriggerScrape(sourceId);
       setLastScrapeResult(res);
       fetchLogs();
+      // Poll for updated status after a short delay (backend runs async)
+      setTimeout(() => { fetchSourceStatus(); }, 4000);
+      setTimeout(() => { fetchSourceStatus(); }, 12000);
     } catch (err) {
       console.error(err);
     } finally {
       setIsRunning(false);
+      if (sourceId) setRunningSources(prev => { const s = new Set(prev); s.delete(sourceId); return s; });
     }
   };
 
@@ -213,7 +281,9 @@ export const ScraperDashboard: React.FC<ScraperDashboardProps> = ({
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }} className="scraper-sources-grid">
-            {sources.map((src) => (
+            {sources.map((src) => {
+              const isSrcRunning = runningSources.has(src.id) || src.status === 'Syncing';
+              return (
               <div key={src.id} style={{ ...card, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {/* Header row */}
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
@@ -228,12 +298,14 @@ export const ScraperDashboard: React.FC<ScraperDashboardProps> = ({
                     borderRadius: 20,
                     whiteSpace: 'nowrap',
                     flexShrink: 0,
-                    ...(src.status === 'Active'
-                      ? { background: '#dcfce7', color: '#166534', border: '1px solid #bbf7d0' }
-                      : { background: '#f1f5f9', color: '#64748b' }
+                    ...(isSrcRunning
+                      ? { background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }
+                      : src.status === 'Active'
+                        ? { background: '#dcfce7', color: '#166534', border: '1px solid #bbf7d0' }
+                        : { background: '#f1f5f9', color: '#64748b' }
                     ),
                   }}>
-                    {src.status}
+                    {isSrcRunning ? 'Syncing…' : src.status}
                   </span>
                 </div>
 
@@ -245,30 +317,39 @@ export const ScraperDashboard: React.FC<ScraperDashboardProps> = ({
 
                 {/* Footer */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid #f1f5f9' }}>
-                  <span style={{ fontSize: 11, color: '#94a3b8' }}>Last sync: <span style={{ color: '#475569' }}>{src.lastRun}</span></span>
+                  <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                    Last sync:{' '}
+                    <span style={{ color: src.lastRun === '—' ? '#94a3b8' : '#1a7a4a', fontWeight: src.lastRun === '—' ? 400 : 600 }}>
+                      {src.lastRun}
+                    </span>
+                  </span>
                   <button
                     onClick={() => handleRunScraper(src.id)}
-                    disabled={isRunning}
+                    disabled={isRunning || isSrcRunning}
                     style={{
                       background: 'none',
                       border: 'none',
-                      cursor: isRunning ? 'not-allowed' : 'pointer',
+                      cursor: isRunning || isSrcRunning ? 'not-allowed' : 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       gap: 4,
                       fontSize: 11,
                       fontWeight: 700,
-                      color: '#1a7a4a',
+                      color: isSrcRunning ? '#94a3b8' : '#1a7a4a',
                       padding: 0,
-                      opacity: isRunning ? 0.5 : 1,
+                      opacity: isRunning || isSrcRunning ? 0.5 : 1,
                       fontFamily: 'Manrope, sans-serif',
                     }}
                   >
-                    Sync <ArrowRight size={12} />
+                    {isSrcRunning
+                      ? <><RefreshCw size={11} style={{ animation: 'spin 1s linear infinite' }} /> Syncing</>
+                      : <>Sync <ArrowRight size={12} /></>
+                    }
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

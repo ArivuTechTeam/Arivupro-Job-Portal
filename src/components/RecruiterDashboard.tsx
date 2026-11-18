@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase/client.ts';
 import {
   LayoutDashboard, Briefcase, Users, PlusCircle,
   ChevronDown, Download, Eye, CheckCircle2, ArrowLeft,
-  FileText, Phone, Mail, GraduationCap, Star,
+  FileText, Phone, Mail, GraduationCap,
 } from 'lucide-react';
 
 interface RecruiterDashboardProps {
@@ -46,6 +46,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
   const [page, setPage] = useState<RecruiterPage>('dashboard');
   const [viewingJobId, setViewingJobId] = useState<string | null>(null);
   const [viewingApplicant, setViewingApplicant] = useState<any | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [jobs, setJobs] = useState<any[]>([]);
   const [applicants, setApplicants] = useState<any[]>([]);
   const [editingJob, setEditingJob] = useState<any | null>(null);
@@ -253,6 +254,14 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
     { id: 'post'      as RecruiterPage, icon: <PlusCircle size={16} />,      label: 'Post a Job' },
   ];
 
+  const navTo = (p: RecruiterPage) => {
+    setPage(p);
+    setViewingJobId(null);
+    setViewingApplicant(null);
+    if (p === 'applicants') fetchApplicants();
+    setSidebarOpen(false);
+  };
+
   return (
     <div style={{ display: 'flex', minHeight: 'calc(100vh - 112px)', background: '#f7f7f7' }}>
 
@@ -261,6 +270,27 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
         <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, background: '#0f2419', color: '#fff', borderRadius: 12, padding: '14px 20px', fontSize: 13, fontWeight: 600, boxShadow: '0 8px 32px rgba(15,36,25,0.3)', display: 'flex', alignItems: 'center', gap: 10 }}>
           <CheckCircle2 size={15} color="#fede6d" />{toast}
         </div>
+      )}
+
+      {/* Mobile hamburger button */}
+      <button
+        className="rec-hamburger"
+        onClick={() => setSidebarOpen(o => !o)}
+        style={{ display: 'none', position: 'fixed', top: 70, left: 12, zIndex: 400, width: 38, height: 38, borderRadius: 8, background: '#1a7a4a', border: 'none', cursor: 'pointer', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 10px rgba(26,122,74,0.35)' }}
+        aria-label="Toggle menu"
+      >
+        <span style={{ color: '#fff', fontSize: 18, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {sidebarOpen ? '✕' : '☰'}
+        </span>
+      </button>
+
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="rec-overlay"
+          onClick={() => setSidebarOpen(false)}
+          style={{ display: 'none', position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 199 }}
+        />
       )}
 
       {/* ── EDIT JOB MODAL ───────────────────────────────────────── */}
@@ -331,7 +361,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
       )}
 
       {/* ── SIDEBAR ─────────────────────────────────────────────── */}
-      <aside style={{ width: 220, background: '#fff', borderRight: '1px solid #e5e7eb', flexShrink: 0, padding: '24px 0', display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <aside className={`rec-sidebar${sidebarOpen ? ' rec-sidebar-open' : ''}`} style={{ width: 220, background: '#fff', borderRight: '1px solid #e5e7eb', flexShrink: 0, padding: '24px 0', display: 'flex', flexDirection: 'column', gap: 2 }}>
         {/* Company chip */}
         <div style={{ padding: '0 16px 20px', borderBottom: '1px solid #f3f4f6', marginBottom: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -353,7 +383,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
           return (
             <button
               key={n.id}
-              onClick={() => { setPage(n.id); setViewingJobId(null); setViewingApplicant(null); if (n.id === 'applicants') fetchApplicants(); }}
+              onClick={() => navTo(n.id)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 10,
                 margin: '1px 10px', padding: '10px 12px', borderRadius: 8,
@@ -374,9 +404,9 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
       </aside>
 
       {/* ── MAIN CONTENT ─────────────────────────────────────────── */}
-      <main style={{ flex: 1, padding: '32px 32px', overflowY: 'auto', minWidth: 0 }}>
+      <main className="rec-main" style={{ flex: 1, padding: '32px 32px', overflowY: 'auto', minWidth: 0 }}>
 
-        {/* ════════════════ DASHBOARD ════════════════ */}
+        {/* DASHBOARD */}
         {page === 'dashboard' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             <div>
@@ -404,7 +434,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
             <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, overflow: 'hidden' }}>
               <div style={{ padding: '16px 20px', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ fontSize: 15, fontWeight: 800, color: '#0f2419' }}>Recent Applicants</div>
-                <button className="btn-ghost" style={{ fontSize: 12 }} onClick={() => setPage('applicants')}>View all →</button>
+                <button className="btn-ghost" style={{ fontSize: 12 }} onClick={() => setPage('applicants')}>View all</button>
               </div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
@@ -429,7 +459,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                         <td style={{ padding: '12px 16px', fontWeight: 600, color: '#374151' }}>{ap.course}</td>
                         <td style={{ padding: '12px 16px' }}><span className={mb.cls}>{ap.match}% {mb.label}</span></td>
                         <td style={{ padding: '12px 16px' }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: stageColor(getStage(ap.id, ap.stage)) + '18', color: stageColor(getStage(ap.id, ap.stage)) }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 6, background: stageColor(getStage(ap.id, ap.stage)) + '18', color: stageColor(getStage(ap.id, ap.stage)) }}>
                             {getStage(ap.id, ap.stage)}
                           </span>
                         </td>
@@ -450,7 +480,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
           </div>
         )}
 
-        {/* ════════════════ MY JOB POSTS ════════════════ */}
+        {/* MY JOB POSTS */}
         {page === 'jobs' && !viewingJobId && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -472,7 +502,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                 </thead>
                 <tbody>
                   {jobs.length === 0 && (
-                    <tr><td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>No job posts yet. <button className="btn-ghost" style={{ fontSize: 13 }} onClick={() => setPage('post')}>Post your first job →</button></td></tr>
+                    <tr><td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>No job posts yet. <button className="btn-ghost" style={{ fontSize: 13 }} onClick={() => setPage('post')}>Post your first job</button></td></tr>
                   )}
                   {jobs.map((job: any, i: number) => (
                     <tr key={job.id} style={{ borderTop: '1px solid #f3f4f6', background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
@@ -498,13 +528,13 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                           {job.status !== 'closed' && (
                             <>
                               <button
-                                style={{ fontSize: 12, padding: '6px 12px', borderRadius: 999, border: '1px solid #d7f4ea', background: 'transparent', color: '#1a7a4a', fontWeight: 700, cursor: 'pointer', fontFamily: 'Manrope, sans-serif' }}
+                                style={{ fontSize: 12, padding: '6px 12px', borderRadius: 6, border: '1px solid #d7f4ea', background: 'transparent', color: '#1a7a4a', fontWeight: 700, cursor: 'pointer', fontFamily: 'Manrope, sans-serif' }}
                                 onClick={() => openEditJob(job)}
                               >
                                 Edit
                               </button>
                               <button
-                                style={{ fontSize: 12, padding: '6px 12px', borderRadius: 999, border: '1px solid #fca5a5', background: 'transparent', color: '#dc2626', fontWeight: 700, cursor: 'pointer', fontFamily: 'Manrope, sans-serif' }}
+                                style={{ fontSize: 12, padding: '6px 12px', borderRadius: 6, border: '1px solid #fca5a5', background: 'transparent', color: '#dc2626', fontWeight: 700, cursor: 'pointer', fontFamily: 'Manrope, sans-serif' }}
                                 onClick={() => handleCloseJob(job.id, job.title)}
                               >
                                 Close
@@ -521,7 +551,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
           </div>
         )}
 
-        {/* ════════════════ VIEW APPLICANTS FOR A JOB ════════════════ */}
+        {/* VIEW APPLICANTS FOR A JOB */}
         {page === 'jobs' && viewingJobId && !viewingApplicant && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {/* Back + header */}
@@ -558,7 +588,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                         <td style={{ padding: '14px 20px' }}><span className={mb.cls}>{ap.match}% {mb.label}</span></td>
                         <td style={{ padding: '14px 20px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: stageColor(currentStage) + '18', color: stageColor(currentStage) }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 6, background: stageColor(currentStage) + '18', color: stageColor(currentStage) }}>
                               {currentStage}
                             </span>
                             <div style={{ position: 'relative' }}>
@@ -597,7 +627,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
           </div>
         )}
 
-        {/* ════════════════ APPLICANT DETAIL / PROFILE ════════════════ */}
+        {/* APPLICANT DETAIL / PROFILE */}
         {viewingApplicant && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <button
@@ -630,7 +660,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
 
                 {/* Stage + actions */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end' }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, padding: '5px 14px', borderRadius: 999, background: stageColor(getStage(viewingApplicant.id, viewingApplicant.stage)) + '18', color: stageColor(getStage(viewingApplicant.id, viewingApplicant.stage)) }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, padding: '5px 14px', borderRadius: 6, background: stageColor(getStage(viewingApplicant.id, viewingApplicant.stage)) + '18', color: stageColor(getStage(viewingApplicant.id, viewingApplicant.stage)) }}>
                     {getStage(viewingApplicant.id, viewingApplicant.stage)}
                   </span>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -682,7 +712,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                   {viewingApplicant.skills.length > 0 ? (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                       {viewingApplicant.skills.map((s: string) => (
-                        <span key={s} style={{ padding: '5px 14px', borderRadius: 999, background: '#f0faf4', border: '1px solid #d7f4ea', fontSize: 12, fontWeight: 700, color: '#1a7a4a' }}>{s}</span>
+                        <span key={s} style={{ padding: '5px 14px', borderRadius: 6, background: '#f0faf4', border: '1px solid #d7f4ea', fontSize: 12, fontWeight: 700, color: '#1a7a4a' }}>{s}</span>
                       ))}
                     </div>
                   ) : (
@@ -756,8 +786,8 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {/* AI Match breakdown */}
                 <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '20px' }}>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: '#0f2419', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Star size={15} color="#fede6d" fill="#fede6d" /> AI Match Score
+                  <div style={{ fontSize: 14, fontWeight: 800, color: '#0f2419', marginBottom: 16 }}>
+                    Match Score
                   </div>
                   <div style={{ fontSize: 40, fontWeight: 900, color: '#1a7a4a', textAlign: 'center', marginBottom: 4 }}>{viewingApplicant.match}%</div>
                   <div style={{ textAlign: 'center', marginBottom: 16 }}><span className={matchBadge(viewingApplicant.match).cls}>{matchBadge(viewingApplicant.match).label} Match</span></div>
@@ -770,8 +800,8 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
                         <span>{bar.label}</span><span style={{ color: '#1a7a4a' }}>{bar.pct}%</span>
                       </div>
-                      <div style={{ height: 6, background: '#f0faf4', borderRadius: 999, overflow: 'hidden' }}>
-                        <div style={{ width: `${bar.pct}%`, height: '100%', background: 'linear-gradient(90deg,#fede6d,#1a7a4a)', borderRadius: 999 }} />
+                      <div style={{ height: 6, background: '#f0faf4', borderRadius: 4, overflow: 'hidden' }}>
+                        <div style={{ width: `${bar.pct}%`, height: '100%', background: '#1a7a4a', borderRadius: 4 }} />
                       </div>
                     </div>
                   ))}
@@ -815,7 +845,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
           </div>
         )}
 
-        {/* ════════════════ ALL APPLICANTS (from sidebar) ════════════════ */}
+        {/* ALL APPLICANTS */}
         {page === 'applicants' && !viewingApplicant && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div>
@@ -854,7 +884,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                         <td style={{ padding: '14px 20px', fontWeight: 600, color: '#374151' }}>{ap.course}</td>
                         <td style={{ padding: '14px 20px' }}><span className={mb.cls}>{ap.match}% {mb.label}</span></td>
                         <td style={{ padding: '14px 20px' }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: stageColor(getStage(ap.id, ap.stage)) + '18', color: stageColor(getStage(ap.id, ap.stage)) }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 6, background: stageColor(getStage(ap.id, ap.stage)) + '18', color: stageColor(getStage(ap.id, ap.stage)) }}>
                             {getStage(ap.id, ap.stage)}
                           </span>
                         </td>
@@ -888,7 +918,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
           </div>
         )}
 
-        {/* ════════════════ POST A JOB ════════════════ */}
+        {/* POST A JOB */}
         {page === 'post' && (
           <div style={{ maxWidth: 700 }}>
             <div style={{ marginBottom: 28 }}>
@@ -948,8 +978,8 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                   {QUALIFICATIONS.map(q => {
                     const sel = form.qualifications.includes(q);
                     return (
-                      <button key={q} type="button" onClick={() => toggleQual(q)} style={{ padding: '6px 14px', borderRadius: 999, fontSize: 12, fontWeight: 700, border: sel ? '2px solid #1a7a4a' : '1.5px solid #e5e7eb', background: sel ? '#f0faf4' : '#fff', color: sel ? '#1a7a4a' : '#6b7280', cursor: 'pointer', fontFamily: 'Manrope, sans-serif', transition: 'all 0.15s' }}>
-                        {sel ? '✓ ' : ''}{q}
+                      <button key={q} type="button" onClick={() => toggleQual(q)} style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, border: sel ? '2px solid #1a7a4a' : '1.5px solid #e5e7eb', background: sel ? '#f0faf4' : '#fff', color: sel ? '#1a7a4a' : '#6b7280', cursor: 'pointer', fontFamily: 'Manrope, sans-serif', transition: 'all 0.15s' }}>
+                        {q}
                       </button>
                     );
                   })}
@@ -1025,6 +1055,28 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
         )}
 
       </main>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .rec-hamburger { display: flex !important; }
+          .rec-overlay { display: block !important; }
+          .rec-main { padding: 24px 16px 24px 16px !important; }
+          .rec-sidebar {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            height: 100vh !important;
+            z-index: 300 !important;
+            transform: translateX(-100%) !important;
+            transition: transform 0.25s ease !important;
+            box-shadow: none !important;
+          }
+          .rec-sidebar.rec-sidebar-open {
+            transform: translateX(0) !important;
+            box-shadow: 4px 0 24px rgba(15,36,25,0.15) !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };

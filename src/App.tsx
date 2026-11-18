@@ -20,32 +20,12 @@ import { SyncedJobsTab } from './components/SyncedJobsTab.tsx';
 import AdminLogin from './components/admin/AdminLogin.tsx';
 import {
   JobListing, JobApplication, StudentProfile as StudentProfileType,
-  ScraperSourceStatus,
 } from './types/index.ts';
 import { CheckCircle2, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from './lib/supabase/client.ts';
 
 const SEED_JOBS: JobListing[] = [];
 
-const SEED_SOURCES: ScraperSourceStatus[] = [
-  { id: 'caclubindia',       name: 'CA Club India',       url: 'caclubindia.com',          lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'RSS Feed — Articleship & CA Jobs' },
-  { id: 'buddingca',         name: 'BuddingCA',           url: 'buddingca.com',             lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'WordPress REST API' },
-  { id: 'jsearch',           name: 'JSearch API',         url: 'jsearch.p.rapidapi.com',    lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: '61 finance-focused search queries' },
-  { id: 'icai_eirc',         name: 'ICAI EIRC',           url: 'icaieirc.org',              lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'ICAI East — Articleship vacancies' },
-  { id: 'icai_sirc',         name: 'ICAI SIRC',           url: 'icai-sirc.org',             lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'ICAI South — Articleship vacancies' },
-  { id: 'icai_wirc',         name: 'ICAI WIRC',           url: 'icaiwirc.org',              lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'ICAI West — Articleship vacancies' },
-  { id: 'icai_kochi',        name: 'ICAI Kochi',          url: 'icaikochi.org',             lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'ICAI Kochi branch' },
-  { id: 'icai_pune',         name: 'ICAI Pune',           url: 'icaipune.org',              lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'ICAI Pune branch' },
-  { id: 'icai_bangalore',    name: 'ICAI Bangalore',      url: 'icaibangalore.com',         lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'ICAI Bangalore branch' },
-  { id: 'icai_nirc',         name: 'ICAI NIRC',           url: 'nirc.icai.org',             lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'ICAI North — Delhi NCR Articleship vacancies' },
-  { id: 'icmai',             name: 'ICMAI',               url: 'icmai.in',                  lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'CMA — Cost Accountant training' },
-  { id: 'jobspy',            name: 'JobSpy (Indeed/Glassdoor/Naukri)', url: 'python-jobspy', lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'Free scraper — Indeed, Glassdoor, Naukri' },
-  { id: 'apify_google_jobs', name: 'Google Jobs (Apify)', url: 'apify.com',                 lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: '39 queries via Google for Jobs — weekly' },
-  { id: 'apify_multi_board', name: 'Multi-Board (Apify)', url: 'apify.com',                 lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'Naukri via vero-api actor — weekly' },
-  { id: 'apify_career_sites',name: 'Career Sites (Apify)',url: 'apify.com',                 lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'Big 4 ATS (Workday/Greenhouse) — weekly' },
-  { id: 'greenhouse',        name: 'Greenhouse API',      url: 'boards-api.greenhouse.io',  lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'Free — Groww, TCS, Stripe, 60+ company boards' },
-  { id: 'lever',             name: 'Lever API',           url: 'api.lever.co',              lastRun: '—', jobsCount: 0, status: 'Idle', categoryFocus: 'Free — CRED, Meesho, fintech career boards' },
-];
 
 const SEED_STUDENT: StudentProfileType = {
   id: '', name: '', email: '', phone: '',
@@ -100,7 +80,6 @@ export default function App() {
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
   const [studentSessionToken, setStudentSessionToken] = useState<string>('');
-  const [sources] = useState<ScraperSourceStatus[]>(SEED_SOURCES);
   const [student, setStudent] = useState<StudentProfileType>(() => {
     try {
       const saved = localStorage.getItem('arivupro_student_profile');
@@ -1136,7 +1115,6 @@ export default function App() {
             <div style={{ flex: 1, overflow: 'auto', minWidth: 0 }}>
               {currentTab === 'scraper' && (
                 <ScraperDashboard
-                  sources={sources}
                   onTriggerScrape={async (src) => {
                     showToast(`Syncing ${src || 'all sources'}…`);
                     const { adminFetch } = await import('./lib/supabase/auth');

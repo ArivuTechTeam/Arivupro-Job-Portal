@@ -332,7 +332,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     gap: 4,
     padding: '5px 12px',
-    borderRadius: 999,
+    borderRadius: 6,
     background: 'transparent',
     color: '#1a7a4a',
     fontSize: 11,
@@ -347,7 +347,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     gap: 4,
     padding: '5px 12px',
-    borderRadius: 999,
+    borderRadius: 6,
     background: '#1a7a4a',
     color: '#fff',
     fontSize: 11,
@@ -362,7 +362,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     gap: 4,
     padding: '5px 12px',
-    borderRadius: 999,
+    borderRadius: 6,
     background: 'transparent',
     color: '#dc2626',
     fontSize: 11,
@@ -386,7 +386,7 @@ const styles: Record<string, React.CSSProperties> = {
     background: '#f3f4f6',
     color: '#6b7280',
     padding: '2px 8px',
-    borderRadius: 999,
+    borderRadius: 4,
     letterSpacing: '0.03em',
   },
   toast: {
@@ -700,9 +700,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
       {/* ── Tab Content ── */}
       <div style={styles.pageContent}>
 
-        {/* ══════════════════════════════════════════════════════════
-            TAB 1: DASHBOARD
-        ══════════════════════════════════════════════════════════ */}
+        {/* TAB 1: DASHBOARD */}
         {activeTab === 'Dashboard' && (
           <>
             <div style={styles.pageHeader}>
@@ -747,7 +745,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
             {pendingRecruiterCount > 0 && (
               <div style={{ background: '#fff8e1', border: '1.5px solid #ffe082', borderRadius: 12, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontSize: 22 }}>🏢</span>
+                  <div style={{ width: 36, height: 36, borderRadius: 8, background: '#f3f4f6', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+                  </div>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 800, color: '#0f2419' }}>
                       {pendingRecruiterCount} Recruiter{pendingRecruiterCount > 1 ? 's' : ''} Awaiting Approval
@@ -759,7 +759,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
                   href="/?admin&tab=recruiters"
                   style={{ background: '#f57f17', color: '#fff', padding: '8px 20px', borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: 'none', display: 'inline-block' }}
                 >
-                  Review Now →
+                  Review Now
                 </a>
               </div>
             )}
@@ -772,7 +772,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
               </div>
               {liveRecruiters.filter((r: any) => r.approval_status === 'pending').slice(0, 5).map((r: any) => (
                 <div key={r.id} style={styles.alertRow}>
-                  <span style={{ fontSize: 18, lineHeight: 1 }}>🏢</span>
+                  <div style={{ width: 28, height: 28, borderRadius: 6, background: '#f3f4f6', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+                  </div>
                   <span style={styles.alertText}>New recruiter signup: <strong>{r.company_name}</strong> ({r.full_name}) — pending verification</span>
                   <span style={styles.alertTime}>{r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN') : ''}</span>
                 </div>
@@ -796,7 +798,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
                         style={{
                           height: 8,
                           borderRadius: 4,
-                          background: 'linear-gradient(90deg, #fede6d, #1a7a4a)',
+                          background: '#1a7a4a',
                           width: `${Math.round((count / maxPipelineCount) * 100)}%`,
                           transition: 'width 0.4s ease',
                         }}
@@ -842,9 +844,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
           </>
         )}
 
-        {/* ══════════════════════════════════════════════════════════
-            TAB 2: ALL STUDENTS
-        ══════════════════════════════════════════════════════════ */}
+        {/* TAB 2: ALL STUDENTS */}
         {activeTab === 'All Students' && (
           <>
             <div style={styles.pageHeader}>
@@ -972,9 +972,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
           </>
         )}
 
-        {/* ══════════════════════════════════════════════════════════
-            TAB 3: ALL JOBS
-        ══════════════════════════════════════════════════════════ */}
+        {/* TAB 3: ALL JOBS */}
         {activeTab === 'All Jobs' && (
           <>
             <div style={styles.headerRow}>
@@ -1083,7 +1081,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
                                 disabled={updatingJobId === job.id}
                                 onClick={() => handleAdminJobUpdate(job.id, { arivupro_exclusive: !job.arivupro_exclusive })}
                               >
-                                {job.arivupro_exclusive ? '★ Excl' : '☆ Excl'}
+                                {job.arivupro_exclusive ? 'Exclusive' : 'Mark exclusive'}
                               </button>
                             </div>
                           </td>
@@ -1097,15 +1095,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
           </>
         )}
 
-        {/* ══════════════════════════════════════════════════════════
-            TAB 4: COMPANIES
-        ══════════════════════════════════════════════════════════ */}
+        {/* TAB 4: COMPANIES */}
         {activeTab === 'Companies' && (
           <CompaniesTab displayCompanies={displayCompanies} />
         )}
-        {/* ══════════════════════════════════════════════════════════
-            TAB 5: RECRUITERS
-        ══════════════════════════════════════════════════════════ */}
+        {/* TAB 5: RECRUITERS */}
         {activeTab === 'Recruiters' && (
           <>
             <div style={{ ...styles.pageHeader, alignItems: 'center' }}>
@@ -1113,7 +1107,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <h1 style={styles.pageTitle}>Recruiter Applications</h1>
                   {pendingRecruiterCount > 0 && (
-                    <span style={{ background: '#dc2626', color: '#fff', fontSize: 11, fontWeight: 800, borderRadius: 999, padding: '2px 9px', lineHeight: 1.6 }}>
+                    <span style={{ background: '#dc2626', color: '#fff', fontSize: 11, fontWeight: 800, borderRadius: 4, padding: '2px 9px', lineHeight: 1.6 }}>
                       {pendingRecruiterCount} pending
                     </span>
                   )}

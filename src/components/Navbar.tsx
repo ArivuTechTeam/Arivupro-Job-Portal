@@ -19,7 +19,8 @@ export type NavTab =
   | 'admin-recruiters'
   | 'recruiter-jobs'
   | 'recruiter-applicants'
-  | 'recruiter-post';
+  | 'recruiter-post'
+  | 'synced-jobs';
 
 interface NavbarProps {
   currentTab: NavTab;

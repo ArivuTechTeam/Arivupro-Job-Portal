@@ -3,6 +3,7 @@ Main sync orchestrator — runs all sources, upserts to Supabase.
 Ported from articleship: src/lib/sync/index.ts
 """
 import os
+import re
 import asyncio
 import logging
 import time
@@ -57,6 +58,20 @@ def _is_relevant(job: NormalizedJob) -> bool:
 
     # Must match at least one of: India location OR finance keyword
     return india_loc or finance_match
+
+# ── Title cleaner ──────────────────────────────────────────────────────────
+_TITLE_NOISE = re.compile(
+    r':\s*apply\s+now[!.]?'       # ": Apply Now!"
+    r'|[\[\(][^\]\)]{0,60}[\]\)]' # [Stipend: Rs. 8000] or (Mumbai)
+    r'|\bat\s+[A-Z][^,]{3,40}(?:,|$)'  # "at Firm Name,"
+    r'|\s*[-–|]\s*.{0,40}$',      # " - some trailing noise"
+    re.I
+)
+
+def _clean_title(title: str) -> str:
+    t = _TITLE_NOISE.sub('', title).strip().rstrip(',:- ')
+    # Capitalise first letter, limit length
+    return t[:80] if t else title[:80]
 
 # Source fetcher registry
 from scraper.sources.caclubindia import fetch as fetch_caclubindia
@@ -182,6 +197,7 @@ async def run_source_sync(supabase: Client, source: str) -> SyncResult:
             if not _is_relevant(job):
                 result.skipped += 1
                 continue
+            job.title = _clean_title(job.title)
             try:
                 outcome = await upsert_job(supabase, job)
                 if outcome == 'created':

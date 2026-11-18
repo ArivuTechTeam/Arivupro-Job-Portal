@@ -16,6 +16,7 @@ import { StudentDashboard } from './components/StudentDashboard.tsx';
 import { CompanyProfileFromApi } from './components/CompanyProfileFromApi.tsx';
 import { AIJobMatch } from './components/AIJobMatch.tsx';
 import { AdminDashboard } from './components/AdminDashboard.tsx';
+import { SyncedJobsTab } from './components/SyncedJobsTab.tsx';
 import AdminLogin from './components/admin/AdminLogin.tsx';
 import {
   JobListing, JobApplication, StudentProfile as StudentProfileType,
@@ -981,7 +982,10 @@ export default function App() {
                   },
                   {
                     group: 'System',
-                    items: [{ id: 'scraper', label: 'Job Scraper' }],
+                    items: [
+                      { id: 'scraper', label: 'Job Scraper' },
+                      { id: 'synced-jobs', label: 'Synced Jobs' },
+                    ],
                   },
                 ] as { group: string; items: { id: NavTab; label: string }[] }[]).map((section) => {
                   const isOpen = expandedGroups[section.group] !== false;
@@ -1077,6 +1081,8 @@ export default function App() {
                   totalScrapedJobs={jobs.filter(j => j.source !== 'arivupro_exclusive').length}
                 />
               )}
+
+              {currentTab === 'synced-jobs' && <SyncedJobsTab />}
               {currentTab === 'crm' && (
                 <PlacementCrmDashboard onSyncAll={async () => {
                   const { adminFetch } = await import('./lib/supabase/auth');

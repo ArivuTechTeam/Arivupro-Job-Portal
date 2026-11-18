@@ -96,7 +96,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       : userRole === 'admin'
       ? adminTabs
       : userRole === 'guest'
-      ? studentTabs.slice(0, 4)   // guests: Jobs, Articleship, Internships, Companies
+      ? studentTabs.slice(1, 4)   // guests: Jobs, Articleship, Internships (no Dashboard)
       : studentTabs;               // logged-in students: all 7 tabs
 
   const initials = userName ? getInitials(userName) : '';

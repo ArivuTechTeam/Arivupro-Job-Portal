@@ -82,37 +82,39 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     <div className="sd-scroll-area" style={{ padding: '32px 24px' }}>
 
       {/* Welcome header */}
-      <div style={{ marginBottom: 28 }}>
+      <div style={{ marginBottom: 20 }}>
         {firstName && (
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0f2419', margin: '0 0 4px', letterSpacing: '-0.02em' }}>
-            {firstName}
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0f2419', margin: '0 0 3px', letterSpacing: '-0.02em' }}>
+            Hey, {firstName} 👋
           </h1>
         )}
-        <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>
-          {applications.length} application{applications.length !== 1 ? 's' : ''} · {savedJobIds.size} saved{student.primaryCourse ? ` · ${student.primaryCourse} track` : ''}
+        <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>
+          {applications.length === 0
+            ? 'Start applying to kick off your journey'
+            : `${applications.length} application${applications.length !== 1 ? 's' : ''} so far${student.primaryCourse ? ` · ${student.primaryCourse}` : ''}`}
         </p>
       </div>
 
       {/* Top stat strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12, marginBottom: 28 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 24 }}>
         {[
-          { icon: <Briefcase size={16} color="#6b7280" />, label: 'Applications', value: applications.length, tab: 'applications' },
-          { icon: <BookmarkCheck size={16} color="#6b7280" />, label: 'Saved Jobs', value: savedJobIds.size, tab: 'jobs' },
-          { icon: <TrendingUp size={16} color="#6b7280" />, label: 'In progress', value: applications.filter(a => a.status !== 'Declined' && a.status !== 'Placed').length, tab: 'applications' },
+          { icon: <Briefcase size={14} />, label: 'Applied', value: applications.length, tab: 'applications', accent: '#1a7a4a', bg: '#f0faf4', border: '#d7f4ea' },
+          { icon: <BookmarkCheck size={14} />, label: 'Saved', value: savedJobIds.size, tab: 'jobs', accent: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
+          { icon: <TrendingUp size={14} />, label: 'Active', value: applications.filter(a => a.status !== 'Declined' && a.status !== 'Placed').length, tab: 'applications', accent: '#7c3aed', bg: '#f5f3ff', border: '#ede9fe' },
         ].map(item => (
           <div
             key={item.label}
             onClick={() => onGoToTab(item.tab)}
             style={{
-              background: '#fff', border: '1px solid #e5e7eb',
-              borderRadius: 12, padding: '16px 18px', cursor: 'pointer',
-              transition: 'border-color 0.15s ease',
+              background: item.bg, border: `1px solid ${item.border}`,
+              borderRadius: 12, padding: '12px 14px', cursor: 'pointer',
+              transition: 'transform 0.12s ease, box-shadow 0.12s ease',
             }}
             className="stat-tile"
           >
-            <div style={{ marginBottom: 8 }}>{item.icon}</div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: '#0f2419', letterSpacing: '-0.02em' }}>{item.value}</div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', marginTop: 2 }}>{item.label}</div>
+            <div style={{ color: item.accent, marginBottom: 6 }}>{item.icon}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#0f2419', letterSpacing: '-0.03em', lineHeight: 1 }}>{item.value}</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: item.accent, marginTop: 3 }}>{item.label}</div>
           </div>
         ))}
       </div>
@@ -407,8 +409,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         </div>
       </div>
       <style>{`
-        .stat-tile:hover { border-color: #1a7a4a !important; }
-        .stat-tile:hover div:first-child { color: #1a7a4a !important; }
+        .stat-tile:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important; }
       `}</style>
     </div>{/* end sd-scroll-area */}
 

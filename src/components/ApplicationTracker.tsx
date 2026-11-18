@@ -261,6 +261,22 @@ export const ApplicationTracker: React.FC<ApplicationTrackerProps> = ({
                     )}
                     {app.status}
                   </span>
+                  {/* Human-readable status message */}
+                  {app.status === 'Declined' && (
+                    <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 12, color: '#dc2626', fontWeight: 600 }}>
+                      Not shortlisted this time. Every rejection is redirection — keep going, your opportunity is closer than you think! 💪
+                    </div>
+                  )}
+                  {app.status === 'Offer Released' && (
+                    <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 10, background: '#f0fdf4', border: '1px solid #bbf7d0', fontSize: 12, color: '#16a34a', fontWeight: 600 }}>
+                      🎉 Congratulations! The recruiter has accepted your profile. Expect a call from them soon!
+                    </div>
+                  )}
+                  {app.status === 'Recruiter Screen' && (
+                    <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 10, background: '#eff6ff', border: '1px solid #bfdbfe', fontSize: 12, color: '#1d4ed8', fontWeight: 600 }}>
+                      Your profile is being reviewed by the recruiter. Stay tuned!
+                    </div>
+                  )}
                 </div>
 
                 {/* Stage stepper */}

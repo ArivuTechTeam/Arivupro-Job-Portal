@@ -114,6 +114,7 @@ export default function App() {
   const [selectedJob, setSelectedJob] = useState<JobListing | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [filters, setFilters] = useState({ search: '', type: '', city: '', qualification: '', workplace: '', salary: '', department: '', experience: '' });
+  const [jobPage, setJobPage] = useState(1);
   const [selectedCompany, setSelectedCompany] = useState<ApiCompany | null>(null);
   const [showRecruiterPortal, setShowRecruiterPortal] = useState(false);
   const [showRecruiterSignup, setShowRecruiterSignup] = useState(false);
@@ -559,6 +560,8 @@ export default function App() {
 
   const isJobsTab = (currentTab as string) === 'jobs' || currentTab === 'articleship' || currentTab === 'internships';
 
+  const JOBS_PER_PAGE = 20;
+
   const filteredJobs = useMemo(() => {
     return jobs.filter(j => {
       const q = filters.search.toLowerCase();
@@ -585,6 +588,16 @@ export default function App() {
       return matchSearch && matchType && matchCity && matchQual && matchWorkplace && matchSalary && matchDepartment && matchExperience;
     });
   }, [jobs, filters, currentTab]);
+
+  // Reset to page 1 whenever filters or tab changes
+  React.useEffect(() => { setJobPage(1); }, [filters, currentTab]);
+
+  const pagedJobs = useMemo(() => {
+    const start = (jobPage - 1) * JOBS_PER_PAGE;
+    return filteredJobs.slice(start, start + JOBS_PER_PAGE);
+  }, [filteredJobs, jobPage]);
+
+  const totalPages = Math.ceil(filteredJobs.length / JOBS_PER_PAGE);
 
   const appliedIds = useMemo(() => new Set(applications.map(a => a.jobId)), [applications]);
 
@@ -742,6 +755,11 @@ export default function App() {
               setFilters(prev => ({ ...prev, search: query, city: location || '' }));
               document.getElementById('job-feed-anchor')?.scrollIntoView({ behavior: 'smooth' });
             }}
+            onCompanyClick={(companyName) => {
+              setFilters(prev => ({ ...prev, search: companyName }));
+              setCurrentTab('jobs');
+              setTimeout(() => document.getElementById('job-feed-anchor')?.scrollIntoView({ behavior: 'smooth' }), 100);
+            }}
           />
         )}
 
@@ -770,7 +788,7 @@ export default function App() {
               {filteredJobs.length > 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
                   <div style={{ fontSize: 13, color: '#6b7280', fontWeight: 500 }}>
-                    Showing <span style={{ fontWeight: 800, color: '#0f2419' }}>{filteredJobs.length}</span> jobs
+                    Showing <span style={{ fontWeight: 800, color: '#0f2419' }}>{(jobPage - 1) * JOBS_PER_PAGE + 1}–{Math.min(jobPage * JOBS_PER_PAGE, filteredJobs.length)}</span> of <span style={{ fontWeight: 800, color: '#0f2419' }}>{filteredJobs.length}</span> jobs
                   </div>
                   <div style={{ fontSize: 12, color: '#9ca3af', display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block', animation: 'pulse-dot 2s ease-in-out infinite' }} />
@@ -787,11 +805,47 @@ export default function App() {
                   <button className="btn-outline" onClick={() => setFilters({ search: '', type: '', city: '', qualification: '', workplace: '', salary: '', department: '', experience: '' })}>Clear filters</button>
                 </div>
               ) : (
-                <div className="jobs-grid">
-                  {filteredJobs.map(job => (
-                    <JobCard key={job.id} job={job} onViewDetails={setSelectedJob} onApply={handleApply} isApplied={appliedIds.has(job.id)} isSaved={savedJobIds.has(job.id)} onSaveToggle={auth.role === 'student' ? handleSaveToggle : undefined} />
-                  ))}
-                </div>
+                <>
+                  <div className="jobs-grid">
+                    {pagedJobs.map(job => (
+                      <JobCard key={job.id} job={job} onViewDetails={setSelectedJob} onApply={handleApply} isApplied={appliedIds.has(job.id)} isSaved={savedJobIds.has(job.id)} onSaveToggle={auth.role === 'student' ? handleSaveToggle : undefined} />
+                    ))}
+                  </div>
+
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 32, flexWrap: 'wrap' }}>
+                      <button
+                        onClick={() => { setJobPage(p => Math.max(1, p - 1)); document.getElementById('job-feed-anchor')?.scrollIntoView({ behavior: 'smooth' }); }}
+                        disabled={jobPage === 1}
+                        style={{ padding: '8px 16px', borderRadius: 8, border: '1.5px solid #e5e7eb', background: jobPage === 1 ? '#f9fafb' : '#fff', color: jobPage === 1 ? '#d1d5db' : '#374151', fontWeight: 700, fontSize: 13, cursor: jobPage === 1 ? 'not-allowed' : 'pointer', fontFamily: 'Manrope, sans-serif' }}
+                      >← Prev</button>
+
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter(p => p === 1 || p === totalPages || Math.abs(p - jobPage) <= 2)
+                        .reduce<(number | '...')[]>((acc, p, idx, arr) => {
+                          if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push('...');
+                          acc.push(p);
+                          return acc;
+                        }, [])
+                        .map((p, idx) => p === '...' ? (
+                          <span key={`dots-${idx}`} style={{ padding: '8px 4px', color: '#9ca3af', fontSize: 13 }}>…</span>
+                        ) : (
+                          <button key={p}
+                            onClick={() => { setJobPage(p as number); document.getElementById('job-feed-anchor')?.scrollIntoView({ behavior: 'smooth' }); }}
+                            style={{ width: 36, height: 36, borderRadius: 8, border: '1.5px solid', borderColor: p === jobPage ? '#1a7a4a' : '#e5e7eb', background: p === jobPage ? '#1a7a4a' : '#fff', color: p === jobPage ? '#fff' : '#374151', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'Manrope, sans-serif' }}
+                          >{p}</button>
+                        ))
+                      }
+
+                      <button
+                        onClick={() => { setJobPage(p => Math.min(totalPages, p + 1)); document.getElementById('job-feed-anchor')?.scrollIntoView({ behavior: 'smooth' }); }}
+                        disabled={jobPage === totalPages}
+                        style={{ padding: '8px 16px', borderRadius: 8, border: '1.5px solid #e5e7eb', background: jobPage === totalPages ? '#f9fafb' : '#fff', color: jobPage === totalPages ? '#d1d5db' : '#374151', fontWeight: 700, fontSize: 13, cursor: jobPage === totalPages ? 'not-allowed' : 'pointer', fontFamily: 'Manrope, sans-serif' }}
+                      >Next →</button>
+                    </div>
+                  )}
+                </>
               )}
               <style>{`
                 .jobs-grid {
@@ -1011,7 +1065,8 @@ export default function App() {
                   sources={sources}
                   onTriggerScrape={async (src) => {
                     showToast(`Syncing ${src || 'all sources'}…`);
-                    const res = await fetch('/api/scrape/trigger', {
+                    const { adminFetch } = await import('./lib/supabase/auth');
+                    const res = await adminFetch('/api/scrape/trigger', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ target_source: src || null }),

@@ -153,15 +153,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#f0faf4'; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
               >
-                Login
+                Sign In
               </button>
 
-              {/* Register — solid pill */}
+              {/* Sign Up — solid pill */}
               <button className="btn-primary" onClick={() => onSignIn('signup')} style={{ padding: '8px 20px', fontSize: 13 }}>
-                Register
+                Sign Up
               </button>
 
-              {/* For Employers */}
+              {/* For Recruiters */}
               <button
                 onClick={onForEmployers}
                 style={{
@@ -174,7 +174,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#1a7a4a'; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#6b7280'; }}
               >
-                For Employers
+                For Recruiters
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ marginTop: 1 }}>
                   <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
@@ -366,13 +366,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                 style={{ flex: 1, padding: '9px 16px', borderRadius: 999, border: '1.5px solid #1a7a4a', background: 'transparent', color: '#1a7a4a', fontSize: 13, fontWeight: 700, fontFamily: 'Manrope, sans-serif', cursor: 'pointer' }}
                 onClick={() => { onSignIn('login'); setMobileOpen(false); }}
               >
-                Login
+                Sign In
               </button>
               <button className="btn-primary" style={{ flex: 1, fontSize: 13, padding: '9px 16px' }} onClick={() => { onSignIn('signup'); setMobileOpen(false); }}>
-                Register
+                Sign Up
               </button>
               <button onClick={() => { onForEmployers(); setMobileOpen(false); }} style={{ width: '100%', textAlign: 'center', padding: '9px', fontSize: 13, fontWeight: 600, color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Manrope, sans-serif' }}>
-                For Employers →
+                For Recruiters →
               </button>
             </div>
           )}

@@ -4,6 +4,7 @@ import { Search, MapPin, ChevronRight } from 'lucide-react';
 interface HeroSectionProps {
   onGetStarted: () => void;
   onSearch?: (query: string, location: string) => void;
+  onCompanyClick?: (companyName: string) => void;
 }
 
 const CATEGORIES = [
@@ -23,7 +24,7 @@ const LOCATIONS = [
   'Bangalore', 'Mumbai', 'Hyderabad', 'Delhi NCR', 'Chennai', 'Pune', 'Remote',
 ];
 
-export const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onSearch }) => {
+export const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onSearch, onCompanyClick }) => {
   const [query, setQuery] = useState('');
   const [location, setLocation] = useState('');
 
@@ -184,15 +185,16 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onSearch
           </h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
             {[
-              { name: 'Deloitte India', type: 'Big 4 · Audit', jobs: 3, badge: 'MoU Partner', logo: 'D' },
-              { name: 'Goldman Sachs', type: 'Investment Banking', jobs: 1, badge: 'MoU Partner', logo: 'GS' },
-              { name: 'BDO India LLP', type: 'Articleship', jobs: 2, badge: 'Verified', logo: 'BDO' },
-              { name: 'PwC AC', type: 'Big 4 · Tax', jobs: 2, badge: 'Verified', logo: 'PwC' },
-              { name: 'Avendus', type: 'IB · M&A', jobs: 1, badge: 'Verified', logo: 'AV' },
-              { name: 'Grant Thornton', type: 'Compliance', jobs: 2, badge: 'Verified', logo: 'GT' },
+              { name: 'Deloitte India', searchKey: 'Deloitte', type: 'Big 4 · Audit', jobs: 3, badge: '', logo: 'D' },
+              { name: 'Goldman Sachs', searchKey: 'Goldman Sachs', type: 'Investment Banking', jobs: 1, badge: '', logo: 'GS' },
+              { name: 'BDO India LLP', searchKey: 'BDO', type: 'Articleship', jobs: 2, badge: 'Verified', logo: 'BDO' },
+              { name: 'PwC AC', searchKey: 'PwC', type: 'Big 4 · Tax', jobs: 2, badge: 'Verified', logo: 'PwC' },
+              { name: 'Avendus', searchKey: 'Avendus', type: 'IB · M&A', jobs: 1, badge: 'Verified', logo: 'AV' },
+              { name: 'Grant Thornton', searchKey: 'Grant Thornton', type: 'Compliance', jobs: 2, badge: 'Verified', logo: 'GT' },
             ].map(co => (
               <div
                 key={co.name}
+                onClick={() => onCompanyClick?.(co.searchKey)}
                 style={{
                   display: 'flex', flexDirection: 'column', gap: 10,
                   padding: '16px', borderRadius: 12, border: '1px solid #e5e7eb',
@@ -221,9 +223,11 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onSearch
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: 11, color: '#1a7a4a', fontWeight: 700 }}>{co.jobs} open roles</span>
-                  <span className={co.badge === 'MoU Partner' ? 'badge badge-yellow' : 'badge badge-green'} style={{ fontSize: '0.6rem' }}>
-                    {co.badge}
-                  </span>
+                  {co.badge && (
+                    <span className={co.badge === 'MoU Partner' ? 'badge badge-yellow' : 'badge badge-green'} style={{ fontSize: '0.6rem' }}>
+                      {co.badge}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}

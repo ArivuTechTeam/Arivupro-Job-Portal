@@ -1065,7 +1065,8 @@ export default function App() {
                   sources={sources}
                   onTriggerScrape={async (src) => {
                     showToast(`Syncing ${src || 'all sources'}…`);
-                    const res = await fetch('/api/scrape/trigger', {
+                    const { adminFetch } = await import('./lib/supabase/auth');
+                    const res = await adminFetch('/api/scrape/trigger', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ target_source: src || null }),

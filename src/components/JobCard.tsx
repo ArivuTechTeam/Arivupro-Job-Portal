@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Briefcase, Clock, ExternalLink, CheckCircle2, Star, Zap, IndianRupee, GraduationCap, Building2, Bookmark, BookmarkCheck } from 'lucide-react';
+import { MapPin, Clock, ExternalLink, CheckCircle2, Bookmark, BookmarkCheck } from 'lucide-react';
 import { JobListing } from '../types/index.ts';
 
 interface JobCardProps {
@@ -24,19 +24,8 @@ function relativeTime(dateStr: string): string {
   return `${Math.floor(diffDays / 30)}mo ago`;
 }
 
-function getLogoColors(company: string): { bg: string; text: string } {
-  const hash = company.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-  const palettes = [
-    { bg: '#e8f5e9', text: '#2e7d32' },
-    { bg: '#e3f2fd', text: '#1565c0' },
-    { bg: '#fce4ec', text: '#c62828' },
-    { bg: '#fff3e0', text: '#e65100' },
-    { bg: '#f3e5f5', text: '#6a1b9a' },
-    { bg: '#e0f7fa', text: '#00695c' },
-    { bg: '#fafafa', text: '#37474f' },
-    { bg: '#fff8e1', text: '#f57f17' },
-  ];
-  return palettes[hash % palettes.length];
+function getCompanyInitials(company: string): string {
+  return company.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
 }
 
 function JobTypePill({ jobType }: { jobType: string }) {
@@ -47,22 +36,22 @@ function JobTypePill({ jobType }: { jobType: string }) {
     'Contract':                       { bg: '#f3e5f5', color: '#6a1b9a', border: '#e1bee7' },
   };
   const s = styles[jobType] ?? { bg: '#f5f5f5', color: '#616161', border: '#e0e0e0' };
+  const label = jobType === 'Articleship / Industrial Training' ? 'Articleship' : jobType;
   return (
     <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 4,
+      display: 'inline-flex', alignItems: 'center',
       padding: '3px 10px', borderRadius: 6,
       background: s.bg, color: s.color, border: `1px solid ${s.border}`,
       fontSize: 11, fontWeight: 700, letterSpacing: '0.01em',
     }}>
-      <Briefcase size={9} />
-      {jobType}
+      {label}
     </span>
   );
 }
 
 export const JobCard: React.FC<JobCardProps> = ({ job, onApply, onViewDetails, isApplied, isSaved, onSaveToggle }) => {
   const isScraped = job.source !== 'arivupro_exclusive' && job.source !== 'direct_recruiter';
-  const logoColors = getLogoColors(job.company);
+  const companyInitials = getCompanyInitials(job.company);
   const postedLabel = relativeTime(job.postedDate);
 
   return (
@@ -71,7 +60,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onApply, onViewDetails, i
       style={{
         background: '#fff',
         border: '1px solid #e5e7eb',
-        borderRadius: 14,
+        borderRadius: 12,
         padding: '20px 22px',
         transition: 'box-shadow 0.18s ease, border-color 0.18s ease, transform 0.18s ease',
         cursor: 'default',
@@ -83,13 +72,13 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onApply, onViewDetails, i
 
         {/* Company Logo */}
         <div style={{
-          width: 52, height: 52, borderRadius: 12, flexShrink: 0,
-          background: logoColors.bg, border: '1.5px solid #e5e7eb',
+          width: 48, height: 48, borderRadius: 10, flexShrink: 0,
+          background: '#f3f4f6', border: '1px solid #e5e7eb',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontWeight: 900, fontSize: 18, color: logoColors.text,
-          letterSpacing: '-0.03em', fontFamily: 'Manrope, sans-serif',
+          fontWeight: 800, fontSize: 13, color: '#374151',
+          letterSpacing: '-0.01em', fontFamily: 'Manrope, sans-serif',
         }}>
-          {job.logoText || job.company.charAt(0)}
+          {job.logoText || companyInitials}
         </div>
 
         {/* Title + Company + Badges */}
@@ -112,23 +101,21 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onApply, onViewDetails, i
             <div style={{ display: 'flex', gap: 5, flexShrink: 0, flexWrap: 'wrap' }}>
               {job.arivuproExclusive && (
                 <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 3,
+                  display: 'inline-flex', alignItems: 'center',
                   padding: '3px 9px', borderRadius: 6,
-                  background: '#fff8e1', border: '1px solid #ffe082',
-                  color: '#f57f17', fontSize: 10, fontWeight: 800,
+                  background: '#f0faf4', border: '1px solid #d7f4ea',
+                  color: '#1a7a4a', fontSize: 10, fontWeight: 700,
                 }}>
-                  <Star size={9} />
-                  Exclusive
+                  ArivuPro
                 </span>
               )}
               {job.isUrgent && (
                 <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 3,
+                  display: 'inline-flex', alignItems: 'center',
                   padding: '3px 9px', borderRadius: 6,
-                  background: '#fce4ec', border: '1px solid #f48fb1',
-                  color: '#c62828', fontSize: 10, fontWeight: 800,
+                  background: '#fef2f2', border: '1px solid #fecaca',
+                  color: '#dc2626', fontSize: 10, fontWeight: 700,
                 }}>
-                  <Zap size={9} />
                   Urgent
                 </span>
               )}
@@ -137,8 +124,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onApply, onViewDetails, i
 
           {/* Company name + location */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 1 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 600, color: '#374151' }}>
-              <Building2 size={12} color="#9ca3af" />
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>
               {job.company}
             </span>
             <span style={{ color: '#d1d5db', fontSize: 12 }}>·</span>
@@ -152,49 +138,15 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onApply, onViewDetails, i
 
       {/* ── Key Details row ── */}
       <div style={{
-        display: 'flex', flexWrap: 'wrap', gap: 10,
-        margin: '14px 0 12px',
-        padding: '12px 14px',
-        background: '#f9fafb', borderRadius: 10, border: '1px solid #f3f4f6',
+        display: 'flex', flexWrap: 'wrap', gap: 16,
+        margin: '12px 0 10px',
+        fontSize: 13, color: '#374151',
       }}>
-        {/* Salary */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 120 }}>
-          <div style={{ width: 24, height: 24, borderRadius: 6, background: '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <IndianRupee size={12} color="#2e7d32" />
-          </div>
-          <div>
-            <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 600, lineHeight: 1 }}>Salary</div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: '#111827', lineHeight: 1.3 }}>{job.salaryText}</div>
-          </div>
-        </div>
-
-        <div style={{ width: 1, background: '#e5e7eb', alignSelf: 'stretch' }} />
-
-        {/* Experience */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 110 }}>
-          <div style={{ width: 24, height: 24, borderRadius: 6, background: '#e3f2fd', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Briefcase size={12} color="#1565c0" />
-          </div>
-          <div>
-            <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 600, lineHeight: 1 }}>Experience</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', lineHeight: 1.3 }}>{job.experienceLevel}</div>
-          </div>
-        </div>
-
-        <div style={{ width: 1, background: '#e5e7eb', alignSelf: 'stretch' }} />
-
-        {/* Qualification */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <div style={{ width: 24, height: 24, borderRadius: 6, background: '#f3e5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <GraduationCap size={12} color="#6a1b9a" />
-          </div>
-          <div>
-            <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 600, lineHeight: 1 }}>Qualification</div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#111827', lineHeight: 1.3 }}>
-              {job.qualifications.slice(0, 3).map(q => q.replace(/_/g, ' ')).join(' · ') || 'Open'}
-            </div>
-          </div>
-        </div>
+        <span><span style={{ color: '#9ca3af', fontWeight: 500 }}>Stipend/CTC </span><strong style={{ fontWeight: 700, color: '#111827' }}>{job.salaryText}</strong></span>
+        <span style={{ color: '#e5e7eb' }}>·</span>
+        <span><span style={{ color: '#9ca3af', fontWeight: 500 }}>Exp </span><strong style={{ fontWeight: 600, color: '#374151' }}>{job.experienceLevel}</strong></span>
+        <span style={{ color: '#e5e7eb' }}>·</span>
+        <span style={{ fontWeight: 600, color: '#374151' }}>{job.qualifications.slice(0, 3).map(q => q.replace(/_/g, ' ')).join(', ') || 'Open'}</span>
       </div>
 
       {/* ── Type + Department tags ── */}
@@ -211,9 +163,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onApply, onViewDetails, i
         {job.workplaceType !== 'Onsite' && (
           <span style={{
             padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-            background: job.workplaceType === 'Remote' ? '#e0f2f1' : '#e8f5e9',
-            color: job.workplaceType === 'Remote' ? '#00695c' : '#2e7d32',
-            border: `1px solid ${job.workplaceType === 'Remote' ? '#b2dfdb' : '#c8e6c9'}`,
+            background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb',
           }}>
             {job.workplaceType}
           </span>
@@ -268,7 +218,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onApply, onViewDetails, i
             }}
             className="view-details-btn"
           >
-            View Details
+            Details
           </button>
 
           {isApplied ? (
@@ -312,7 +262,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onApply, onViewDetails, i
               }}
               className="apply-btn-easy"
             >
-              Easy Apply →
+              Apply
             </button>
           )}
         </div>
@@ -328,6 +278,10 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onApply, onViewDetails, i
         .view-details-btn:hover { border-color: #1a7a4a !important; color: #1a7a4a !important; }
         .apply-btn-external:hover, .apply-btn-easy:hover { background: #155f39 !important; }
         .save-btn:hover { border-color: #1a7a4a !important; color: #1a7a4a !important; background: #f0faf4 !important; }
+        @media (max-width: 640px) {
+          .job-card-pro { padding: 14px 14px !important; }
+          .job-card-pro:hover { transform: none !important; }
+        }
       `}</style>
     </div>
   );

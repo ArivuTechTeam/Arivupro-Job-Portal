@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X, MapPin, CheckCircle2, ExternalLink, Star, Zap, Briefcase, Globe, Bookmark, BookmarkCheck } from 'lucide-react';
+import { X, MapPin, CheckCircle2, ExternalLink, Bookmark, BookmarkCheck } from 'lucide-react';
 import { JobListing } from '../types/index.ts';
 
 interface JobDetailsModalProps {
@@ -95,20 +95,21 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
         >
           <div
             style={{
-              width: 52,
-              height: 52,
-              borderRadius: 12,
-              background: '#1a7a4a',
-              color: '#fff',
+              width: 48,
+              height: 48,
+              borderRadius: 10,
+              background: '#f3f4f6',
+              color: '#374151',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontWeight: 800,
-              fontSize: 16,
+              fontWeight: 700,
+              fontSize: 13,
               flexShrink: 0,
+              border: '1px solid #e5e7eb',
             }}
           >
-            {job.logoText}
+            {job.logoText || job.company.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()}
           </div>
 
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -119,14 +120,10 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               <span className={getJobTypeBadgeClass(job.jobType)}>{job.jobType}</span>
               {job.arivuproExclusive && (
-                <span className="badge badge-yellow">
-                  <Star size={9} /> Exclusive
-                </span>
+                <span className="badge badge-green">ArivuPro</span>
               )}
               {job.isUrgent && (
-                <span className="badge badge-red">
-                  <Zap size={9} /> Urgent
-                </span>
+                <span className="badge badge-red">Urgent</span>
               )}
             </div>
           </div>
@@ -169,23 +166,16 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               gap: 16,
               fontSize: 13,
               color: '#6b7280',
-              padding: '14px 16px',
-              background: '#f9fafb',
-              borderRadius: 10,
+              padding: '12px 0',
+              borderBottom: '1px solid #f3f4f6',
             }}
           >
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <MapPin size={14} color="#9ca3af" />
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <MapPin size={13} color="#9ca3af" />
               {job.location}
             </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <Globe size={14} color="#9ca3af" />
-              {job.workplaceType}
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <Briefcase size={14} color="#9ca3af" />
-              {job.experienceLevel}
-            </span>
+            <span>{job.workplaceType}</span>
+            <span>{job.experienceLevel}</span>
           </div>
 
           {/* Salary */}
@@ -201,7 +191,7 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           {/* Qualifications */}
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
-              Qualifications Required
+              Qualifications
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {job.qualifications.map((q) => (
@@ -215,7 +205,7 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           {/* Description */}
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
-              About the Role
+              Role overview
             </div>
             <p style={{ fontSize: 14, lineHeight: 1.7, color: '#374151' }}>{job.description}</p>
           </div>
@@ -248,7 +238,7 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                   <span key={`g${i}`} style={{
                     display: 'inline-flex', alignItems: 'center',
                     fontSize: 11, fontWeight: 600, padding: '2px 8px',
-                    borderRadius: 999, border: '1px dashed #d1d5db', color: '#9ca3af',
+                    borderRadius: 6, border: '1px dashed #d1d5db', color: '#9ca3af',
                   }}>
                     {s}
                   </span>
@@ -298,15 +288,15 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
                 gap: 6,
                 background: '#d7f4ea',
                 color: '#1a7a4a',
-                borderRadius: 999,
-                padding: '8px 20px',
+                borderRadius: 8,
+                padding: '8px 16px',
                 fontSize: 13,
                 fontWeight: 700,
                 fontFamily: 'Manrope, sans-serif',
               }}
             >
               <CheckCircle2 size={15} />
-              Applied ✓
+              Applied
             </span>
           ) : isScraped ? (
             <a
@@ -315,7 +305,7 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               rel="noopener noreferrer"
               className="btn-outline"
             >
-              Apply on {job.source} ↗
+              Apply on site
               <ExternalLink size={13} />
             </a>
           ) : (
@@ -326,7 +316,7 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
               }}
               className="btn-primary"
             >
-              Easy Apply →
+              Apply
             </button>
           )}
         </div>

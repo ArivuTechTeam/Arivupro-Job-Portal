@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, MapPin, ChevronRight } from 'lucide-react';
+import { Search, MapPin } from 'lucide-react';
 
 interface HeroSectionProps {
   onGetStarted: () => void;
@@ -8,16 +8,16 @@ interface HeroSectionProps {
 }
 
 const CATEGORIES = [
-  { icon: '📄', label: 'Articleship' },
-  { icon: '🏦', label: 'Big 4 Firms' },
-  { icon: '📈', label: 'FP&A / Finance' },
-  { icon: '🧾', label: 'Taxation' },
-  { icon: '🎓', label: 'Fresher' },
-  { icon: '💼', label: 'Internship' },
-  { icon: '🌐', label: 'Remote' },
-  { icon: '🏛️', label: 'Investment Banking' },
-  { icon: '🏢', label: 'MNC / GCC' },
-  { icon: '⚖️', label: 'Compliance / CS' },
+  'Articleship',
+  'Big 4 Firms',
+  'FP&A / Finance',
+  'Taxation',
+  'Fresher',
+  'Internship',
+  'Remote',
+  'Investment Banking',
+  'MNC / GCC',
+  'Compliance / CS',
 ];
 
 const LOCATIONS = [
@@ -36,25 +36,13 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onSearch
   return (
     <div>
       {/* ── HERO ── */}
-      <section style={{
+      <section className="hero-section" style={{
         background: '#fff',
         borderBottom: '1px solid #e5e7eb',
         padding: '56px 24px 48px',
         textAlign: 'center',
       }}>
         <div style={{ maxWidth: 820, margin: '0 auto' }}>
-
-          {/* Badge */}
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            background: '#f0faf4', border: '1px solid #d7f4ea',
-            borderRadius: 999, padding: '5px 14px', marginBottom: 24,
-          }}>
-            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#1a7a4a', display: 'inline-block' }} className="animate-pulse-dot" />
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#1a7a4a' }}>
-              673 live finance jobs · Updated 5 mins ago
-            </span>
-          </div>
 
           {/* Headline */}
           <h1 style={{
@@ -63,14 +51,14 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onSearch
             letterSpacing: '-0.03em', lineHeight: 1.1,
             marginBottom: 12,
           }}>
-            Find your dream finance career now
+            CA articleships, audit roles, and finance jobs across India
           </h1>
           <p style={{ fontSize: 16, color: '#6b7280', marginBottom: 36 }}>
-            Exclusive placements for CA, ACCA, CFA, CS, CMA &amp; B.Com students
+            For CA, ACCA, CFA, CS, CMA &amp; B.Com students. Updated daily from ICAI, Big 4 career sites, and 12 job boards.
           </p>
 
           {/* ── SEARCH BAR ── */}
-          <form onSubmit={handleSearch} style={{
+          <form onSubmit={handleSearch} className="hero-search-form" style={{
             display: 'flex', alignItems: 'center',
             background: '#fff', border: '1.5px solid #e5e7eb',
             borderRadius: 14, padding: '6px 6px 6px 20px',
@@ -93,11 +81,11 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onSearch
               />
             </div>
 
-            {/* Divider */}
-            <div style={{ width: 1, height: 28, background: '#e5e7eb', flexShrink: 0, margin: '0 12px' }} />
+            {/* Divider — hidden on mobile */}
+            <div className="hero-search-divider" style={{ width: 1, height: 28, background: '#e5e7eb', flexShrink: 0, margin: '0 12px' }} />
 
-            {/* Location select */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 160 }}>
+            {/* Location select — hidden on mobile */}
+            <div className="hero-search-location" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 160 }}>
               <MapPin size={16} color="#9ca3af" style={{ flexShrink: 0 }} />
               <select
                 value={location}
@@ -115,7 +103,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onSearch
             </div>
 
             {/* Search button */}
-            <button type="submit" className="btn-primary" style={{
+            <button type="submit" className="btn-primary hero-search-btn" style={{
               borderRadius: 10, padding: '10px 28px',
               fontSize: 14, flexShrink: 0, marginLeft: 6,
             }}>
@@ -125,7 +113,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onSearch
 
           {/* Quick links */}
           <div style={{ fontSize: 13, color: '#9ca3af' }}>
-            Popular:{' '}
+            Try:{' '}
             {['CA Articleship', 'ACCA Jobs', 'Big 4 Audit', 'FP&A Analyst', 'US CPA'].map((tag, i) => (
               <React.Fragment key={tag}>
                 {i > 0 && <span style={{ margin: '0 4px' }}>·</span>}
@@ -144,132 +132,62 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onSearch
       {/* ── CATEGORY CHIPS ── */}
       <section style={{ background: '#fafafa', borderBottom: '1px solid #e5e7eb', padding: '28px 24px' }}>
         <div style={{ maxWidth: 1180, margin: '0 auto' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
             {CATEGORIES.map(cat => (
               <button
-                key={cat.label}
-                onClick={() => { if (onSearch) onSearch(cat.label, ''); }}
+                key={cat}
+                onClick={() => { if (onSearch) onSearch(cat, ''); }}
+                className="hero-category-chip"
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '9px 18px', borderRadius: 10,
+                  padding: '8px 16px', borderRadius: 8,
                   border: '1px solid #e5e7eb', background: '#fff',
                   cursor: 'pointer', fontSize: 13, fontWeight: 600,
                   color: '#374151', fontFamily: 'Manrope, sans-serif',
                   transition: 'all 0.15s ease',
                 }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = '#1a7a4a';
-                  (e.currentTarget as HTMLButtonElement).style.color = '#1a7a4a';
-                  (e.currentTarget as HTMLButtonElement).style.background = '#f0faf4';
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = '#e5e7eb';
-                  (e.currentTarget as HTMLButtonElement).style.color = '#374151';
-                  (e.currentTarget as HTMLButtonElement).style.background = '#fff';
-                }}
               >
-                <span style={{ fontSize: 16 }}>{cat.icon}</span>
-                {cat.label}
-                <ChevronRight size={13} color="#9ca3af" />
+                {cat}
               </button>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── TOP COMPANIES ── */}
-      <section style={{ background: '#fff', padding: '40px 24px 48px', borderBottom: '1px solid #e5e7eb' }}>
-        <div style={{ maxWidth: 1180, margin: '0 auto' }}>
-          <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f2419', textAlign: 'center', marginBottom: 28, letterSpacing: '-0.02em' }}>
-            Top companies hiring now
-          </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
-            {[
-              { name: 'Deloitte India', searchKey: 'Deloitte', type: 'Big 4 · Audit', jobs: 3, badge: '', logo: 'D' },
-              { name: 'Goldman Sachs', searchKey: 'Goldman Sachs', type: 'Investment Banking', jobs: 1, badge: '', logo: 'GS' },
-              { name: 'BDO India LLP', searchKey: 'BDO', type: 'Articleship', jobs: 2, badge: 'Verified', logo: 'BDO' },
-              { name: 'PwC AC', searchKey: 'PwC', type: 'Big 4 · Tax', jobs: 2, badge: 'Verified', logo: 'PwC' },
-              { name: 'Avendus', searchKey: 'Avendus', type: 'IB · M&A', jobs: 1, badge: 'Verified', logo: 'AV' },
-              { name: 'Grant Thornton', searchKey: 'Grant Thornton', type: 'Compliance', jobs: 2, badge: 'Verified', logo: 'GT' },
-            ].map(co => (
-              <div
-                key={co.name}
-                onClick={() => onCompanyClick?.(co.searchKey)}
-                style={{
-                  display: 'flex', flexDirection: 'column', gap: 10,
-                  padding: '16px', borderRadius: 12, border: '1px solid #e5e7eb',
-                  background: '#fff', cursor: 'pointer', transition: 'all 0.15s ease',
-                }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLDivElement).style.borderColor = '#1a7a4a';
-                  (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 16px rgba(26,122,74,0.08)';
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLDivElement).style.borderColor = '#e5e7eb';
-                  (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
-                }}
-              >
-                <div style={{
-                  width: 44, height: 44, borderRadius: 10,
-                  background: '#f0faf4', border: '1px solid #d7f4ea',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontWeight: 800, fontSize: 12, color: '#1a7a4a',
-                }}>
-                  {co.logo}
-                </div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: '#0f2419' }}>{co.name}</div>
-                  <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{co.type}</div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 11, color: '#1a7a4a', fontWeight: 700 }}>{co.jobs} open roles</span>
-                  {co.badge && (
-                    <span className={co.badge === 'MoU Partner' ? 'badge badge-yellow' : 'badge badge-green'} style={{ fontSize: '0.6rem' }}>
-                      {co.badge}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      {/* ── TRUST STRIP ── */}
-      <section style={{ background: '#f0faf4', padding: '28px 24px' }}>
-        <div style={{ maxWidth: 1180, margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: 32, justifyContent: 'center' }}>
-          {[
-            { number: '1,200+', label: 'Students Placed' },
-            { number: '85+', label: 'Verified Companies' },
-            { number: '673', label: 'Live Jobs Today' },
-            { number: '₹9.8L', label: 'Avg CTC Placed' },
-            { number: '4', label: 'Job Types' },
-          ].map(stat => (
-            <div key={stat.label} style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 24, fontWeight: 800, color: '#1a7a4a', letterSpacing: '-0.03em' }}>{stat.number}</div>
-              <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 600, marginTop: 2 }}>{stat.label}</div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <style>{`
+        .hero-category-chip:hover { border-color: #1a7a4a !important; color: #1a7a4a !important; background: #f0faf4 !important; }
+        @media (max-width: 640px) {
+          .hero-section { padding: 32px 16px 28px !important; }
+          .hero-search-form {
+            flex-direction: column !important;
+            padding: 12px 14px !important;
+            border-radius: 12px !important;
+            gap: 10px !important;
+            align-items: stretch !important;
+          }
+          .hero-search-divider { display: none !important; }
+          .hero-search-location { display: none !important; }
+          .hero-search-btn { width: 100% !important; margin-left: 0 !important; border-radius: 8px !important; padding: 12px !important; }
+        }
+      `}</style>
 
       {/* ── SIGN UP PROMPT (guests only) ── */}
       <section style={{ background: '#0f2419', padding: '40px 24px' }}>
         <div style={{ maxWidth: 640, margin: '0 auto', textAlign: 'center' }}>
           <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', marginBottom: 8, letterSpacing: '-0.02em' }}>
-            Create your free account to apply
+            Track your applications. Get notified on new CA articleship openings.
           </div>
           <div style={{ fontSize: 14, color: '#6b9e82', marginBottom: 24 }}>
-            Save jobs, track applications, get AI match scores — all in one place
+            Free for students. No spam.
           </div>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             <button className="btn-accent" style={{ fontSize: 15, padding: '12px 32px' }} onClick={onGetStarted}>
-              Register free →
+              Create account
             </button>
             <button
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
-                padding: '12px 32px', borderRadius: 999,
+                padding: '12px 32px', borderRadius: 8,
                 border: '2px solid rgba(255,255,255,0.3)', background: 'transparent',
                 color: '#fff', fontSize: 15, fontWeight: 700,
                 fontFamily: 'Manrope, sans-serif', cursor: 'pointer',
@@ -277,7 +195,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onSearch
               }}
               onClick={onGetStarted}
             >
-              Sign In
+              Sign in
             </button>
           </div>
         </div>

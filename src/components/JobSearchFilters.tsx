@@ -129,7 +129,7 @@ export const JobSearchFilters: React.FC<JobSearchFiltersProps> = ({
 
           {/* Filter chips */}
           <select
-            className="input-field"
+            className="input-field filter-select"
             style={{ width: 'auto', paddingRight: 32 }}
             value={filters.type}
             onChange={(e) => set('type', e.target.value)}
@@ -142,7 +142,7 @@ export const JobSearchFilters: React.FC<JobSearchFiltersProps> = ({
           </select>
 
           <select
-            className="input-field"
+            className="input-field filter-select"
             style={{ width: 'auto', paddingRight: 32 }}
             value={filters.city}
             onChange={(e) => set('city', e.target.value)}
@@ -155,7 +155,7 @@ export const JobSearchFilters: React.FC<JobSearchFiltersProps> = ({
           </select>
 
           <select
-            className="input-field"
+            className="input-field filter-select"
             style={{ width: 'auto', paddingRight: 32 }}
             value={filters.qualification}
             onChange={(e) => set('qualification', e.target.value)}
@@ -168,7 +168,7 @@ export const JobSearchFilters: React.FC<JobSearchFiltersProps> = ({
           </select>
 
           <select
-            className="input-field"
+            className="input-field filter-select"
             style={{ width: 'auto', paddingRight: 32 }}
             value={filters.workplace}
             onChange={(e) => set('workplace', e.target.value)}
@@ -181,7 +181,7 @@ export const JobSearchFilters: React.FC<JobSearchFiltersProps> = ({
           </select>
 
           <select
-            className="input-field"
+            className="input-field filter-select"
             style={{ width: 'auto', paddingRight: 32 }}
             value={filters.salary}
             onChange={(e) => set('salary', e.target.value)}
@@ -194,7 +194,7 @@ export const JobSearchFilters: React.FC<JobSearchFiltersProps> = ({
           </select>
 
           <select
-            className="input-field"
+            className="input-field filter-select"
             style={{ width: 'auto', paddingRight: 32 }}
             value={filters.experience}
             onChange={(e) => set('experience', e.target.value)}
@@ -207,7 +207,7 @@ export const JobSearchFilters: React.FC<JobSearchFiltersProps> = ({
           </select>
 
           <select
-            className="input-field"
+            className="input-field filter-select"
             style={{ width: 'auto', paddingRight: 32 }}
             value={filters.department}
             onChange={(e) => set('department', e.target.value)}
@@ -247,7 +247,11 @@ export const JobSearchFilters: React.FC<JobSearchFiltersProps> = ({
 
       <style>{`
         @media (max-width: 640px) {
-          .filter-search-wrap { width: 100% !important; }
+          .filter-search-wrap { width: 100% !important; flex-shrink: 0 !important; }
+          .filter-select { width: calc(50% - 5px) !important; min-width: 0 !important; font-size: 12px !important; }
+        }
+        @media (max-width: 400px) {
+          .filter-select { width: 100% !important; }
         }
       `}</style>
     </div>

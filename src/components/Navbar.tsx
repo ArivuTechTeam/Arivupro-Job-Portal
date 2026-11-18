@@ -33,22 +33,11 @@ interface NavbarProps {
 }
 
 function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
+  return name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
-  currentTab,
-  onTabChange,
-  userRole,
-  userName,
-  onSignIn,
-  onSignOut,
-  onForEmployers,
+  currentTab, onTabChange, userRole, userName, onSignIn, onSignOut, onForEmployers,
 }) => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -71,6 +60,9 @@ export const Navbar: React.FC<NavbarProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Close mobile menu on tab change
+  useEffect(() => { setMobileOpen(false); }, [currentTab]);
+
   const studentTabs: { id: NavTab; label: string }[] = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'jobs', label: 'Jobs' },
@@ -78,7 +70,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'internships', label: 'Internships' },
     { id: 'companies', label: 'Companies' },
     { id: 'applications', label: 'My Applications' },
-    { id: 'ai-match', label: '✨ AI Match' },
+    { id: 'ai-match', label: 'Job Match' },
     { id: 'profile', label: 'My Profile' },
   ];
 
@@ -91,94 +83,63 @@ export const Navbar: React.FC<NavbarProps> = ({
   ];
 
   const tabs =
-    userRole === 'recruiter'
-      ? recruiterTabs
-      : userRole === 'admin'
-      ? adminTabs
-      : userRole === 'guest'
-      ? studentTabs.slice(1, 4)   // guests: Jobs, Articleship, Internships (no Dashboard)
-      : studentTabs;               // logged-in students: all 7 tabs
+    userRole === 'recruiter' ? recruiterTabs
+    : userRole === 'admin' ? adminTabs
+    : userRole === 'guest' ? studentTabs.slice(1, 4)   // Jobs, Articleship, Internships
+    : studentTabs;
 
   const initials = userName ? getInitials(userName) : '';
 
   return (
-    <header
-      style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 50,
-        background: '#fff',
-        boxShadow: scrolled ? '0 2px 16px rgba(15,36,25,0.08)' : '0 1px 0 #e5e7eb',
-        transition: 'box-shadow 0.2s ease',
-      }}
-    >
+    <header style={{
+      position: 'sticky', top: 0, zIndex: 50, background: '#fff',
+      boxShadow: scrolled ? '0 2px 16px rgba(15,36,25,0.08)' : '0 1px 0 #e5e7eb',
+      transition: 'box-shadow 0.2s ease',
+    }}>
       {/* Top bar */}
-      <div
-        style={{
-          maxWidth: 1180,
-          margin: '0 auto',
-          padding: '0 20px',
-          height: 64,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 16,
-        }}
-      >
+      <div style={{
+        maxWidth: 1180, margin: '0 auto', padding: '0 16px',
+        height: 60, display: 'flex', alignItems: 'center',
+        justifyContent: 'space-between', gap: 12,
+      }}>
         {/* Logo */}
         <button
-          onClick={() => { onTabChange('jobs'); setMobileOpen(false); }}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, display: 'flex', alignItems: 'center' }}
+          onClick={() => onTabChange('jobs')}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
         >
           <img
             src="/logo-white.png"
             alt="ArivuPro Academy"
-            style={{ height: 36, width: 'auto', display: 'block', background: '#1b5234', borderRadius: 8, padding: '4px 10px' }}
+            style={{ height: 32, width: 'auto', background: '#1b5234', borderRadius: 8, padding: '4px 10px' }}
           />
         </button>
 
-        {/* Desktop right side */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        {/* Desktop right — hidden below 640px */}
+        <div className="nav-desktop-right" style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           {userRole === 'guest' ? (
             <>
-              {/* Login — outline pill */}
               <button
                 onClick={() => onSignIn('login')}
                 style={{
-                  padding: '8px 20px', borderRadius: 999,
+                  padding: '7px 18px', borderRadius: 8,
                   border: '1.5px solid #1a7a4a', background: 'transparent',
                   color: '#1a7a4a', fontSize: 13, fontWeight: 700,
                   fontFamily: 'Manrope, sans-serif', cursor: 'pointer',
-                  transition: 'all 0.2s',
                 }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#f0faf4'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
-              >
-                Sign In
+              >Sign in</button>
+              <button className="btn-primary" onClick={() => onSignIn('signup')} style={{ padding: '7px 18px', fontSize: 13 }}>
+                Create account
               </button>
-
-              {/* Sign Up — solid pill */}
-              <button className="btn-primary" onClick={() => onSignIn('signup')} style={{ padding: '8px 20px', fontSize: 13 }}>
-                Sign Up
-              </button>
-
-              {/* For Recruiters */}
               <button
                 onClick={onForEmployers}
                 style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
                   fontSize: 13, fontWeight: 600, color: '#6b7280',
                   background: 'none', border: 'none', cursor: 'pointer',
-                  padding: '8px 4px', fontFamily: 'Manrope, sans-serif',
-                  whiteSpace: 'nowrap', transition: 'color 0.2s',
+                  padding: '7px 4px', fontFamily: 'Manrope, sans-serif',
+                  whiteSpace: 'nowrap',
                 }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#1a7a4a'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = '#6b7280'; }}
               >
-                For Recruiters
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ marginTop: 1 }}>
-                  <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+                Post a job
               </button>
             </>
           ) : (
@@ -186,142 +147,60 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 onClick={() => setDropdownOpen((v) => !v)}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  background: '#f0faf4',
-                  border: '1px solid #d7f4ea',
-                  borderRadius: 999,
-                  padding: '6px 12px 6px 6px',
-                  cursor: 'pointer',
-                  fontFamily: 'Manrope, sans-serif',
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  background: '#f0faf4', border: '1px solid #d7f4ea',
+                  borderRadius: 10, padding: '5px 12px 5px 5px',
+                  cursor: 'pointer', fontFamily: 'Manrope, sans-serif',
                 }}
               >
-                <div
-                  style={{
-                    width: 30,
-                    height: 30,
-                    borderRadius: '50%',
-                    background: '#1a7a4a',
-                    color: '#fff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 800,
-                    fontSize: 11,
-                    flexShrink: 0,
-                  }}
-                >
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%', background: '#1a7a4a',
+                  color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontWeight: 800, fontSize: 11, flexShrink: 0,
+                }}>
                   {initials}
                 </div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#0f2419', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#0f2419', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {userName}
                 </span>
                 <ChevronDown size={14} color="#6b7280" />
               </button>
-
               {dropdownOpen && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    right: 0,
-                    top: 'calc(100% + 8px)',
-                    background: '#fff',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: 12,
-                    boxShadow: '0 8px 32px rgba(15,36,25,0.12)',
-                    minWidth: 180,
-                    overflow: 'hidden',
-                    zIndex: 100,
-                  }}
-                >
-                  <button
-                    onClick={() => { onTabChange('profile'); setDropdownOpen(false); }}
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                      padding: '12px 16px',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontFamily: 'Manrope, sans-serif',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: '#0f2419',
-                      textAlign: 'left',
-                    }}
-                  >
-                    <User size={15} color="#6b7280" />
-                    My Profile
+                <div style={{
+                  position: 'absolute', right: 0, top: 'calc(100% + 8px)',
+                  background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12,
+                  boxShadow: '0 8px 32px rgba(15,36,25,0.12)', minWidth: 160, overflow: 'hidden', zIndex: 100,
+                }}>
+                  <button onClick={() => { onTabChange('profile'); setDropdownOpen(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Manrope, sans-serif', fontSize: 13, fontWeight: 600, color: '#0f2419', textAlign: 'left' }}>
+                    <User size={15} color="#6b7280" /> My Profile
                   </button>
                   <div style={{ height: 1, background: '#f3f4f6' }} />
-                  <button
-                    onClick={() => { onSignOut(); setDropdownOpen(false); }}
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                      padding: '12px 16px',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontFamily: 'Manrope, sans-serif',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: '#dc2626',
-                      textAlign: 'left',
-                    }}
-                  >
-                    <LogOut size={15} color="#dc2626" />
-                    Sign Out
+                  <button onClick={() => { onSignOut(); setDropdownOpen(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Manrope, sans-serif', fontSize: 13, fontWeight: 600, color: '#dc2626', textAlign: 'left' }}>
+                    <LogOut size={15} color="#dc2626" /> Sign Out
                   </button>
                 </div>
               )}
             </div>
           )}
-
-          {/* Hamburger */}
-          <button
-            className="btn-ghost"
-            style={{ display: 'none', padding: '8px' }}
-            id="hamburger-btn"
-            onClick={() => setMobileOpen((v) => !v)}
-            aria-label="Toggle menu"
-          >
-            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
         </div>
+
+        {/* Hamburger — shown on mobile */}
+        <button
+          className="nav-hamburger"
+          style={{ display: 'none', padding: '8px', background: 'none', border: 'none', cursor: 'pointer' }}
+          onClick={() => setMobileOpen((v) => !v)}
+          aria-label="Toggle menu"
+        >
+          {mobileOpen ? <X size={22} color="#0f2419" /> : <Menu size={22} color="#0f2419" />}
+        </button>
       </div>
 
-      {/* Tab nav row — hidden for admin (sidebar used instead) */}
+      {/* Tab nav row — hidden on mobile (use drawer), hidden for admin */}
       {userRole !== 'admin' && (
-        <div
-          style={{
-            borderTop: '1px solid #f3f4f6',
-            borderBottom: '1px solid #e5e7eb',
-            overflowX: 'auto',
-            scrollbarWidth: 'none',
-          }}
-        >
-          <div
-            style={{
-              maxWidth: 1180,
-              margin: '0 auto',
-              padding: '0 20px',
-              display: 'flex',
-              gap: 2,
-              alignItems: 'center',
-            }}
-          >
+        <div className="nav-tabs-row" style={{ borderTop: '1px solid #f3f4f6', borderBottom: '1px solid #e5e7eb', overflowX: 'auto', scrollbarWidth: 'none' }}>
+          <div style={{ maxWidth: 1180, margin: '0 auto', padding: '0 16px', display: 'flex', gap: 2, alignItems: 'center' }}>
             {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => { onTabChange(tab.id); setMobileOpen(false); }}
-                className={`tab-link${currentTab === tab.id ? ' active' : ''}`}
-              >
+              <button key={tab.id} onClick={() => onTabChange(tab.id)} className={`tab-link${currentTab === tab.id ? ' active' : ''}`}>
                 {tab.label}
               </button>
             ))}
@@ -331,49 +210,44 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Mobile drawer */}
       {mobileOpen && (
-        <div
-          style={{
-            background: '#fff',
-            borderBottom: '1px solid #e5e7eb',
-            padding: '8px 20px 16px',
-          }}
-        >
+        <div style={{ background: '#fff', borderBottom: '2px solid #e5e7eb', padding: '8px 16px 20px' }}>
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => { onTabChange(tab.id); setMobileOpen(false); }}
               style={{
-                display: 'block',
-                width: '100%',
-                textAlign: 'left',
-                padding: '10px 12px',
-                borderRadius: 9,
+                display: 'block', width: '100%', textAlign: 'left',
+                padding: '12px 14px', borderRadius: 10,
                 background: currentTab === tab.id ? '#f0faf4' : 'none',
-                border: 'none',
-                fontFamily: 'Manrope, sans-serif',
-                fontSize: 14,
-                fontWeight: currentTab === tab.id ? 700 : 500,
+                border: 'none', fontFamily: 'Manrope, sans-serif',
+                fontSize: 15, fontWeight: currentTab === tab.id ? 700 : 500,
                 color: currentTab === tab.id ? '#1a7a4a' : '#374151',
-                cursor: 'pointer',
-                marginBottom: 2,
+                cursor: 'pointer', marginBottom: 2,
               }}
             >
               {tab.label}
             </button>
           ))}
           {userRole === 'guest' && (
-            <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button
-                style={{ flex: 1, padding: '9px 16px', borderRadius: 999, border: '1.5px solid #1a7a4a', background: 'transparent', color: '#1a7a4a', fontSize: 13, fontWeight: 700, fontFamily: 'Manrope, sans-serif', cursor: 'pointer' }}
-                onClick={() => { onSignIn('login'); setMobileOpen(false); }}
-              >
-                Sign In
+            <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  style={{ flex: 1, padding: '11px 16px', borderRadius: 8, border: '1.5px solid #1a7a4a', background: 'transparent', color: '#1a7a4a', fontSize: 14, fontWeight: 700, fontFamily: 'Manrope, sans-serif', cursor: 'pointer' }}
+                  onClick={() => { onSignIn('login'); setMobileOpen(false); }}
+                >Sign in</button>
+                <button className="btn-primary" style={{ flex: 1, fontSize: 14, padding: '11px 16px' }} onClick={() => { onSignIn('signup'); setMobileOpen(false); }}>
+                  Create account
+                </button>
+              </div>
+              <button onClick={() => { onForEmployers(); setMobileOpen(false); }} style={{ width: '100%', textAlign: 'center', padding: '10px', fontSize: 14, fontWeight: 600, color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Manrope, sans-serif' }}>
+                Post a job
               </button>
-              <button className="btn-primary" style={{ flex: 1, fontSize: 13, padding: '9px 16px' }} onClick={() => { onSignIn('signup'); setMobileOpen(false); }}>
-                Sign Up
-              </button>
-              <button onClick={() => { onForEmployers(); setMobileOpen(false); }} style={{ width: '100%', textAlign: 'center', padding: '9px', fontSize: 13, fontWeight: 600, color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Manrope, sans-serif' }}>
-                For Recruiters →
+            </div>
+          )}
+          {userRole !== 'guest' && (
+            <div style={{ marginTop: 12, borderTop: '1px solid #f3f4f6', paddingTop: 12 }}>
+              <button onClick={() => { onSignOut(); setMobileOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 14px', borderRadius: 10, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Manrope, sans-serif', fontSize: 14, fontWeight: 600, color: '#dc2626' }}>
+                <LogOut size={16} color="#dc2626" /> Sign Out
               </button>
             </div>
           )}
@@ -382,7 +256,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       <style>{`
         @media (max-width: 640px) {
-          #hamburger-btn { display: flex !important; }
+          .nav-desktop-right { display: none !important; }
+          .nav-hamburger { display: flex !important; }
+          .nav-tabs-row { display: none !important; }
         }
       `}</style>
     </header>

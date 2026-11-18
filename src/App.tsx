@@ -128,6 +128,7 @@ export default function App() {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     Overview: true, People: true, Listings: true, Placement: true, System: true,
   });
+  const [adminSidebarOpen, setAdminSidebarOpen] = useState(false);
 
   // Persist auth and tab to sessionStorage (tab-isolated — no cross-tab contamination)
   useEffect(() => { sessionStorage.setItem(AUTH_KEY, JSON.stringify(auth)); }, [auth]);
@@ -980,15 +981,44 @@ export default function App() {
 
         {/* ── ADMIN LAYOUT (sidebar + content) ── */}
         {auth.role === 'admin' && (
-          <div style={{ display: 'flex', minHeight: 'calc(100vh - 64px)', background: '#f7fbf9' }}>
+          <div style={{ display: 'flex', minHeight: 'calc(100vh - 64px)', background: '#f7fbf9', position: 'relative' }}>
+
+            {/* Mobile sidebar toggle button */}
+            <button
+              onClick={() => setAdminSidebarOpen(o => !o)}
+              style={{
+                display: 'none',
+                position: 'fixed', bottom: 20, left: 20, zIndex: 300,
+                width: 48, height: 48, borderRadius: '50%',
+                background: '#1a7a4a', border: 'none', cursor: 'pointer',
+                alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 4px 16px rgba(26,122,74,0.4)',
+              }}
+              className="admin-sidebar-toggle"
+              aria-label="Toggle menu"
+            >
+              <span style={{ color: '#fff', fontSize: 20 }}>{adminSidebarOpen ? '✕' : '☰'}</span>
+            </button>
+
+            {/* Mobile overlay */}
+            {adminSidebarOpen && (
+              <div
+                onClick={() => setAdminSidebarOpen(false)}
+                style={{ display: 'none', position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 199 }}
+                className="admin-overlay"
+              />
+            )}
+
             {/* Sidebar */}
-            <aside style={{
-              width: 220,
-              flexShrink: 0,
-              background: '#1a7a4a',
-              display: 'flex',
-              flexDirection: 'column',
-            }}>
+            <aside
+              className={`admin-sidebar${adminSidebarOpen ? ' admin-sidebar-open' : ''}`}
+              style={{
+                width: 220,
+                flexShrink: 0,
+                background: '#1a7a4a',
+                display: 'flex',
+                flexDirection: 'column',
+              }}>
               {/* Branding strip */}
               <div style={{ padding: '22px 20px 18px', borderBottom: '1px solid rgba(255,255,255,0.12)' }}>
                 <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', letterSpacing: '-0.01em' }}>ArivuPro</div>
@@ -1067,7 +1097,7 @@ export default function App() {
                         return (
                           <button
                             key={item.id}
-                            onClick={() => setCurrentTab(item.id)}
+                            onClick={() => { setCurrentTab(item.id); setAdminSidebarOpen(false); }}
                             style={{
                               display: 'block',
                               width: '100%',
@@ -1103,7 +1133,7 @@ export default function App() {
             </aside>
 
             {/* Admin content */}
-            <div style={{ flex: 1, overflow: 'auto' }}>
+            <div style={{ flex: 1, overflow: 'auto', minWidth: 0 }}>
               {currentTab === 'scraper' && (
                 <ScraperDashboard
                   sources={sources}
@@ -1145,6 +1175,28 @@ export default function App() {
                 />
               )}
             </div>
+
+            <style>{`
+              @media (max-width: 768px) {
+                .admin-sidebar {
+                  position: fixed !important;
+                  top: 0; left: 0; bottom: 0;
+                  z-index: 200;
+                  transform: translateX(-100%);
+                  transition: transform 0.25s ease;
+                  overflow-y: auto;
+                }
+                .admin-sidebar.admin-sidebar-open {
+                  transform: translateX(0);
+                }
+                .admin-sidebar-toggle {
+                  display: flex !important;
+                }
+                .admin-overlay {
+                  display: block !important;
+                }
+              }
+            `}</style>
           </div>
         )}
 
@@ -1485,6 +1537,10 @@ export default function App() {
           @media (max-width: 900px) {
             .footer-main-grid { grid-template-columns: 1fr 1fr !important; }
             .footer-mid-grid  { grid-template-columns: 1fr !important; }
+          }
+          @media (max-width: 640px) {
+            .footer-main-grid { grid-template-columns: 1fr !important; padding: 32px 20px 28px !important; gap: 28px !important; }
+            .footer-mid-grid  { padding: 24px 20px !important; gap: 24px !important; }
           }
           @media (max-width: 540px) {
             .footer-main-grid { grid-template-columns: 1fr !important; }

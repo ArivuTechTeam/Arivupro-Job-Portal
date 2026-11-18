@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import {
   BookmarkCheck, Briefcase, User, ChevronRight,
   CheckCircle2, Clock, TrendingUp, MapPin, GraduationCap,
-  FileText, Zap, Star,
+  FileText,
 } from 'lucide-react';
 import { StudentProfile, JobApplication, JobListing } from '../types/index.ts';
 
@@ -82,36 +82,35 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
       {/* Welcome header */}
       <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0f2419', margin: '0 0 4px', letterSpacing: '-0.02em' }}>
-          Welcome back, {firstName}
-        </h1>
+        {firstName && (
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0f2419', margin: '0 0 4px', letterSpacing: '-0.02em' }}>
+            {firstName}
+          </h1>
+        )}
         <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>
-          Here's your placement dashboard
-          {student.primaryCourse ? ` · ${student.primaryCourse}` : ''}
+          {applications.length} application{applications.length !== 1 ? 's' : ''} · {savedJobIds.size} saved{student.primaryCourse ? ` · ${student.primaryCourse} track` : ''}
         </p>
       </div>
 
       {/* Top stat strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14, marginBottom: 28 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12, marginBottom: 28 }}>
         {[
-          { icon: <Briefcase size={18} color="#1a7a4a" />, label: 'Applications', value: applications.length, bg: '#f0faf4', border: '#d7f4ea', tab: 'applications' },
-          { icon: <BookmarkCheck size={18} color="#1d4ed8" />, label: 'Saved Jobs', value: savedJobIds.size, bg: '#eff6ff', border: '#bfdbfe', tab: 'jobs' },
-          { icon: <TrendingUp size={18} color="#7c3aed" />, label: 'Active Stage', value: applications.filter(a => a.status !== 'Declined' && a.status !== 'Placed').length, bg: '#f5f3ff', border: '#ede9fe', tab: 'applications' },
-          { icon: <Star size={18} color="#b45309" />, label: 'Profile Score', value: `${pct}%`, bg: '#fffbeb', border: '#fde68a', tab: null },
+          { icon: <Briefcase size={16} color="#6b7280" />, label: 'Applications', value: applications.length, tab: 'applications' },
+          { icon: <BookmarkCheck size={16} color="#6b7280" />, label: 'Saved Jobs', value: savedJobIds.size, tab: 'jobs' },
+          { icon: <TrendingUp size={16} color="#6b7280" />, label: 'In progress', value: applications.filter(a => a.status !== 'Declined' && a.status !== 'Placed').length, tab: 'applications' },
         ].map(item => (
           <div
             key={item.label}
-            onClick={() => item.tab ? onGoToTab(item.tab) : onOpenProfile()}
+            onClick={() => onGoToTab(item.tab)}
             style={{
-              background: item.bg, border: `1px solid ${item.border}`,
-              borderRadius: 14, padding: '16px 18px', cursor: 'pointer',
-              transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+              background: '#fff', border: '1px solid #e5e7eb',
+              borderRadius: 12, padding: '16px 18px', cursor: 'pointer',
+              transition: 'border-color 0.15s ease',
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = ''; (e.currentTarget as HTMLDivElement).style.boxShadow = ''; }}
+            className="stat-tile"
           >
             <div style={{ marginBottom: 8 }}>{item.icon}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: '#0f2419', letterSpacing: '-0.02em' }}>{item.value}</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: '#0f2419', letterSpacing: '-0.02em' }}>{item.value}</div>
             <div style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', marginTop: 2 }}>{item.label}</div>
           </div>
         ))}
@@ -165,7 +164,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                           <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><Clock size={10} color="#9ca3af" /> {relativeDate(app.appliedDate)}</span>
                         </div>
                       </div>
-                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: sc.bg, color: sc.color, flexShrink: 0 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 6, background: sc.bg, color: sc.color, flexShrink: 0 }}>
                         {app.status}
                       </span>
                     </div>
@@ -187,7 +186,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   onClick={() => onGoToTab('jobs')}
                   style={{ fontSize: 12, fontWeight: 700, color: '#1a7a4a', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
                 >
-                  Browse all <ChevronRight size={13} />
+                  View all <ChevronRight size={13} />
                 </button>
               )}
             </div>
@@ -211,7 +210,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = '#fafafa'; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = ''; }}
                   >
-                    <div style={{ width: 40, height: 40, borderRadius: 10, background: '#eff6ff', border: '1px solid #bfdbfe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, color: '#1d4ed8', flexShrink: 0 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 8, background: '#f3f4f6', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: '#374151', flexShrink: 0 }}>
                       {job.logoText || job.company.charAt(0)}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -237,17 +236,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, overflow: 'hidden' }}>
               <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Zap size={16} color="#b45309" />
-                  <span style={{ fontSize: 15, fontWeight: 800, color: '#0f2419' }}>Matching Your Profile</span>
-                  <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a' }}>
-                    {student.primaryCourse || 'All'}
-                  </span>
+                  <span style={{ fontSize: 15, fontWeight: 800, color: '#0f2419' }}>Recommended for you</span>
+                  {student.primaryCourse && (
+                    <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 6, background: '#f0faf4', color: '#1a7a4a', border: '1px solid #d7f4ea' }}>
+                      {student.primaryCourse}
+                    </span>
+                  )}
                 </div>
                 <button
                   onClick={() => onGoToTab('jobs')}
                   style={{ fontSize: 12, fontWeight: 700, color: '#1a7a4a', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
                 >
-                  See all <ChevronRight size={13} />
+                  View all <ChevronRight size={13} />
                 </button>
               </div>
               <div>
@@ -259,7 +259,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = '#fafafa'; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = ''; }}
                   >
-                    <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fffbeb', border: '1px solid #fde68a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, color: '#b45309', flexShrink: 0 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 8, background: '#f3f4f6', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, color: '#374151', flexShrink: 0 }}>
                       {job.logoText || job.company.charAt(0)}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -273,8 +273,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                       </div>
                     </div>
                     {job.arivuproExclusive && (
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: '#fff8e1', border: '1px solid #ffe082', color: '#f57f17', flexShrink: 0 }}>
-                        <Star size={8} style={{ display: 'inline', marginRight: 2 }} />Exclusive
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: '#f0faf4', border: '1px solid #d7f4ea', color: '#1a7a4a', flexShrink: 0 }}>
+                        ArivuPro
                       </span>
                     )}
                     <ChevronRight size={14} color="#9ca3af" style={{ flexShrink: 0 }} />
@@ -299,8 +299,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             </div>
 
             {/* Progress bar */}
-            <div style={{ height: 8, background: '#f3f4f6', borderRadius: 999, overflow: 'hidden', marginBottom: 14 }}>
-              <div style={{ height: '100%', width: `${pct}%`, background: pctColor, borderRadius: 999, transition: 'width 0.5s ease' }} />
+            <div style={{ height: 6, background: '#f3f4f6', borderRadius: 4, overflow: 'hidden', marginBottom: 14 }}>
+              <div style={{ height: '100%', width: `${pct}%`, background: pctColor, borderRadius: 4, transition: 'width 0.5s ease' }} />
             </div>
 
             {pct < 100 && missing.length > 0 && (
@@ -333,7 +333,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
               style={{ width: '100%', fontSize: 13 }}
               onClick={onOpenProfile}
             >
-              {pct < 100 ? 'Complete Profile →' : 'Edit Profile'}
+              {pct < 100 ? 'Complete profile' : 'Edit profile'}
             </button>
           </div>
 
@@ -345,7 +345,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                 { icon: <Briefcase size={14} />, label: 'Browse All Jobs', tab: 'jobs' },
                 { icon: <GraduationCap size={14} />, label: 'Articleship Openings', tab: 'articleship' },
                 { icon: <FileText size={14} />, label: 'My Applications', tab: 'applications' },
-                { icon: <Zap size={14} />, label: '✨ AI Job Match', tab: 'ai-match' },
+                { icon: <TrendingUp size={14} />, label: 'Job Match', tab: 'ai-match' },
               ].map(item => (
                 <button
                   key={item.tab}
@@ -385,7 +385,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Preferred Cities</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                       {student.preferredLocations.slice(0, 4).map(loc => (
-                        <span key={loc} style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 999, background: '#f3f4f6', color: '#374151' }}>{loc}</span>
+                        <span key={loc} style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 6, background: '#f3f4f6', color: '#374151' }}>{loc}</span>
                       ))}
                     </div>
                   </div>
@@ -395,7 +395,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 5 }}>Top Skills</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                       {student.keySkills.slice(0, 5).map(sk => (
-                        <span key={sk} style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 999, background: '#f3f4f6', color: '#374151' }}>{sk}</span>
+                        <span key={sk} style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 6, background: '#f3f4f6', color: '#374151' }}>{sk}</span>
                       ))}
                     </div>
                   </div>
@@ -405,6 +405,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           )}
         </div>
       </div>
+      <style>{`
+        .stat-tile:hover { border-color: #1a7a4a !important; }
+        .stat-tile:hover div:first-child { color: #1a7a4a !important; }
+      `}</style>
     </div>
   );
 };

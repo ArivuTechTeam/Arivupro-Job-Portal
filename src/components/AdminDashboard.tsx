@@ -1129,6 +1129,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
               </div>
             ) : (
               <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+                <div style={{ overflowX: 'auto' }}>
                 <table style={styles.table}>
                   <thead>
                     <tr>
@@ -1212,6 +1213,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
                     })}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </>

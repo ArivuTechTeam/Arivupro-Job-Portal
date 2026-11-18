@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import {
   BookmarkCheck, Briefcase, User, ChevronRight,
   CheckCircle2, Clock, TrendingUp, MapPin, GraduationCap,
-  FileText, Home,
+  FileText,
 } from 'lucide-react';
 import { StudentProfile, JobApplication, JobListing } from '../types/index.ts';
 
@@ -412,48 +412,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       `}</style>
     </div>{/* end sd-scroll-area */}
 
-      {/* ── MOBILE BOTTOM NAV ── */}
-      <nav className="sd-bottom-nav" style={{ display: 'none' }}>
-        {[
-          { icon: <Home size={20} />, label: 'Home', tab: 'dashboard' },
-          { icon: <Briefcase size={20} />, label: 'Apply', tab: 'jobs' },
-          { icon: <User size={20} />, label: 'Profile', tab: 'profile' },
-        ].map(item => (
-          <button
-            key={item.tab}
-            onClick={() => onGoToTab(item.tab)}
-            style={{
-              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              gap: 3, background: 'none', border: 'none', cursor: 'pointer',
-              fontFamily: 'Manrope, sans-serif', fontSize: 10, fontWeight: 700,
-              color: '#6b7280', padding: '8px 0',
-            }}
-          >
-            {item.icon}
-            {item.label}
-          </button>
-        ))}
-      </nav>
-
       <style>{`
         @media (max-width: 768px) {
           .sd-scroll-area { padding: 20px 16px 90px !important; }
           .sd-main-grid { grid-template-columns: 1fr !important; }
-          .sd-bottom-nav {
-            display: flex !important;
-            position: fixed !important;
-            bottom: 0 !important; left: 0 !important; right: 0 !important;
-            height: 64px !important;
-            background: #fff !important;
-            border-top: 1px solid #e5e7eb !important;
-            z-index: 200 !important;
-            align-items: stretch !important;
-          }
-          .sd-bottom-nav button { color: #6b7280 !important; }
-          .sd-bottom-nav button:active { color: #1a7a4a !important; background: #f0faf4 !important; }
-        }
-        @media (min-width: 769px) {
-          .sd-bottom-nav { display: none !important; }
         }
       `}</style>
     </div>

@@ -22,7 +22,7 @@ import { useAuth } from './lib/supabase/AuthContext.tsx';
 import {
   JobListing, JobApplication, StudentProfile as StudentProfileType,
 } from './types/index.ts';
-import { CheckCircle2, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { CheckCircle2, X, ChevronDown, ChevronUp, Home, Briefcase, User } from 'lucide-react';
 import { supabase } from './lib/supabase/client.ts';
 
 const SEED_JOBS: JobListing[] = [];
@@ -1668,6 +1668,50 @@ export default function App() {
           }
         `}</style>
       </footer>
+
+      {/* ── GLOBAL MOBILE BOTTOM NAV (student only) ── */}
+      {auth.role === 'student' && (
+        <>
+          <nav style={{ display: 'none' }} className="global-bottom-nav">
+            {([
+              { icon: <Home size={20} />, label: 'Home', tab: 'dashboard' as NavTab },
+              { icon: <Briefcase size={20} />, label: 'Apply', tab: 'jobs' as NavTab },
+              { icon: <User size={20} />, label: 'Profile', tab: 'profile' as NavTab },
+            ] as { icon: React.ReactNode; label: string; tab: NavTab }[]).map(item => (
+              <button
+                key={item.tab}
+                onClick={() => navigateToTab(item.tab)}
+                style={{
+                  flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  gap: 3, background: 'none', border: 'none', cursor: 'pointer',
+                  fontFamily: 'Manrope, sans-serif', fontSize: 10, fontWeight: 700,
+                  color: currentTab === item.tab ? '#1a7a4a' : '#6b7280', padding: '8px 0',
+                }}
+              >
+                {item.icon}
+                {item.label}
+              </button>
+            ))}
+          </nav>
+          <style>{`
+            @media (max-width: 768px) {
+              .global-bottom-nav {
+                display: flex !important;
+                position: fixed !important;
+                bottom: 0 !important; left: 0 !important; right: 0 !important;
+                height: 64px !important;
+                background: #fff !important;
+                border-top: 1px solid #e5e7eb !important;
+                z-index: 200 !important;
+                align-items: stretch !important;
+              }
+            }
+            @media (min-width: 769px) {
+              .global-bottom-nav { display: none !important; }
+            }
+          `}</style>
+        </>
+      )}
     </div>
   );
 }

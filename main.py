@@ -112,11 +112,13 @@ def _start_scheduler(sb: Client):
             except Exception as e:
                 logger.error(f"[cron] Weekly sync failed: {e}")
 
+        from datetime import datetime as dt
         _scheduler = AsyncIOScheduler()
-        _scheduler.add_job(_daily_sync, trigger=IntervalTrigger(hours=daily_hours), id="daily_sync", replace_existing=True)
+        # next_run_time=dt.now() makes the first run happen immediately on startup
+        _scheduler.add_job(_daily_sync, trigger=IntervalTrigger(hours=daily_hours), id="daily_sync", replace_existing=True, next_run_time=dt.now())
         _scheduler.add_job(_weekly_sync, trigger=IntervalTrigger(hours=weekly_hours), id="weekly_sync", replace_existing=True)
         _scheduler.start()
-        logger.info(f"[cron] APScheduler started — daily every {daily_hours}h, weekly every {weekly_hours}h")
+        logger.info(f"[cron] APScheduler started — daily every {daily_hours}h, weekly every {weekly_hours}h (first run immediate)")
     except ImportError:
         logger.warning("[cron] apscheduler not installed — scheduled sync disabled. Run: pip install apscheduler")
 
@@ -1391,6 +1393,24 @@ async def scrape_trigger(body: ScrapeRequest, authorization: Optional[str] = Hea
     else:
         asyncio.create_task(run_all_sources(supabase))
         return {"message": "Full sync triggered for all sources", "sources": SOURCE_NAMES}
+
+
+# Free sources that run on the daily cron (no paid API credits)
+FREE_SOURCES = [
+    'buddingca', 'caclubindia', 'icai_eirc', 'icai_nirc', 'icai_sirc',
+    'icai_wirc', 'icai_kochi', 'icai_pune', 'icai_bangalore', 'icmai',
+    'greenhouse', 'lever', 'jsearch', 'jobspy',
+]
+
+@app.get("/api/cron/sync")
+async def cron_sync(secret: str = Query(default="")):
+    """Called by Railway cron daily. Syncs all free sources."""
+    ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "")
+    if not ADMIN_SECRET or secret != ADMIN_SECRET:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    import asyncio
+    asyncio.create_task(run_all_sources(supabase, FREE_SOURCES))
+    return {"message": "Daily cron sync triggered", "sources": FREE_SOURCES}
 
 
 @app.get("/api/scrape/dry-run")

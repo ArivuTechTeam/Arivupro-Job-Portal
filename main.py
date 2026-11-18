@@ -1524,8 +1524,18 @@ async def get_external_jobs(
     if location:
         q = q.ilike("location", f"%{location}%")
 
-    result = q.order("posted_at", desc=True).limit(limit).execute()
-    jobs = result.data or []
+    # Supabase caps at 1000 rows per request — paginate to get all
+    jobs = []
+    page_size = 1000
+    offset = 0
+    while len(jobs) < limit:
+        batch = q.order("posted_at", desc=True).range(offset, offset + page_size - 1).execute()
+        rows = batch.data or []
+        jobs.extend(rows)
+        if len(rows) < page_size:
+            break
+        offset += page_size
+    jobs = jobs[:limit]
 
     # Client-side course filter (courses is a JSON array in DB)
     if course:

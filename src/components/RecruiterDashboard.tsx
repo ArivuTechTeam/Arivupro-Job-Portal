@@ -633,7 +633,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                   <span style={{ fontSize: 12, fontWeight: 700, padding: '5px 14px', borderRadius: 999, background: stageColor(getStage(viewingApplicant.id, viewingApplicant.stage)) + '18', color: stageColor(getStage(viewingApplicant.id, viewingApplicant.stage)) }}>
                     {getStage(viewingApplicant.id, viewingApplicant.stage)}
                   </span>
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {viewingApplicant.resumeUrl ? (
                       <a
                         href={viewingApplicant.resumeUrl}
@@ -650,6 +650,18 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                         <Download size={13} /> No Resume
                       </button>
                     )}
+                    <button
+                      style={{ fontSize: 12, padding: '7px 16px', borderRadius: 8, border: '1.5px solid #16a34a', background: '#f0fdf4', color: '#16a34a', cursor: 'pointer', fontWeight: 700, fontFamily: 'Manrope, sans-serif', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                      onClick={() => { setStage(viewingApplicant.id, 'Offer Released'); showToast(`${viewingApplicant.name} accepted — they'll be notified to expect a call!`); }}
+                    >
+                      ✓ Accept
+                    </button>
+                    <button
+                      style={{ fontSize: 12, padding: '7px 16px', borderRadius: 8, border: '1.5px solid #dc2626', background: '#fef2f2', color: '#dc2626', cursor: 'pointer', fontWeight: 700, fontFamily: 'Manrope, sans-serif', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                      onClick={() => { setStage(viewingApplicant.id, 'Declined'); showToast(`${viewingApplicant.name} marked as not shortlisted.`); }}
+                    >
+                      ✗ Reject
+                    </button>
                   </div>
                 </div>
               </div>
@@ -814,14 +826,14 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: '#f9fafb' }}>
-                    {['Candidate', 'Course', 'AI Match', 'Stage', 'Applied For', 'Actions'].map(h => (
+                    {['Candidate', 'Mobile', 'Course', 'AI Match', 'Stage', 'Applied For', 'Actions'].map(h => (
                       <th key={h} style={{ padding: '12px 20px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {normalizedApplicants.length === 0 && (
-                    <tr><td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>No applicants yet.</td></tr>
+                    <tr><td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>No applicants yet.</td></tr>
                   )}
                   {normalizedApplicants.map((ap: any, i: number) => {
                     const mb = matchBadge(ap.match);
@@ -832,25 +844,38 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                           <div style={{ fontWeight: 700, color: '#0f2419' }}>{ap.name}</div>
                           <div style={{ fontSize: 11, color: '#9ca3af' }}>{ap.email}</div>
                         </td>
+                        <td style={{ padding: '14px 20px' }}>
+                          {ap.phone && ap.phone !== '—' ? (
+                            <a href={`tel:${ap.phone}`} style={{ fontSize: 12, fontWeight: 600, color: '#1a7a4a', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <Phone size={11} />{ap.phone}
+                            </a>
+                          ) : <span style={{ fontSize: 12, color: '#d1d5db' }}>—</span>}
+                        </td>
                         <td style={{ padding: '14px 20px', fontWeight: 600, color: '#374151' }}>{ap.course}</td>
                         <td style={{ padding: '14px 20px' }}><span className={mb.cls}>{ap.match}% {mb.label}</span></td>
                         <td style={{ padding: '14px 20px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: stageColor(getStage(ap.id, ap.stage)) + '18', color: stageColor(getStage(ap.id, ap.stage)) }}>
-                              {getStage(ap.id, ap.stage)}
-                            </span>
-                          </div>
+                          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: stageColor(getStage(ap.id, ap.stage)) + '18', color: stageColor(getStage(ap.id, ap.stage)) }}>
+                            {getStage(ap.id, ap.stage)}
+                          </span>
                         </td>
                         <td style={{ padding: '14px 20px', fontSize: 12, color: '#6b7280', maxWidth: 160 }}>
                           <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{jobTitle}</div>
                         </td>
                         <td style={{ padding: '14px 20px' }}>
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            <button className="btn-primary" style={{ fontSize: 11, padding: '6px 12px' }} onClick={() => setViewingApplicant(ap)}>
-                              <Eye size={11} /> View Profile
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            <button className="btn-primary" style={{ fontSize: 11, padding: '6px 12px' }} onClick={() => { setViewingApplicant(ap); if (getStage(ap.id, ap.stage) === 'Applied' || getStage(ap.id, ap.stage) === 'ArivuPro Review') { setStage(ap.id, 'Recruiter Screen'); } }}>
+                              <Eye size={11} /> View
                             </button>
                             <button className="btn-outline" style={{ fontSize: 11, padding: '6px 12px' }} onClick={() => handleResumeOpen(ap.resumeUrl, ap.name)}>
                               <Download size={11} /> Resume
+                            </button>
+                            <button style={{ fontSize: 11, padding: '6px 12px', borderRadius: 8, border: '1.5px solid #16a34a', background: '#f0fdf4', color: '#16a34a', cursor: 'pointer', fontWeight: 700, fontFamily: 'Manrope, sans-serif' }}
+                              onClick={() => { setStage(ap.id, 'Offer Released'); showToast(`${ap.name} accepted — they'll be notified to expect a call!`); }}>
+                              ✓ Accept
+                            </button>
+                            <button style={{ fontSize: 11, padding: '6px 12px', borderRadius: 8, border: '1.5px solid #dc2626', background: '#fef2f2', color: '#dc2626', cursor: 'pointer', fontWeight: 700, fontFamily: 'Manrope, sans-serif' }}
+                              onClick={() => { setStage(ap.id, 'Declined'); showToast(`${ap.name} rejected.`); }}>
+                              ✗ Reject
                             </button>
                           </div>
                         </td>
@@ -942,7 +967,53 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
               </div>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 6 }}>Job Description</label>
-                <textarea className="input-field" rows={4} placeholder="Describe the role, responsibilities, and requirements..." value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} style={{ resize: 'vertical', lineHeight: 1.6 }} />
+                <div style={{ border: '1px solid #d1d5db', borderRadius: 10, overflow: 'hidden', background: '#fff' }}>
+                  {/* Toolbar */}
+                  <div style={{ display: 'flex', gap: 2, padding: '6px 8px', borderBottom: '1px solid #e5e7eb', background: '#f9fafb', flexWrap: 'wrap' }}>
+                    {[
+                      { cmd: 'bold', label: <strong>B</strong>, title: 'Bold' },
+                      { cmd: 'italic', label: <em>I</em>, title: 'Italic' },
+                      { cmd: 'underline', label: <u>U</u>, title: 'Underline' },
+                    ].map(({ cmd, label, title }) => (
+                      <button key={cmd} type="button" title={title} onMouseDown={e => { e.preventDefault(); document.execCommand(cmd, false); }}
+                        style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'Manrope, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {label}
+                      </button>
+                    ))}
+                    <div style={{ width: 1, background: '#e5e7eb', margin: '2px 4px' }} />
+                    {[
+                      { cmd: 'insertUnorderedList', label: '• List', title: 'Bullet List' },
+                      { cmd: 'insertOrderedList', label: '1. List', title: 'Numbered List' },
+                    ].map(({ cmd, label, title }) => (
+                      <button key={cmd} type="button" title={title} onMouseDown={e => { e.preventDefault(); document.execCommand(cmd, false); }}
+                        style={{ height: 28, padding: '0 8px', borderRadius: 6, border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer', fontSize: 11, fontWeight: 600, fontFamily: 'Manrope, sans-serif' }}>
+                        {label}
+                      </button>
+                    ))}
+                    <div style={{ width: 1, background: '#e5e7eb', margin: '2px 4px' }} />
+                    <select title="Heading" onMouseDown={e => e.stopPropagation()} onChange={e => { document.execCommand('formatBlock', false, e.target.value); e.target.value = 'p'; }}
+                      style={{ height: 28, padding: '0 6px', borderRadius: 6, border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer', fontSize: 11, fontFamily: 'Manrope, sans-serif' }}>
+                      <option value="p">Paragraph</option>
+                      <option value="h3">Heading</option>
+                      <option value="h4">Sub-heading</option>
+                    </select>
+                    <div style={{ width: 1, background: '#e5e7eb', margin: '2px 4px' }} />
+                    <button type="button" title="Clear formatting" onMouseDown={e => { e.preventDefault(); document.execCommand('removeFormat', false); }}
+                      style={{ height: 28, padding: '0 8px', borderRadius: 6, border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer', fontSize: 11, fontFamily: 'Manrope, sans-serif', color: '#6b7280' }}>
+                      Clear
+                    </button>
+                  </div>
+                  {/* Editable area */}
+                  <div
+                    contentEditable
+                    suppressContentEditableWarning
+                    onInput={e => setForm(p => ({ ...p, description: (e.target as HTMLDivElement).innerHTML }))}
+                    dangerouslySetInnerHTML={{ __html: form.description }}
+                    style={{ minHeight: 160, padding: '12px 14px', fontSize: 13, lineHeight: 1.7, color: '#374151', outline: 'none', fontFamily: 'Manrope, sans-serif' }}
+                    data-placeholder="Describe the role, responsibilities, and requirements..."
+                  />
+                </div>
+                <style>{`[contenteditable]:empty:before { content: attr(data-placeholder); color: #9ca3af; pointer-events: none; }`}</style>
               </div>
               <div style={{ display: 'flex', gap: 12 }}>
                 <button className="btn-primary" style={{ fontSize: 14, padding: '11px 28px' }} onClick={() => handlePublish(false)}>Publish Job</button>

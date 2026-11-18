@@ -12,6 +12,52 @@ from supabase import Client
 from scraper.types import NormalizedJob, SyncResult, SOURCE_NAMES
 from scraper.dedup import build_fingerprint, is_over_experience_cap
 
+# ── Relevance filters ──────────────────────────────────────────────────────
+_FINANCE_KEYWORDS = {
+    'ca', 'chartered accountant', 'cma', 'cs ', 'company secretary',
+    'acca', 'cfa', 'audit', 'auditor', 'articleship', 'article assistant',
+    'tax', 'taxation', 'gst', 'income tax', 'tds', 'indirect tax',
+    'finance', 'financial', 'accounts', 'accountant', 'accounting',
+    'bookkeeping', 'book keeping', 'payroll', 'compliance',
+    'investment banking', 'equity research', 'valuation', 'treasury',
+    'credit', 'risk', 'analyst', 'fp&a', 'management accounting',
+    'cost accounting', 'ifrs', 'ind as', 'statutory', 'internal audit',
+    'big 4', 'deloitte', 'pwc', 'kpmg', 'ey ', 'ernst', 'grant thornton',
+    'bdo', 'icai', 'icmai', 'icsi', 'nifm', 'sebi', 'rbi', 'nbfc',
+}
+
+_INDIA_INDICATORS = {
+    'india', 'bangalore', 'bengaluru', 'mumbai', 'delhi', 'hyderabad',
+    'chennai', 'pune', 'kolkata', 'ahmedabad', 'gurgaon', 'gurugram',
+    'noida', 'navi mumbai', 'thane', 'kochi', 'cochin', 'jaipur',
+    'chandigarh', 'lucknow', 'bhopal', 'surat', 'coimbatore', 'remote',
+    'work from home', 'wfh', 'pan india', 'anywhere in india',
+}
+
+_NON_INDIA = {
+    'uk', 'united kingdom', 'london', 'manchester', 'leeds', 'birmingham',
+    'usa', 'united states', 'new york', 'us ', 'canada', 'australia',
+    'singapore', 'dubai', 'uae', 'germany', 'france', 'netherlands',
+    'harrogate', 'yorkshire', 'scotland', 'wales', 'ireland',
+}
+
+def _is_relevant(job: NormalizedJob) -> bool:
+    text = f"{job.title} {job.description or ''} {' '.join(job.courses or [])}".lower()
+    loc = (job.location or '').lower()
+
+    # Reject if clearly non-India location
+    if any(k in loc for k in _NON_INDIA):
+        return False
+
+    # Accept if India location confirmed
+    india_loc = any(k in loc for k in _INDIA_INDICATORS)
+
+    # Accept if finance keyword in title/description
+    finance_match = any(k in text for k in _FINANCE_KEYWORDS)
+
+    # Must match at least one of: India location OR finance keyword
+    return india_loc or finance_match
+
 # Source fetcher registry
 from scraper.sources.caclubindia import fetch as fetch_caclubindia
 from scraper.sources.icai_eirc import fetch as fetch_icai_eirc
@@ -133,6 +179,9 @@ async def run_source_sync(supabase: Client, source: str) -> SyncResult:
         result.fetched = len(jobs)
 
         for job in jobs:
+            if not _is_relevant(job):
+                result.skipped += 1
+                continue
             try:
                 outcome = await upsert_job(supabase, job)
                 if outcome == 'created':

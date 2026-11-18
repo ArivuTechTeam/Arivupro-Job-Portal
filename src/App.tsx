@@ -186,9 +186,21 @@ export default function App() {
   useEffect(() => {
     setJobsLoading(true);
 
+    // Strip noise from scraped titles that entered DB before the server-side cleaner
+    const cleanTitle = (t: string): string => {
+      if (!t) return t;
+      let s = t
+        .replace(/:\s*apply\s+now[!.]?/gi, '')
+        .replace(/[\[(][^\])"]{0,80}[\])"]/g, '')
+        .replace(/\bat\s+[A-Z][^,]{3,40}(,|$)/g, '')
+        .replace(/\s*[-–|]\s*.{0,40}$/, '')
+        .trim().replace(/[,:;\s-]+$/, '');
+      return s.length > 5 ? s.slice(0, 80) : t.slice(0, 80);
+    };
+
     const mapExternal = (j: any): JobListing => ({
       id: j.id,
-      title: j.title,
+      title: cleanTitle(j.title),
       company: j.company || 'CA Firm',
       logoText: (j.company || 'CA').charAt(0).toUpperCase(),
       location: j.location || 'India',

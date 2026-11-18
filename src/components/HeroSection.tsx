@@ -8,16 +8,16 @@ interface HeroSectionProps {
 }
 
 const CATEGORIES = [
-  { icon: '✦', label: 'Articleship' },
-  { icon: '◈', label: 'Big 4 Firms' },
-  { icon: '▲', label: 'FP&A / Finance' },
-  { icon: '◉', label: 'Taxation' },
-  { icon: '◌', label: 'Fresher' },
-  { icon: '⬡', label: 'Internship' },
-  { icon: '⊕', label: 'Remote' },
-  { icon: '◆', label: 'Investment Banking' },
-  { icon: '▣', label: 'MNC / GCC' },
-  { icon: '⊖', label: 'Compliance / CS' },
+  { icon: '📄', label: 'Articleship' },
+  { icon: '🏦', label: 'Big 4 Firms' },
+  { icon: '📈', label: 'FP&A / Finance' },
+  { icon: '🧾', label: 'Taxation' },
+  { icon: '🎓', label: 'Fresher' },
+  { icon: '💼', label: 'Internship' },
+  { icon: '🌐', label: 'Remote' },
+  { icon: '🏛️', label: 'Investment Banking' },
+  { icon: '🏢', label: 'MNC / GCC' },
+  { icon: '⚖️', label: 'Compliance / CS' },
 ];
 
 const LOCATIONS = [

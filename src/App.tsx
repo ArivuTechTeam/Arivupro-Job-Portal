@@ -299,9 +299,15 @@ export default function App() {
       .then(([internal, external]) => {
         const internalJobs: JobListing[] = (internal.jobs || []).map(mapInternal);
         const externalJobs: JobListing[] = (external.jobs || []).map(mapExternal);
-        // Deduplicate: internal jobs take priority; skip scraped if same title+company exists
-        const internalKeys = new Set(internalJobs.map((j: JobListing) => `${j.title}|${j.company}`));
-        const freshExternal = externalJobs.filter((j: JobListing) => !internalKeys.has(`${j.title}|${j.company}`));
+        // Deduplicate by cleaned title+company
+        const internalKeys = new Set(internalJobs.map((j: JobListing) => `${j.title.toLowerCase()}|${j.company.toLowerCase()}`));
+        const seen = new Set<string>();
+        const freshExternal = externalJobs.filter((j: JobListing) => {
+          const key = `${j.title.toLowerCase()}|${j.company.toLowerCase()}`;
+          if (internalKeys.has(key) || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
         setJobs([...internalJobs, ...freshExternal]);
       })
       .catch(() => { /* backend not running — keep seed data */ })

@@ -108,9 +108,12 @@ def detect_courses_keyword(title: str, description: str) -> Optional[list[str]]:
     return list(found) if found else None
 
 
+_gemini_unavailable = False  # set True once import fails so we stop retrying
+
 async def detect_courses_gemini(title: str, description: str) -> list[str]:
+    global _gemini_unavailable
     api_key = os.getenv('GEMINI_API_KEY')
-    if not api_key:
+    if not api_key or _gemini_unavailable:
         return ['CA']
     try:
         from google import genai as google_genai
@@ -131,6 +134,9 @@ async def detect_courses_gemini(title: str, description: str) -> list[str]:
         cleaned = re.sub(r'\s*```$', '', cleaned)
         parsed = json.loads(cleaned)
         return parsed if isinstance(parsed, list) and parsed else ['CA']
+    except ImportError:
+        _gemini_unavailable = True  # don't retry on every job
+        return ['CA']
     except Exception as e:
         logger.warning(f'Gemini course detection failed: {e}')
         return ['CA']

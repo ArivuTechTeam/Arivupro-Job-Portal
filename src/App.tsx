@@ -294,7 +294,7 @@ export default function App() {
 
     Promise.all([
       fetch('/api/jobs').then(r => r.ok ? r.json() : { jobs: [] }),
-      fetch('/api/external-jobs?limit=200').then(r => r.ok ? r.json() : { jobs: [] }),
+      fetch('/api/external-jobs?limit=5000').then(r => r.ok ? r.json() : { jobs: [] }),
     ])
       .then(([internal, external]) => {
         const internalJobs: JobListing[] = (internal.jobs || []).map(mapInternal);

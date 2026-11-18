@@ -1493,7 +1493,7 @@ async def get_external_jobs(
     location: Optional[str] = None,
     source: Optional[str] = None,
     query: Optional[str] = None,
-    limit: int = Query(default=50, le=200),
+    limit: int = Query(default=2000, le=5000),
 ):
     q = supabase.table("external_jobs").select("*").eq("is_active", True)
 

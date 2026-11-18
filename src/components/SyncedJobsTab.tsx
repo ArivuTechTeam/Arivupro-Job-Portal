@@ -53,7 +53,7 @@ export const SyncedJobsTab: React.FC = () => {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    const url = '/api/external-jobs?limit=200' + (sourceFilter ? `&source=${encodeURIComponent(sourceFilter)}` : '');
+    const url = '/api/external-jobs?limit=5000' + (sourceFilter ? `&source=${encodeURIComponent(sourceFilter)}` : '');
     adminFetch(url)
       .then(r => r.json())
       .then((data: { jobs?: ExternalJob[] } | ExternalJob[]) => {

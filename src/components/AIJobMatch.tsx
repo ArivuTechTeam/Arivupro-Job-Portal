@@ -12,6 +12,8 @@ interface AIJobMatchProps {
   studentBio?: string;
   studentEnrollmentCohort?: string;
   studentCurrentLevel?: string;
+  onApply?: (job: JobListing) => void;
+  appliedIds?: Set<string>;
 }
 
 interface AnalysisPreset {
@@ -176,6 +178,8 @@ export const AIJobMatch: React.FC<AIJobMatchProps> = ({
   studentBio = '',
   studentEnrollmentCohort = '',
   studentCurrentLevel = '',
+  onApply,
+  appliedIds = new Set(),
 }) => {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [loadingJobId, setLoadingJobId] = useState<string | null>(null);
@@ -749,6 +753,24 @@ export const AIJobMatch: React.FC<AIJobMatchProps> = ({
                   {analysis.counselorNote}
                 </p>
               </div>
+
+              {/* Apply Now button */}
+              <div style={{ marginTop: 16 }}>
+                {appliedIds.has(displayJob.id) ? (
+                  <button disabled style={{ width: '100%', padding: '12px', borderRadius: 10, border: 'none', background: '#f0fdf4', color: '#16a34a', fontWeight: 700, fontSize: 14, fontFamily: 'Manrope, sans-serif', cursor: 'not-allowed' }}>
+                    ✓ Applied
+                  </button>
+                ) : (
+                  <button
+                    className="btn-primary"
+                    style={{ width: '100%', padding: '12px', fontSize: 14, borderRadius: 10 }}
+                    onClick={() => onApply?.(displayJob)}
+                  >
+                    Apply Now →
+                  </button>
+                )}
+              </div>
+
               {apiError && (
                 <div style={{ marginTop: 10, fontSize: 11, color: '#9ca3af', textAlign: 'center' }}>
                   {apiError}

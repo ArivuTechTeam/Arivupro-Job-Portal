@@ -1116,6 +1116,8 @@ export default function App() {
               studentBio={student.aboutBio}
               studentEnrollmentCohort={student.enrollmentCohort}
               studentCurrentLevel={student.currentLevel}
+              onApply={handleApply}
+              appliedIds={appliedIds}
             />
           </div>
         )}

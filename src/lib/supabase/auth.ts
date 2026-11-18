@@ -7,6 +7,8 @@ export interface AuthUser {
   name: string;
 }
 
+const ADMIN_TOKEN_KEY = 'ap_admin_token';
+
 export async function signInAdmin(email: string, password: string): Promise<{ user: AuthUser | null; error: string | null }> {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
@@ -25,18 +27,26 @@ export async function signInAdmin(email: string, password: string): Promise<{ us
     return { user: null, error: 'You do not have admin access.' };
   }
 
+  // Persist token in localStorage so it survives page reloads
+  if (data.session?.access_token) {
+    localStorage.setItem(ADMIN_TOKEN_KEY, data.session.access_token);
+  }
+
   return { user: adminData as AuthUser, error: null };
 }
 
 export async function signOut() {
+  localStorage.removeItem(ADMIN_TOKEN_KEY);
   await supabase.auth.signOut();
 }
 
 /** fetch() wrapper that attaches the admin's Supabase access token. Use for admin-only API calls. */
 export async function adminFetch(input: string, init: RequestInit = {}): Promise<Response> {
   const { data: { session } } = await supabase.auth.getSession();
+  // Fall back to localStorage token (survives page reloads)
+  const token = session?.access_token || localStorage.getItem(ADMIN_TOKEN_KEY);
   const headers = new Headers(init.headers);
-  if (session?.access_token) headers.set('Authorization', `Bearer ${session.access_token}`);
+  if (token) headers.set('Authorization', `Bearer ${token}`);
   return fetch(input, { ...init, headers });
 }
 

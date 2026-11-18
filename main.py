@@ -1369,8 +1369,17 @@ async def scrape_logs(_admin: dict = Depends(require_admin)):
 
 
 @app.post("/api/scrape/trigger")
-async def scrape_trigger(body: ScrapeRequest, _admin: dict = Depends(require_admin)):
+async def scrape_trigger(body: ScrapeRequest, authorization: Optional[str] = Header(default=None)):
     """Trigger one source or all sources. Runs in background."""
+    # Accept either Supabase admin token OR ADMIN_SECRET env var
+    ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "")
+    if ADMIN_SECRET and authorization == f"Bearer {ADMIN_SECRET}":
+        pass  # valid via secret
+    else:
+        try:
+            await require_admin(authorization)
+        except HTTPException:
+            raise HTTPException(status_code=401, detail="Unauthorized")
     import asyncio
     source = body.target_source
 

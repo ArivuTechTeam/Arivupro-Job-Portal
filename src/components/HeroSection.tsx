@@ -38,33 +38,34 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onSearch
     <div>
       {/* ── HERO ── */}
       <section style={{
-        background: '#fff',
+        background: 'linear-gradient(160deg, #f0faf4 0%, #ffffff 50%, #f5f3ff 100%)',
         borderBottom: '1px solid #e5e7eb',
         padding: '64px 24px 56px',
         textAlign: 'center',
+        position: 'relative',
+        overflow: 'hidden',
       }}>
+        {/* decorative blobs */}
+        <div style={{ position: 'absolute', top: -60, right: -80, width: 320, height: 320, borderRadius: '50%', background: 'radial-gradient(circle, rgba(26,122,74,0.07) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: -40, left: -60, width: 240, height: 240, borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,58,237,0.05) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
 
           {/* Eyebrow */}
-          <p style={{ fontSize: 13, fontWeight: 600, color: '#1a7a4a', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
-            Finance Career Portal
-          </p>
+          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#1a7a4a', background: '#f0faf4', border: '1px solid #d7f4ea', borderRadius: 20, padding: '4px 12px' }}>
+            Trusted by 10,000+ finance students
+          </span>
 
           {/* Headline */}
-          <h1 style={{
-            fontSize: 'clamp(28px, 5vw, 48px)',
-            fontWeight: 800, color: '#0f2419',
-            letterSpacing: '-0.03em', lineHeight: 1.1,
-            marginBottom: 16,
-          }}>
-            Find your Articleship at India's Top Firms
+          <h1 style={{ fontSize: 'clamp(28px, 5vw, 52px)', fontWeight: 800, color: '#0f2419', margin: '16px 0 0', letterSpacing: '-0.03em', lineHeight: 1.1 }}>
+            Launch Your<br />
+            <span style={{ color: '#1a7a4a' }}>Finance Career</span>
           </h1>
 
-          <p style={{ fontSize: 16, color: '#6b7280', marginBottom: 12, lineHeight: 1.6 }}>
-            Verified articleship vacancies for CA, CS, CMA, ACCA, EA, CIA, FRM, CFA, CPA across Tier 1 and Tier 2 firms.
+          <p style={{ fontSize: 15, color: '#6b7280', margin: '14px 0 4px', fontWeight: 500 }}>
+            CA Articleship · CS Training · CMA · ACCA · CFA · Finance Jobs
           </p>
-          <p style={{ fontSize: 13, color: '#9ca3af', marginBottom: 40 }}>
-            Apply directly — no middlemen, no fees.
+          <p style={{ fontSize: 13, color: '#9ca3af', margin: '0 0 28px' }}>
+            Apply directly to verified firms — no middlemen, no fees.
           </p>
 
           {/* ── SEARCH BAR ── */}
@@ -141,13 +142,13 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onSearch
       <section style={{ background: '#f8faf9', borderBottom: '1px solid #e5e7eb', padding: '20px 24px' }}>
         <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: 32, justifyContent: 'center', alignItems: 'center' }}>
           {[
-            { number: '38+', label: 'Open vacancies' },
-            { number: '2', label: 'Firm tiers' },
-            { number: '8+', label: 'Cities covered' },
-            { number: '24h', label: 'Listings reviewed' },
+            { value: '780+', label: 'Active Jobs' },
+            { value: '15+', label: 'Job Sources' },
+            { value: '10+', label: 'Cities' },
+            { value: 'Free', label: 'Always' },
           ].map(stat => (
             <div key={stat.label} style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#0f2419', letterSpacing: '-0.02em', lineHeight: 1.2 }}>{stat.number}</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#0f2419', letterSpacing: '-0.02em', lineHeight: 1.2 }}>{stat.value}</div>
               <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 500, marginTop: 2 }}>{stat.label}</div>
             </div>
           ))}
@@ -184,12 +185,12 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onSearch
       {/* ── CTA FOR GUESTS ── */}
       <section style={{ background: '#0f2419', padding: '36px 24px' }}>
         <div style={{ maxWidth: 640, margin: '0 auto', textAlign: 'center' }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', marginBottom: 8, letterSpacing: '-0.02em' }}>
-            Track your applications. Get notified on new CA articleship openings.
-          </div>
-          <div style={{ fontSize: 14, color: '#6b9e82', marginBottom: 24 }}>
-            Free for students. No spam.
-          </div>
+          <h2 style={{ fontSize: 'clamp(20px, 4vw, 28px)', fontWeight: 800, color: '#fff', margin: '0 0 10px', letterSpacing: '-0.02em' }}>
+            Your next opportunity is<br />one click away.
+          </h2>
+          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', margin: '0 0 28px' }}>
+            Join thousands of CA, CMA, CS and ACCA students already on ArivuPro.
+          </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             <button
               style={{

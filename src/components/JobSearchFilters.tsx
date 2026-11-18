@@ -10,6 +10,7 @@ interface Filters {
   salary: string;
   department: string;
   experience: string;
+  recency: string;
 }
 
 interface JobSearchFiltersProps {
@@ -43,10 +44,11 @@ export const JobSearchFilters: React.FC<JobSearchFiltersProps> = ({
     filters.workplace !== '' ||
     filters.salary !== '' ||
     filters.department !== '' ||
-    filters.experience !== '';
+    filters.experience !== '' ||
+    filters.recency !== '';
 
   const clearAll = () =>
-    onFiltersChange({ search: '', type: '', city: '', qualification: '', workplace: '', salary: '', department: '', experience: '' });
+    onFiltersChange({ search: '', type: '', city: '', qualification: '', workplace: '', salary: '', department: '', experience: '', recency: '' });
 
   return (
     <div style={{
@@ -102,7 +104,7 @@ export const JobSearchFilters: React.FC<JobSearchFiltersProps> = ({
             ))}
           </select>
 
-          <select className="input-field filter-select" style={{ width: 'auto' }} value={filters.city} onChange={(e) => set('city', e.target.value)}>
+          <select className="input-field filter-select" style={{ minWidth: 110 }} value={filters.city} onChange={(e) => set('city', e.target.value)}>
             {CITIES.map(c => (
               <option key={c} value={c === 'All Cities' ? '' : c}>{c}</option>
             ))}
@@ -120,8 +122,8 @@ export const JobSearchFilters: React.FC<JobSearchFiltersProps> = ({
             ))}
           </select>
 
-          {/* Posting recency maps to department field as a proxy */}
-          <select className="input-field filter-select" style={{ width: 'auto' }} value={filters.department} onChange={(e) => set('department', e.target.value)}>
+          {/* Posting recency */}
+          <select className="input-field filter-select" style={{ minWidth: 110 }} value={filters.recency ?? ''} onChange={(e) => set('recency', e.target.value)}>
             {RECENCY.map(r => (
               <option key={r} value={r === 'Any Time' ? '' : r}>{r}</option>
             ))}

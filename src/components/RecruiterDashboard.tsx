@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase/client.ts';
 import {
   LayoutDashboard, Briefcase, Users, PlusCircle,
   ChevronDown, Download, Eye, CheckCircle2, ArrowLeft,
-  FileText, Phone, Mail, GraduationCap,
+  FileText, Phone, Mail, GraduationCap, User,
 } from 'lucide-react';
 
 interface RecruiterDashboardProps {
@@ -13,7 +13,7 @@ interface RecruiterDashboardProps {
   sessionToken: string;
 }
 
-type RecruiterPage = 'dashboard' | 'jobs' | 'applicants' | 'post';
+type RecruiterPage = 'dashboard' | 'jobs' | 'applicants' | 'post' | 'profile';
 
 const STAGES = [
   'Applied', 'ArivuPro Review', 'Recruiter Screen',
@@ -101,10 +101,43 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
   }, []);
   const [stages, setStages] = useState<Record<string, string>>({});
   const [toast, setToast] = useState<string | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
+  const [logoSuccess, setLogoSuccess] = useState(false);
   const [form, setForm] = useState({ title: '', company: '', type: 'Full-Time', workplace: 'Hybrid', experience: 'Fresher / 0-1 yr', location: '', salary: '', skills: '', deadline: '', description: '', qualifications: [] as string[] });
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
   const getStage = (id: string, def: string) => stages[id] ?? def;
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoError(null);
+    setLogoSuccess(false);
+    if (file.type !== 'image/webp') { setLogoError('Please upload a .webp file only.'); return; }
+    const url = URL.createObjectURL(file);
+    const img = new window.Image();
+    img.onload = async () => {
+      URL.revokeObjectURL(url);
+      if (img.width !== 500 || img.height !== 300) {
+        setLogoError(`Must be exactly 500×300px. Yours is ${img.width}×${img.height}px.`); return;
+      }
+      setLogoPreview(URL.createObjectURL(file));
+      setLogoUploading(true);
+      try {
+        const token = await getToken();
+        const form = new FormData();
+        form.append('logo', file);
+        const res = await fetch('/api/recruiters/logo', { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {}, body: form });
+        if (!res.ok) throw new Error('Upload failed');
+        setLogoSuccess(true);
+      } catch { setLogoError('Upload failed. Please try again.'); }
+      finally { setLogoUploading(false); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); setLogoError('Could not read image.'); };
+    img.src = url;
+  };
 
   const setStage = async (id: string, s: string) => {
     setStages(p => ({ ...p, [id]: s })); // optimistic
@@ -252,6 +285,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
     { id: 'jobs'      as RecruiterPage, icon: <Briefcase size={16} />,       label: 'My Job Posts' },
     { id: 'applicants'as RecruiterPage, icon: <Users size={16} />,           label: 'Applicants' },
     { id: 'post'      as RecruiterPage, icon: <PlusCircle size={16} />,      label: 'Post a Job' },
+    { id: 'profile'   as RecruiterPage, icon: <User size={16} />,            label: 'My Profile' },
   ];
 
   const navTo = (p: RecruiterPage) => {
@@ -414,8 +448,8 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
               <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>{companyName} — Campus Recruitment</p>
             </div>
 
-            {/* Stat cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
+            {/* Stat cards — FIX 1: rd-stats-grid collapses to 2-col on mobile */}
+            <div className="rd-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
               {[
                 { label: 'Active Job Posts',   value: jobs.filter((j: any) => j.status === 'Active').length, sub: 'Currently active', color: '#b45309', border: '#fde68a' },
                 { label: 'Total Applicants',   value: normalizedApplicants.length, sub: 'All time',          color: '#1a7a4a', border: '#d7f4ea' },
@@ -697,8 +731,8 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
               </div>
             </div>
 
-            {/* 2-col: about + skills | stage update */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 16, alignItems: 'start' }}>
+            {/* 2-col: about + skills | stage update — FIX 2: rd-applicant-grid stacks on mobile */}
+            <div className="rd-applicant-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 16, alignItems: 'start' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {/* About */}
                 <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '20px' }}>
@@ -723,7 +757,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                 {/* Qualifications + Salary */}
                 <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '20px' }}>
                   <div style={{ fontSize: 14, fontWeight: 800, color: '#0f2419', marginBottom: 12 }}>Academic & Compensation</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div className="rd-form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', marginBottom: 6 }}>Qualifications</div>
                       {viewingApplicant.qualifications.length > 0 ? (
@@ -926,7 +960,8 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
               <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>Fill in the details and publish to ArivuPro Portal</p>
             </div>
             <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              {/* FIX 3: rd-form-row collapses to 1-col on mobile */}
+              <div className="rd-form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 6 }}>Job Title *</label>
                   <input className="input-field" placeholder="e.g. Audit Associate" value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} />
@@ -936,7 +971,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                   <input className="input-field" value={form.company || companyName} onChange={e => setForm(p => ({ ...p, company: e.target.value }))} placeholder="Company name" />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div className="rd-form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 6 }}>Job Type</label>
                   <select className="input-field" value={form.type} onChange={e => setForm(p => ({ ...p, type: e.target.value }))}>
@@ -950,7 +985,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                   </select>
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div className="rd-form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 6 }}>Experience Required</label>
                   <select className="input-field" value={form.experience} onChange={e => setForm(p => ({ ...p, experience: e.target.value }))}>
@@ -962,7 +997,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                   </select>
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div className="rd-form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 6 }}>Location</label>
                   <input className="input-field" placeholder="e.g. Bangalore, KA" value={form.location} onChange={e => setForm(p => ({ ...p, location: e.target.value }))} />
@@ -985,7 +1020,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                   })}
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div className="rd-form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 6 }}>Key Skills (comma-separated)</label>
                   <input className="input-field" placeholder="e.g. Ind AS, Excel, SAP" value={form.skills} onChange={e => setForm(p => ({ ...p, skills: e.target.value }))} />
@@ -1054,6 +1089,49 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
           </div>
         )}
 
+        {/* MY PROFILE */}
+        {page === 'profile' && (
+          <div style={{ maxWidth: 560, margin: '0 auto', padding: '8px 0' }}>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f2419', marginBottom: 24 }}>My Profile</h2>
+
+            {/* Logo upload card */}
+            <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '24px', marginBottom: 16 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#0f2419', marginBottom: 4 }}>Company Logo</div>
+              <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 16 }}>Upload a .webp image at exactly 500×300px. Shown on your job listings.</div>
+              {logoPreview ? (
+                <img src={logoPreview} alt="Company logo" style={{ width: 200, height: 120, objectFit: 'contain', borderRadius: 8, border: '1px solid #e5e7eb', background: '#f9fafb', marginBottom: 16, display: 'block' }} />
+              ) : (
+                <div style={{ width: 200, height: 120, borderRadius: 8, border: '2px dashed #d1d5db', background: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                  <span style={{ fontSize: 12, color: '#9ca3af' }}>No logo yet</span>
+                </div>
+              )}
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 18px', background: '#1a7a4a', color: '#fff', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Manrope, sans-serif' }}>
+                <input type="file" accept=".webp,image/webp" style={{ display: 'none' }} onChange={handleLogoChange} />
+                {logoUploading ? 'Uploading…' : 'Upload Logo (.webp)'}
+              </label>
+              {logoError && <div style={{ marginTop: 8, fontSize: 12, color: '#dc2626' }}>{logoError}</div>}
+              {logoSuccess && <div style={{ marginTop: 8, fontSize: 12, color: '#1a7a4a' }}>Logo saved successfully.</div>}
+            </div>
+
+            {/* Company details read-only */}
+            <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '24px' }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#0f2419', marginBottom: 16 }}>Company Details</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {[
+                  { label: 'Company Name', value: companyName },
+                  { label: 'Email', value: recruiterEmail || '—' },
+                  { label: 'Name', value: recruiterName || '—' },
+                ].map(({ label, value }) => (
+                  <div key={label}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: 3 }}>{label}</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#0f2419' }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
       </main>
 
       <style>{`
@@ -1075,6 +1153,11 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
             transform: translateX(0) !important;
             box-shadow: 4px 0 24px rgba(15,36,25,0.15) !important;
           }
+          .rd-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .rd-applicant-grid { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 640px) {
+          .rd-form-row { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </div>

@@ -101,7 +101,7 @@ export default function App() {
   const [applyBlockJob, setApplyBlockJob] = useState<JobListing | null>(null);
   const [selectedJob, setSelectedJob] = useState<JobListing | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [filters, setFilters] = useState({ search: '', type: '', city: '', qualification: '', workplace: '', salary: '', department: '', experience: '' });
+  const [filters, setFilters] = useState({ search: '', type: '', city: '', qualification: '', workplace: '', salary: '', department: '', experience: '', recency: '' });
   const [jobPage, setJobPage] = useState(1);
   const [selectedCompany, setSelectedCompany] = useState<ApiCompany | null>(null);
   const [showRecruiterPortal, setShowRecruiterPortal] = useState(false);
@@ -698,6 +698,17 @@ export default function App() {
       const matchWorkplace = !filters.workplace || j.workplaceType === filters.workplace;
       const matchDepartment = !filters.department || j.department === filters.department;
       const matchExperience = !filters.experience || j.experienceLevel === filters.experience;
+      const matchRecency = (() => {
+        if (!filters.recency || !j.postedDate) return true;
+        const posted = new Date(j.postedDate).getTime();
+        const now = Date.now();
+        const msPerDay = 86400000;
+        if (filters.recency === 'Last 24 hours') return now - posted <= msPerDay;
+        if (filters.recency === 'Last 3 days') return now - posted <= 3 * msPerDay;
+        if (filters.recency === 'Last 7 days') return now - posted <= 7 * msPerDay;
+        if (filters.recency === 'Last 14 days') return now - posted <= 14 * msPerDay;
+        return true;
+      })();
       const matchSalary = (() => {
         if (!filters.salary) return true;
         const min = j.salaryMinLPA ?? 0;
@@ -711,7 +722,7 @@ export default function App() {
       })();
       if (currentTab === 'articleship') return j.jobType.includes('Articleship') && matchSearch && matchCity && matchQual && matchSalary;
       if (currentTab === 'internships') return j.jobType === 'Internship' && matchSearch && matchCity && matchQual && matchSalary;
-      return matchSearch && matchType && matchCity && matchQual && matchWorkplace && matchSalary && matchDepartment && matchExperience;
+      return matchSearch && matchType && matchCity && matchQual && matchWorkplace && matchSalary && matchDepartment && matchExperience && matchRecency;
     });
   }, [jobs, filters, currentTab]);
 
@@ -930,7 +941,7 @@ export default function App() {
                   <div style={{ fontSize: 36, marginBottom: 12 }}>🔍</div>
                   <div style={{ fontWeight: 700, color: '#0f2419', marginBottom: 6 }}>No jobs found</div>
                   <p style={{ color: '#9ca3af', fontSize: 13, marginBottom: 16 }}>Try adjusting your filters</p>
-                  <button className="btn-outline" onClick={() => setFilters({ search: '', type: '', city: '', qualification: '', workplace: '', salary: '', department: '', experience: '' })}>Clear filters</button>
+                  <button className="btn-outline" onClick={() => setFilters({ search: '', type: '', city: '', qualification: '', workplace: '', salary: '', department: '', experience: '', recency: '' })}>Clear filters</button>
                 </div>
               ) : (
                 <>

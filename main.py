@@ -308,6 +308,7 @@ async def get_jobs(
     source: Optional[str] = None,
     department: Optional[str] = None,
     exclusive_only: Optional[bool] = False,
+    recency: str = "",
 ):
     q = supabase.table("jobs").select("*").eq("status", "active")
 
@@ -323,6 +324,21 @@ async def get_jobs(
         q = q.ilike("location", f"%{location}%")
     if qualification and qualification != "ALL":
         q = q.contains("qualifications", [qualification])
+    if recency:
+        from datetime import datetime, timedelta, timezone
+        now = datetime.now(timezone.utc)
+        if recency == "Last 24 hours":
+            cutoff = now - timedelta(hours=24)
+        elif recency == "Last 3 days":
+            cutoff = now - timedelta(days=3)
+        elif recency == "Last 7 days":
+            cutoff = now - timedelta(days=7)
+        elif recency == "Last 14 days":
+            cutoff = now - timedelta(days=14)
+        else:
+            cutoff = None
+        if cutoff:
+            q = q.gte("posted_date", cutoff.isoformat())
 
     result = q.order("posted_date", desc=True).execute()
     jobs = result.data or []
@@ -1049,6 +1065,37 @@ async def require_recruiter(authorization: Optional[str] = Header(default=None))
     if profile.data["approval_status"] != "approved":
         raise HTTPException(status_code=403, detail="Recruiter account not approved")
     return profile.data
+
+
+@app.post("/api/recruiters/logo")
+async def recruiter_upload_logo(
+    logo: UploadFile = File(...),
+    recruiter: dict = Depends(require_recruiter),
+):
+    """Upload a 500x300 .webp company logo for the recruiter's profile."""
+    if logo.content_type not in ("image/webp",):
+        raise HTTPException(status_code=400, detail="Only .webp images are accepted.")
+    contents = await logo.read()
+    # Store as base64 data-URL in logo_url (no separate storage bucket needed)
+    import base64 as _b64
+    data_url = f"data:image/webp;base64,{_b64.b64encode(contents).decode()}"
+    supabase.table("recruiter_profiles").update({"logo_url": data_url}).eq("id", recruiter["id"]).execute()
+    return {"ok": True}
+
+
+@app.get("/api/recruiters/profile")
+async def recruiter_get_profile(recruiter: dict = Depends(require_recruiter)):
+    """Return the recruiter's full profile including logo_url."""
+    result = (
+        supabase.table("recruiter_profiles")
+        .select("id, full_name, email, company_name, company_website, city, state, logo_url, approval_status")
+        .eq("id", recruiter["id"])
+        .maybe_single()
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return result.data
 
 
 @app.post("/api/recruiters/jobs", status_code=201)

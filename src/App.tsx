@@ -186,27 +186,47 @@ export default function App() {
   useEffect(() => {
     setJobsLoading(true);
 
-    // Strip noise from scraped titles that entered DB before the server-side cleaner
+    // Strip noise from scraped titles/fields that entered DB before the server-side cleaner
     const cleanTitle = (t: string): string => {
       if (!t) return t;
       let s = t
-        .replace(/:\s*apply\s+now[!.]?/gi, '')   // ": Apply Now!"
-        .replace(/\[[^\]]{0,80}\]/g, '')           // [bracketed content]
-        .replace(/\([^)]{0,80}\)/g, '')            // (parenthesised content)
-        .replace(/\bat\s+[A-Z][^,]{3,40}(,|$)/g, '') // "at Firm Name,"
-        .replace(/\s*[-–|]\s*.{0,40}$/, '')        // " - trailing noise"
+        .replace(/:\s*apply\s+now[!.]?/gi, '')
+        .replace(/\[[^\]]{0,80}\]/g, '')
+        .replace(/\([^)]{0,80}\)/g, '')
+        .replace(/\bat\s+[A-Z][^,]{3,40}(,|$)/g, '')
+        .replace(/\s*[-–|]\s*.{0,40}$/, '')
         .trim()
         .replace(/[,:;\s-]+$/, '');
       return s.length > 5 ? s.slice(0, 80) : t.slice(0, 80);
     };
 
-    const mapExternal = (j: any): JobListing => ({
+    // If company/location look like blog nav text, fall back to safe defaults
+    const cleanCompany = (company: string, title: string): string => {
+      if (!company || company.length > 60 || /how to apply|tips for|offers|established in|read more/i.test(company)) {
+        // Try to extract from title: "Article Assistant at <Firm>, <City>"
+        const m = title.match(/\bat\s+([A-Za-z][^:,\n]{4,55?})(?:,|:|\s*$)/);
+        if (m) return m[1].trim().replace(/[,:]+$/, '');
+        return 'CA Firm';
+      }
+      return company;
+    };
+
+    const cleanLocation = (loc: string): string => {
+      if (!loc || loc.length > 60 || /how to apply|tips for|ca students|read more/i.test(loc)) return 'India';
+      return loc;
+    };
+
+    const mapExternal = (j: any): JobListing => {
+      const title = cleanTitle(j.title);
+      const company = cleanCompany(j.company, j.title);
+      const location = cleanLocation(j.location);
+      return ({
       id: j.id,
-      title: cleanTitle(j.title),
-      company: j.company || 'CA Firm',
-      logoText: (j.company || 'CA').charAt(0).toUpperCase(),
-      location: j.location || 'India',
-      city: (j.location || 'India').split(',')[0].trim(),
+      title,
+      company: company || 'CA Firm',
+      logoText: (company || 'CA').charAt(0).toUpperCase(),
+      location: location || 'India',
+      city: (location || 'India').split(',')[0].trim(),
       workplaceType: j.is_remote ? 'Remote' : 'Onsite' as const,
       jobType: j.job_type === 'articleship' ? 'Articleship / Industrial Training'
         : j.job_type === 'internship' ? 'Internship'
@@ -241,7 +261,7 @@ export default function App() {
         if (/\b(articleship|article assistant|article clerk|industrial train)\b/.test(t)) return 'Articleship Desk';
         return 'Audit & Assurance';
       })(),
-    });
+    });};
 
     const mapInternal = (j: any): JobListing => ({
       id: j.id,

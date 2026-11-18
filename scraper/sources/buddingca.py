@@ -20,18 +20,30 @@ def _strip_html(html: str) -> str:
 
 
 def _extract_company(title: str, content: str) -> str:
-    m = re.search(r'(?:M/s\.?\s+|firm[:\s]+)([A-Z][^<\n,.(]{4,50})', content, re.I)
+    # Primary: "at <Firm Name>, <City>" pattern in title
+    m = re.search(r'\bat\s+([A-Za-z][^:,\n]{4,60?}?)(?:\s*,\s*[A-Z][a-z]+)?(?:\s*:|$)', title)
     if m:
-        return m.group(1).strip()
-    m2 = re.search(r'at\s+([A-Za-z][^,.(]{4,50})', title, re.I)
+        name = m.group(1).strip().rstrip(',.:')
+        # Reject if it looks like navigation / generic text
+        if len(name) < 60 and not re.search(r'apply|how to|tips|about|read more', name, re.I):
+            return name
+    # Fallback: M/s. pattern in content (first 500 chars only to avoid nav text)
+    m2 = re.search(r'(?:M/s\.?\s+|firm[:\s]+)([A-Z][^<\n,.(]{4,50})', content[:500], re.I)
     if m2:
         return m2.group(1).strip()
     return 'CA Firm'
 
 
 def _extract_location(content: str) -> str:
-    m = re.search(r'(?:location|city|place)[:\s]+([A-Za-z][^<\n,.(]{2,40})', content, re.I)
-    return m.group(1).strip() if m else 'India'
+    # Try structured location fields first
+    m = re.search(r'(?:location|city|place)[:\s]+([A-Za-z][^<\n,.(]{2,40})', content[:500], re.I)
+    if m:
+        return m.group(1).strip()
+    # Try city name after "based in" or "located in"
+    m2 = re.search(r'(?:based in|located in|office in)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)', content[:500])
+    if m2:
+        return m2.group(1).strip()
+    return 'India'
 
 
 async def _fetch_via_wp_api() -> list[NormalizedJob]:

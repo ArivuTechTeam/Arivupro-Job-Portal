@@ -190,11 +190,13 @@ export default function App() {
     const cleanTitle = (t: string): string => {
       if (!t) return t;
       let s = t
-        .replace(/:\s*apply\s+now[!.]?/gi, '')
-        .replace(/[\[(][^\])"]{0,80}[\])"]/g, '')
-        .replace(/\bat\s+[A-Z][^,]{3,40}(,|$)/g, '')
-        .replace(/\s*[-–|]\s*.{0,40}$/, '')
-        .trim().replace(/[,:;\s-]+$/, '');
+        .replace(/:\s*apply\s+now[!.]?/gi, '')   // ": Apply Now!"
+        .replace(/\[[^\]]{0,80}\]/g, '')           // [bracketed content]
+        .replace(/\([^)]{0,80}\)/g, '')            // (parenthesised content)
+        .replace(/\bat\s+[A-Z][^,]{3,40}(,|$)/g, '') // "at Firm Name,"
+        .replace(/\s*[-–|]\s*.{0,40}$/, '')        // " - trailing noise"
+        .trim()
+        .replace(/[,:;\s-]+$/, '');
       return s.length > 5 ? s.slice(0, 80) : t.slice(0, 80);
     };
 

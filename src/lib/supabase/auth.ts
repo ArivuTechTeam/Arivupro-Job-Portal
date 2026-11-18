@@ -1,3 +1,4 @@
+import type { Session } from '@supabase/supabase-js';
 import { supabase } from './client';
 
 export interface AuthUser {
@@ -5,6 +6,14 @@ export interface AuthUser {
   email: string;
   role: 'super_admin' | 'admin' | 'counselor';
   name: string;
+}
+
+export interface AppAuthUser {
+  id: string;
+  email: string;
+  role: 'student' | 'recruiter' | 'admin';
+  name: string;
+  course?: string;
 }
 
 const ADMIN_TOKEN_KEY = 'ap_admin_token';
@@ -35,6 +44,18 @@ export async function signInAdmin(email: string, password: string): Promise<{ us
   return { user: adminData as AuthUser, error: null };
 }
 
+/** Start the browser OAuth flow. Supabase redirects back to the current SPA origin. */
+export async function signInWithGoogle(): Promise<{ error: string | null }> {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: window.location.origin + window.location.pathname,
+    },
+  });
+
+  return { error: error?.message ?? null };
+}
+
 export async function signOut() {
   localStorage.removeItem(ADMIN_TOKEN_KEY);
   await supabase.auth.signOut();
@@ -63,18 +84,52 @@ export async function getCurrentAdmin(): Promise<AuthUser | null> {
     .from('admin_users')
     .select('id, email, name, role')
     .eq('id', session.user.id)
-    .single();
+    .maybeSingle();
 
   return data as AuthUser | null;
 }
 
-export function onAuthStateChange(callback: (user: AuthUser | null) => void) {
-  return supabase.auth.onAuthStateChange(async (event, session) => {
-    if (!session) {
-      callback(null);
-      return;
-    }
-    const admin = await getCurrentAdmin();
-    callback(admin);
+/** Resolve the Supabase session into the app's UI identity. */
+export async function getCurrentUser(session?: Session | null): Promise<AppAuthUser | null> {
+  const currentSession = session ?? await getSession();
+  const user = currentSession?.user;
+  if (!user) return null;
+
+  const { data: adminData } = await supabase
+    .from('admin_users')
+    .select('id, email, name, role')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  const adminRecord = adminData as Pick<AuthUser, 'id' | 'email' | 'name'> | null;
+  if (adminRecord) {
+    return {
+      id: adminRecord.id,
+      email: adminRecord.email,
+      name: adminRecord.name,
+      role: 'admin',
+    };
+  }
+
+  const metadata = user.user_metadata ?? {};
+  // This role is only used for client-side routing. Privileged API access is
+  // still checked server-side against the authenticated user's profile.
+  const role = metadata.role === 'recruiter' ? 'recruiter' : 'student';
+  return {
+    id: user.id,
+    email: user.email ?? '',
+    name: metadata.name ?? metadata.full_name ?? user.email ?? 'ArivuPro user',
+    role,
+    course: metadata.course,
+  };
+}
+
+export function onAuthStateChange(callback: (user: AppAuthUser | null) => void) {
+  return supabase.auth.onAuthStateChange((_event, session) => {
+    // Do not await Supabase queries inside the auth callback; Auth can hold an
+    // internal lock while dispatching this event.
+    window.setTimeout(() => {
+      void getCurrentUser(session).then(callback);
+    }, 0);
   });
 }

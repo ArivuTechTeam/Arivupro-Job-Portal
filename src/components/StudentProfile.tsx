@@ -7,6 +7,7 @@ interface StudentProfileProps {
   student: StudentProfileType;
   onUpdate: (updated: StudentProfileType) => void;
   onClose?: () => void;
+  presentation?: 'modal' | 'page';
 }
 
 const QUALIFICATION_OPTIONS = ['CA', 'CA_INTER', 'ACCA', 'ACCA_AFFILIATE', 'US_CPA', 'US_CMA', 'CMA_INDIA', 'CS', 'CFA', 'FINANCIAL_MODELING', 'BCOM_MCOM_MBA'];
@@ -15,7 +16,8 @@ function getInitials(name: string): string {
   return name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
 }
 
-export const StudentProfile: React.FC<StudentProfileProps> = ({ student, onUpdate, onClose }) => {
+export const StudentProfile: React.FC<StudentProfileProps> = ({ student, onUpdate, onClose, presentation = 'modal' }) => {
+  const isPage = presentation === 'page';
   const [form, setForm] = useState<StudentProfileType>({ ...student });
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [newSkill, setNewSkill] = useState('');
@@ -91,16 +93,16 @@ export const StudentProfile: React.FC<StudentProfileProps> = ({ student, onUpdat
   return (
     <div
       style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 60,
-        background: 'rgba(15,36,25,0.45)',
-        backdropFilter: 'blur(4px)',
+        position: isPage ? 'relative' : 'fixed',
+        inset: isPage ? undefined : 0,
+        zIndex: isPage ? undefined : 60,
+        background: isPage ? 'transparent' : 'rgba(15,36,25,0.45)',
+        backdropFilter: isPage ? undefined : 'blur(4px)',
         display: 'flex',
-        alignItems: 'flex-start',
+        alignItems: isPage ? 'stretch' : 'flex-start',
         justifyContent: 'center',
-        overflowY: 'auto',
-        padding: '24px 16px',
+        overflowY: isPage ? undefined : 'auto',
+        padding: isPage ? '32px 16px 48px' : '24px 16px',
       }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
     >
@@ -109,9 +111,10 @@ export const StudentProfile: React.FC<StudentProfileProps> = ({ student, onUpdat
         style={{
           background: '#fff',
           borderRadius: 14,
-          maxWidth: 720,
+          maxWidth: isPage ? 860 : 720,
           width: '100%',
-          boxShadow: '0 24px 64px rgba(15,36,25,0.2)',
+          boxShadow: isPage ? '0 8px 28px rgba(15,36,25,0.08)' : '0 24px 64px rgba(15,36,25,0.2)',
+          border: isPage ? '1px solid #e5e7eb' : undefined,
           overflow: 'hidden',
         }}
       >

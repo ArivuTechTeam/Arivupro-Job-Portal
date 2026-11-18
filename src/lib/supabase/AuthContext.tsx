@@ -1,35 +1,46 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { getCurrentAdmin, onAuthStateChange, type AuthUser } from './auth';
+import { getCurrentUser, onAuthStateChange, type AppAuthUser, type AuthUser } from './auth';
 
 interface AuthContextValue {
   admin: AuthUser | null;
+  user: AppAuthUser | null;
   loading: boolean;
 }
 
-const AuthContext = createContext<AuthContextValue>({ admin: null, loading: true });
+const AuthContext = createContext<AuthContextValue>({ admin: null, user: null, loading: true });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [admin, setAdmin] = useState<AuthUser | null>(null);
+  const [user, setUser] = useState<AppAuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check session on mount
-    getCurrentAdmin().then(user => {
-      setAdmin(user);
+    let active = true;
+
+    // Check the existing session on mount, including OAuth callback sessions.
+    getCurrentUser().then(currentUser => {
+      if (!active) return;
+      setUser(currentUser);
+      setAdmin(currentUser?.role === 'admin' ? currentUser as AuthUser : null);
       setLoading(false);
     });
 
     // Listen for auth changes (login/logout)
-    const { data: { subscription } } = onAuthStateChange(user => {
-      setAdmin(user);
+    const { data: { subscription } } = onAuthStateChange(currentUser => {
+      if (!active) return;
+      setUser(currentUser);
+      setAdmin(currentUser?.role === 'admin' ? currentUser as AuthUser : null);
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (
-    <AuthContext.Provider value={{ admin, loading }}>
+    <AuthContext.Provider value={{ admin, user, loading }}>
       {children}
     </AuthContext.Provider>
   );

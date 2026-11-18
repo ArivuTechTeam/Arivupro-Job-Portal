@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Eye, EyeOff, CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase/client';
+import { signInWithGoogle } from '../lib/supabase/auth';
 
 interface AuthModalProps {
   mode: 'login' | 'signup';
@@ -89,6 +90,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, onSuccess, 
     const meta = data.user.user_metadata ?? {};
     const role: 'student' | 'admin' | 'recruiter' = meta.role ?? 'student';
     onSuccess({ name: meta.name ?? lEmail, email: data.user.email ?? lEmail, role, course: meta.course });
+  };
+
+  const handleGoogle = async () => {
+    setError(null);
+    setLoading(true);
+    const { error: googleError } = await signInWithGoogle();
+    if (googleError) {
+      setLoading(false);
+      setError(googleError);
+    }
   };
 
   const handleVerifyComplete = () => {
@@ -196,7 +207,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, onSuccess, 
 
               <Divider />
 
-              <GoogleBtn />
+              <GoogleBtn onClick={handleGoogle} loading={loading} />
 
               <SwitchMode mode="login" onSwitch={() => { onSwitchMode('signup'); setError(null); }} />
             </form>
@@ -243,7 +254,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, onSuccess, 
 
               <Divider />
 
-              <GoogleBtn />
+              <GoogleBtn onClick={handleGoogle} loading={loading} />
 
               <div style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', lineHeight: 1.5 }}>
                 By creating an account you agree to our{' '}
@@ -304,15 +315,17 @@ function Divider() {
   );
 }
 
-function GoogleBtn() {
+function GoogleBtn({ onClick, loading }: { onClick: () => void; loading: boolean }) {
   return (
     <button
       type="button"
-      onClick={() => alert('Google Sign-In coming soon!')}
+      onClick={onClick}
+      disabled={loading}
+      aria-label="Continue with Google"
       style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, width: '100%', padding: '11px', border: '1px solid #e5e7eb', borderRadius: 9, background: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'Manrope, sans-serif', color: '#374151', transition: 'background 0.15s' }}
     >
       <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.2l6.7-6.7C35.9 2.2 30.3 0 24 0 14.8 0 7 5.4 3.2 13.3l7.8 6C13 13.6 18.1 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.2-.4-4.7H24v8.9h12.7c-.6 3-2.3 5.6-4.9 7.4l7.6 5.9c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M11 28.3c-.6-1.6-.9-3.3-.9-5.3s.3-3.7.9-5.3l-7.8-6C1.2 14.8 0 19.3 0 24s1.2 9.2 3.2 12.3l7.8-6z"/><path fill="#34A853" d="M24 48c6.3 0 11.6-2.1 15.5-5.7l-7.6-5.9c-2.1 1.4-4.8 2.2-7.9 2.2-5.9 0-11-4.1-12.8-9.6l-7.8 6C7 42.6 14.8 48 24 48z"/></svg>
-      Continue with Google
+      {loading ? 'Connecting…' : 'Continue with Google'}
     </button>
   );
 }

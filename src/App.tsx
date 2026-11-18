@@ -18,6 +18,7 @@ import { AIJobMatch } from './components/AIJobMatch.tsx';
 import { AdminDashboard } from './components/AdminDashboard.tsx';
 import { SyncedJobsTab } from './components/SyncedJobsTab.tsx';
 import AdminLogin from './components/admin/AdminLogin.tsx';
+import { useAuth } from './lib/supabase/AuthContext.tsx';
 import {
   JobListing, JobApplication, StudentProfile as StudentProfileType,
 } from './types/index.ts';
@@ -42,6 +43,13 @@ interface AuthState {
   role: UserRole;
   name: string;
   email: string;
+}
+
+interface AppHistoryState {
+  __arivuproApp: true;
+  role: UserRole;
+  tab: NavTab;
+  depth: number;
 }
 
 const AUTH_KEY = 'ap_auth';
@@ -72,6 +80,7 @@ function loadTab(): NavTab {
 }
 
 export default function App() {
+  const { user: supabaseUser, loading: authLoading } = useAuth();
   const [auth, setAuth] = useState<AuthState>(loadAuth);
   const [currentTab, setCurrentTab] = useState<NavTab>(loadTab);
 
@@ -88,7 +97,6 @@ export default function App() {
   });
 
   const [authModal, setAuthModal] = useState<{ open: boolean; mode: 'login' | 'signup'; role: 'student' | 'recruiter' } | null>(null);
-  const [showProfile, setShowProfile] = useState(false);
   const [showProfileNudge, setShowProfileNudge] = useState(false);
   const [applyBlockJob, setApplyBlockJob] = useState<JobListing | null>(null);
   const [selectedJob, setSelectedJob] = useState<JobListing | null>(null);
@@ -113,6 +121,42 @@ export default function App() {
   useEffect(() => { sessionStorage.setItem(AUTH_KEY, JSON.stringify(auth)); }, [auth]);
   useEffect(() => { sessionStorage.setItem(TAB_KEY, currentTab); }, [currentTab]);
 
+  // Keep navigation inside the SPA. Each app-owned history entry carries its
+  // own depth, so the in-app back button never needs to call history.back()
+  // when that would leave the portal and potentially exit the browser tab.
+  useEffect(() => {
+    const existing = window.history.state as Partial<AppHistoryState> | null;
+    if (!existing?.__arivuproApp) {
+      window.history.replaceState({
+        __arivuproApp: true,
+        role: auth.role,
+        tab: currentTab,
+        depth: 0,
+      } satisfies AppHistoryState, '', window.location.pathname);
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      const state = event.state as Partial<AppHistoryState> | null;
+      if (!state?.__arivuproApp || !state.tab) {
+        window.history.pushState({
+          __arivuproApp: true,
+          role: auth.role,
+          tab: currentTab,
+          depth: 0,
+        } satisfies AppHistoryState, '', window.location.pathname);
+        return;
+      }
+      setCurrentTab(state.tab);
+      setSelectedCompany(null);
+      setSelectedJob(null);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  // The listener is installed once so it can handle browser back events.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Keep browser URL in sync with the active role so the address bar always
   // shows the right path and hard-refresh lands on the correct view.
   useEffect(() => {
@@ -121,9 +165,62 @@ export default function App() {
     if (auth.role === 'recruiter') path = '/recruiter';
     if (auth.role === 'admin')     path = '/admin';
     if (window.location.pathname !== path) {
-      window.history.replaceState({}, '', path);
+      window.history.replaceState({
+        __arivuproApp: true,
+        role: auth.role,
+        tab: currentTab,
+        depth: 0,
+      } satisfies AppHistoryState, '', path);
     }
   }, [auth.role]);
+
+  const navigateToTab = (tab: NavTab, options?: { replace?: boolean }) => {
+    if (tab === 'profile' && auth.role !== 'student') return;
+    setCurrentTab(tab);
+    setSelectedCompany(null);
+
+    const currentState = window.history.state as Partial<AppHistoryState> | null;
+    const depth = currentState?.__arivuproApp ? currentState.depth ?? 0 : 0;
+    const nextState: AppHistoryState = {
+      __arivuproApp: true,
+      role: auth.role,
+      tab,
+      depth: options?.replace ? depth : depth + 1,
+    };
+
+    if (options?.replace || (currentState?.__arivuproApp && currentState.tab === tab)) {
+      window.history.replaceState(nextState, '', window.location.pathname);
+    } else {
+      window.history.pushState(nextState, '', window.location.pathname);
+    }
+  };
+
+  const goBack = () => {
+    if (selectedJob) {
+      setSelectedJob(null);
+      return;
+    }
+    if (selectedCompany) {
+      setSelectedCompany(null);
+      return;
+    }
+
+    const state = window.history.state as Partial<AppHistoryState> | null;
+    if (state?.__arivuproApp && (state.depth ?? 0) > 0) {
+      window.history.back();
+      return;
+    }
+
+    const fallbackTab: NavTab = auth.role === 'student' ? 'dashboard' : 'jobs';
+    if (currentTab !== fallbackTab) {
+      navigateToTab(fallbackTab, { replace: true });
+    }
+  };
+
+  const canGoBack = Boolean(
+    (window.history.state as Partial<AppHistoryState> | null)?.__arivuproApp &&
+    ((window.history.state as Partial<AppHistoryState>).depth ?? 0) > 0
+  ) || Boolean(selectedJob || selectedCompany) || currentTab !== (auth.role === 'student' ? 'dashboard' : 'jobs');
 
   // On mount: restore tokens for the role stored in this tab's sessionStorage.
   // We do NOT clear auth if there is no Supabase session — the session may have
@@ -442,6 +539,14 @@ export default function App() {
     showToast(`Welcome back, ${user.name.split(' ')[0]}! 👋`);
   };
 
+  // OAuth returns to the SPA after Supabase creates the session. Sync that
+  // session into the existing app auth state so navigation follows the same
+  // path as password sign-in without changing the existing tab structure.
+  useEffect(() => {
+    if (authLoading || auth.role !== 'guest' || !supabaseUser) return;
+    handleAuthSuccess(supabaseUser);
+  }, [authLoading, auth.role, supabaseUser]);
+
   const getProfilePct = (s: StudentProfileType) => {
     const fields = [!!s.name, !!s.email, !!s.phone, !!s.aboutBio, s.keySkills.length > 0, !!s.resumeFileName, s.qualificationsCompleted.length > 0, s.preferredLocations.length > 0];
     return Math.round((fields.filter(Boolean).length / fields.length) * 100);
@@ -645,7 +750,9 @@ export default function App() {
       {/* Navbar */}
       <Navbar
         currentTab={currentTab}
-        onTabChange={(tab) => { if (tab === 'profile') { setShowProfile(true); } else { setCurrentTab(tab); setSelectedCompany(null); } }}
+        onTabChange={navigateToTab}
+        onBack={goBack}
+        canGoBack={canGoBack}
         userRole={auth.role}
         userName={auth.role !== 'guest' ? auth.name : undefined}
         onSignIn={handleSignIn}
@@ -912,9 +1019,45 @@ export default function App() {
             applications={applications}
             savedJobIds={savedJobIds}
             jobs={jobs}
-            onGoToTab={(tab) => setCurrentTab(tab as NavTab)}
-            onOpenProfile={() => setShowProfile(true)}
+            onGoToTab={(tab) => navigateToTab(tab as NavTab)}
+            onOpenProfile={() => navigateToTab('profile')}
             onViewJob={setSelectedJob}
+          />
+        )}
+
+        {/* ── STUDENT: PROFILE ── */}
+        {auth.role === 'student' && currentTab === 'profile' && (
+          <StudentProfile
+            presentation="page"
+            student={student}
+            onUpdate={(s) => {
+              setStudent(s);
+              localStorage.setItem('arivupro_student_profile', JSON.stringify(s));
+              if (studentSessionToken) {
+                fetch('/api/students/profile', {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${studentSessionToken}` },
+                  body: JSON.stringify({
+                    full_name: s.name,
+                    phone: s.phone,
+                    primary_course: s.primaryCourse,
+                    current_level: s.currentLevel,
+                    qualifications_completed: s.qualificationsCompleted,
+                    articleship_months: s.articleshipCompletedMonths,
+                    key_skills: s.keySkills,
+                    preferred_locations: s.preferredLocations,
+                    expected_salary_lpa: s.expectedSalaryLPA,
+                    target_roles: s.targetRoles,
+                    about_bio: s.aboutBio,
+                    resume_url: s.resumeFileName,
+                    arivupro_student_id: s.arivuproStudentId,
+                    enrollment_cohort: s.enrollmentCohort,
+                  }),
+                }).catch(() => {});
+              }
+              showToast('✅ Profile updated!');
+            }}
+            onClose={goBack}
           />
         )}
 
@@ -1076,7 +1219,7 @@ export default function App() {
                         return (
                           <button
                             key={item.id}
-                            onClick={() => { setCurrentTab(item.id); setAdminSidebarOpen(false); }}
+                            onClick={() => { navigateToTab(item.id); setAdminSidebarOpen(false); }}
                             style={{
                               display: 'block',
                               width: '100%',
@@ -1223,7 +1366,7 @@ export default function App() {
       )}
 
       {/* Student Profile */}
-      {auth.role === 'student' && showProfile && (
+      {false && (
         <StudentProfile
           student={student}
           onUpdate={(s) => {
@@ -1252,10 +1395,10 @@ export default function App() {
                 }),
               }).catch(() => {});
             }
-            setShowProfile(false);
+            navigateToTab('profile');
             showToast('✅ Profile updated!');
           }}
-          onClose={() => setShowProfile(false)}
+          onClose={goBack}
         />
       )}
 
@@ -1275,7 +1418,7 @@ export default function App() {
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setShowProfileNudge(false)} style={{ flex: 1, padding: '11px 0', borderRadius: 999, border: '1.5px solid #e5e7eb', background: '#fff', fontSize: 14, fontWeight: 600, color: '#6b7280', cursor: 'pointer', fontFamily: 'Manrope,sans-serif' }}>Later</button>
-              <button onClick={() => { setShowProfileNudge(false); setShowProfile(true); }} style={{ flex: 2, padding: '11px 0', borderRadius: 999, border: 'none', background: 'linear-gradient(90deg,#0f2419,#1a7a4a)', fontSize: 14, fontWeight: 700, color: '#fede6d', cursor: 'pointer', fontFamily: 'Manrope,sans-serif' }}>Complete Profile →</button>
+              <button onClick={() => { setShowProfileNudge(false); navigateToTab('profile'); }} style={{ flex: 2, padding: '11px 0', borderRadius: 999, border: 'none', background: 'linear-gradient(90deg,#0f2419,#1a7a4a)', fontSize: 14, fontWeight: 700, color: '#fede6d', cursor: 'pointer', fontFamily: 'Manrope,sans-serif' }}>Complete Profile →</button>
             </div>
           </div>
         </div>
@@ -1300,7 +1443,7 @@ export default function App() {
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setApplyBlockJob(null)} style={{ flex: 1, padding: '11px 0', borderRadius: 999, border: '1.5px solid #e5e7eb', background: '#fff', fontSize: 14, fontWeight: 600, color: '#6b7280', cursor: 'pointer', fontFamily: 'Manrope,sans-serif' }}>Cancel</button>
-              <button onClick={() => { setApplyBlockJob(null); setShowProfile(true); }} style={{ flex: 2, padding: '11px 0', borderRadius: 999, border: 'none', background: 'linear-gradient(90deg,#0f2419,#1a7a4a)', fontSize: 14, fontWeight: 700, color: '#fede6d', cursor: 'pointer', fontFamily: 'Manrope,sans-serif' }}>Complete Profile →</button>
+              <button onClick={() => { setApplyBlockJob(null); navigateToTab('profile'); }} style={{ flex: 2, padding: '11px 0', borderRadius: 999, border: 'none', background: 'linear-gradient(90deg,#0f2419,#1a7a4a)', fontSize: 14, fontWeight: 700, color: '#fede6d', cursor: 'pointer', fontFamily: 'Manrope,sans-serif' }}>Complete Profile →</button>
             </div>
           </div>
         </div>

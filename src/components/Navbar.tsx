@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, X, ChevronDown, LogOut, User } from 'lucide-react';
+import { Menu, X, ChevronDown, LogOut, User, ArrowLeft } from 'lucide-react';
 
 export type NavTab =
   | 'dashboard'
@@ -25,6 +25,8 @@ export type NavTab =
 interface NavbarProps {
   currentTab: NavTab;
   onTabChange: (tab: NavTab) => void;
+  onBack: () => void;
+  canGoBack: boolean;
   userRole: 'guest' | 'student' | 'recruiter' | 'admin';
   userName?: string;
   onSignIn: (mode?: 'login' | 'signup') => void;
@@ -37,7 +39,7 @@ function getInitials(name: string): string {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
-  currentTab, onTabChange, userRole, userName, onSignIn, onSignOut, onForEmployers,
+  currentTab, onTabChange, onBack, canGoBack, userRole, userName, onSignIn, onSignOut, onForEmployers,
 }) => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -102,6 +104,20 @@ export const Navbar: React.FC<NavbarProps> = ({
         height: 60, display: 'flex', alignItems: 'center',
         justifyContent: 'space-between', gap: 12,
       }}>
+        <button
+          onClick={onBack}
+          aria-label="Go back within ArivuPro"
+          title="Back"
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: 34, height: 34, borderRadius: 9,
+            border: '1px solid #e5e7eb', background: canGoBack ? '#fff' : '#f9fafb',
+            color: canGoBack ? '#0f2419' : '#9ca3af',
+            cursor: canGoBack ? 'pointer' : 'default', padding: 0, flexShrink: 0,
+          }}
+        >
+          <ArrowLeft size={18} />
+        </button>
         {/* Logo */}
         <button
           onClick={() => onTabChange('jobs')}

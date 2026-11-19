@@ -6,14 +6,24 @@ import re
 import hashlib
 from scraper.types import NormalizedJob
 
-# Block only clear senior/experienced-only roles — not entry-level jobs that mention 3yr CTC etc.
+# Strictly block roles requiring 3+ years experience or senior designations.
+# Covers: "3+ years", "3-5 years", "minimum 3 years", "4 years experience", "5+ yrs", etc.
 EXPERIENCE_CAP_RE = re.compile(
-    r'\b(minimum\s+[3-9]\s*years?|at\s*least\s*[3-9]\s*years?|'
-    r'[3-9]\+\s*years?\s*(of\s+)?(exp|experience|work\s*exp)|'
-    r'experience\s*[:\-]?\s*[3-9]\s*years?\s*(and\s+above|minimum|\+)|'
-    r'\b(senior\s+manager|associate\s+director|deputy\s+manager|'
-    r'avp\b|assistant\s+vice\s+president|vice\s+president|'
-    r'director\b|head\s+of|partner\b|principal\b)\b)',
+    r'\b('
+    # Explicit year ranges starting at 3+
+    r'[3-9]\s*[\+\-–]\s*\d*\s*years?'                        # 3+ years, 3-5 years
+    r'|[3-9]\+\s*yrs?'                                        # 3+ yrs
+    r'|\d*[3-9]\s*years?\s*(of\s+)?(exp|experience|work)'    # 3 years experience
+    r'|minimum\s+[3-9]\s*years?'                              # minimum 3 years
+    r'|at\s*least\s*[3-9]\s*years?'                          # at least 3 years
+    r'|experience\s*[:\-]?\s*[3-9]\+?\s*years?'              # experience: 3 years
+    r'|[3-9]\s*to\s*\d+\s*years?\s*(of\s+)?(exp|experience)' # 3 to 5 years experience
+    r'|above\s+[2-9]\s*years?'                               # above 2 years
+    # Senior designations (title-level block)
+    r'|senior\s+manager|associate\s+director|deputy\s+manager'
+    r'|avp\b|assistant\s+vice\s+president|vice\s+president'
+    r'|director\b|head\s+of\b|partner\b|principal\b'
+    r')',
     re.I
 )
 

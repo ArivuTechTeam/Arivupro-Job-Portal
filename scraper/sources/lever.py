@@ -8,6 +8,7 @@ import asyncio
 from datetime import datetime
 from scraper.types import NormalizedJob
 from scraper.course_detector import detect_courses
+from scraper.parse_utils import logo_url_from_company
 
 # Company slug → display name
 # Slugs verified live against api.lever.co/v0/postings/
@@ -150,6 +151,7 @@ async def _fetch_company(client: httpx.AsyncClient, slug: str, display_name: str
             description=desc,
             is_remote=bool(re.search(r'remote|work from home|wfh', combined, re.I)),
             posted_at=posted_at,
+            logo_url=logo_url_from_company(display_name, apply_url),
             raw_data=f'{{"slug":"{slug}","posting_id":"{job_id}"}}',
         ))
 
@@ -157,6 +159,7 @@ async def _fetch_company(client: httpx.AsyncClient, slug: str, display_name: str
 
 
 async def fetch() -> list[NormalizedJob]:
+    seen: set[str] = set()
     all_jobs: list[NormalizedJob] = []
 
     async with httpx.AsyncClient(headers=HEADERS, follow_redirects=True) as client:
@@ -169,7 +172,10 @@ async def fetch() -> list[NormalizedJob]:
             )
             for r in results:
                 if isinstance(r, list):
-                    all_jobs.extend(r)
+                    for job in r:
+                        if job.external_id not in seen:
+                            seen.add(job.external_id)
+                            all_jobs.append(job)
 
     for job in all_jobs:
         job.courses = await detect_courses(job.title, job.description or '')

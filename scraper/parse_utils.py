@@ -3,6 +3,64 @@ Stipend and duration extraction from free-form text.
 Ported from articleship project: src/lib/sync/parse-utils.ts
 """
 import re
+from urllib.parse import urlparse
+
+
+# Known Big 4 / major firm domains for logo lookup
+_KNOWN_DOMAINS: dict[str, str] = {
+    'deloitte': 'deloitte.com',
+    'pwc': 'pwc.com',
+    'kpmg': 'kpmg.com',
+    'ey': 'ey.com',
+    'ernst & young': 'ey.com',
+    'ernst and young': 'ey.com',
+    'grant thornton': 'grantthornton.com',
+    'bdo': 'bdo.com',
+    'accenture': 'accenture.com',
+    'wipro': 'wipro.com',
+    'infosys': 'infosys.com',
+    'tcs': 'tcs.com',
+    'tata consultancy': 'tcs.com',
+    'cognizant': 'cognizant.com',
+    'genpact': 'genpact.com',
+    'wns': 'wns.com',
+    'icai': 'icai.org',
+    'icmai': 'icmai.in',
+}
+
+
+def logo_url_from_company(company: str, apply_url: str = '') -> str | None:
+    """Return a Clearbit logo URL for the company. Free, no API key needed."""
+    if not company or company.lower() == 'unknown':
+        return None
+
+    # 1. Try known domain map first (exact match on lowercased company name)
+    company_lower = company.lower().strip()
+    for key, domain in _KNOWN_DOMAINS.items():
+        if key in company_lower:
+            return f'https://logo.clearbit.com/{domain}'
+
+    # 2. Try to extract domain from apply_url
+    if apply_url:
+        try:
+            parsed = urlparse(apply_url)
+            hostname = parsed.hostname or ''
+            # Strip www. and subdomains — keep root domain
+            parts = hostname.split('.')
+            if len(parts) >= 2:
+                root = '.'.join(parts[-2:])
+                if root and root not in ('linkedin.com', 'indeed.com', 'glassdoor.com',
+                                         'naukri.com', 'google.com', 'apify.com'):
+                    return f'https://logo.clearbit.com/{root}'
+        except Exception:
+            pass
+
+    # 3. Last resort: slugify company name and try clearbit
+    slug = re.sub(r'[^a-z0-9]', '', company_lower.split('(')[0].strip())
+    if len(slug) >= 3:
+        return f'https://logo.clearbit.com/{slug}.com'
+
+    return None
 
 
 def extract_stipend(text: str) -> int:

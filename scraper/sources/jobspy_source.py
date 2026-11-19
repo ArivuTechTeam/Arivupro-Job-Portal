@@ -11,7 +11,7 @@ from datetime import datetime, date
 from concurrent.futures import ThreadPoolExecutor
 from scraper.types import NormalizedJob
 from scraper.course_detector import detect_courses
-from scraper.parse_utils import extract_stipend
+from scraper.parse_utils import extract_stipend, logo_url_from_company
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +95,19 @@ TRAINEE_RE     = re.compile(r'\b(trainee|graduate\s+trainee|management\s+trainee
 
 def _is_senior(title: str, description: str) -> bool:
     return bool(SENIOR_RE.search(title) or SENIOR_RE.search((description or '')[:600]))
+
+
+def _exp_level(title: str, desc: str, job_type: str) -> str | None:
+    text = f'{title} {desc[:800]}'.lower()
+    if re.search(r'fresher|0\s*exp|0[-–]1\s*year|article\s*student|articleship', text):
+        return 'fresher'
+    if re.search(r'1[-–]2\s*years?|one\s+to\s+two|upto?\s*2\s*years?|up\s+to\s+2\s*years?', text):
+        return '1-3 years'
+    if re.search(r'0[-–]1\s*years?|up\s+to\s*1\s*year', text):
+        return '0-1 year'
+    if job_type == 'articleship':
+        return 'fresher'
+    return None
 
 
 def _detect_job_type(title: str, desc: str) -> str:
@@ -254,6 +267,8 @@ async def fetch() -> list[NormalizedJob]:
                     description=desc[:2000] if desc else None,
                     is_remote=bool(row.get('is_remote')),
                     posted_at=posted_at,
+                    experience_level=_exp_level(title, desc, job_type),
+                    logo_url=logo_url_from_company(company, job_url),
                     raw_data=f'{{"site":"{site}","id":"{str(row.get("id",""))[:40]}"}}'
                 ))
             # Polite delay between queries
@@ -283,12 +298,13 @@ async def fetch() -> list[NormalizedJob]:
                 loc_parts = [row.get('location'), row.get('city')]
                 location_str = next((str(x) for x in loc_parts if x), 'India')
                 stipend = _salary_monthly(row) or extract_stipend(desc)
+                company_naukri = str(row.get('company') or 'Unknown')
 
                 jobs.append(NormalizedJob(
                     source='jobspy_naukri',
                     external_id=uid,
                     title=title,
-                    company=str(row.get('company') or 'Unknown'),
+                    company=company_naukri,
                     location=location_str,
                     stipend=stipend,
                     duration='',
@@ -298,6 +314,8 @@ async def fetch() -> list[NormalizedJob]:
                     description=desc[:2000] if desc else None,
                     is_remote=bool(row.get('is_remote')),
                     posted_at=_parse_date(row.get('date_posted')),
+                    experience_level=_exp_level(title, desc, job_type),
+                    logo_url=logo_url_from_company(company_naukri, job_url),
                     raw_data=f'{{"site":"naukri","id":"{str(row.get("id",""))[:40]}"}}'
                 ))
             await asyncio.sleep(3)

@@ -86,7 +86,6 @@ from scraper.sources.icmai import fetch as fetch_icmai
 from scraper.sources.buddingca import fetch as fetch_buddingca
 from scraper.sources.jsearch import fetch as fetch_jsearch
 from scraper.sources.jobspy_source import fetch as fetch_jobspy
-from scraper.sources.apify_all_in_one import fetch as fetch_apify_all_in_one
 from scraper.sources.apify_naukri import fetch as fetch_apify_naukri
 from scraper.sources.apify_linkedin_indeed import fetch as fetch_apify_linkedin_indeed
 from scraper.sources.apify_career_sites import fetch as fetch_apify_career_sites
@@ -109,7 +108,6 @@ SOURCE_FETCHERS: dict = {
     'buddingca':      fetch_buddingca,
     'jsearch':                  fetch_jsearch,
     'jobspy':                   fetch_jobspy,
-    'apify_all_in_one':         fetch_apify_all_in_one,
     'apify_naukri':             fetch_apify_naukri,
     'apify_linkedin_indeed':    fetch_apify_linkedin_indeed,
     'apify_career_sites':       fetch_apify_career_sites,
@@ -155,6 +153,7 @@ async def upsert_job(supabase: Client, job: NormalizedJob) -> str:
         'content_fingerprint': fp,
         'raw_data': job.raw_data,
         'experience_level': job.experience_level,
+        'logo_url': job.logo_url,
     }
 
     if existing.data:
@@ -170,6 +169,7 @@ async def upsert_job(supabase: Client, job: NormalizedJob) -> str:
             'is_remote': job.is_remote,
             'is_active': True,
             'content_fingerprint': fp,
+            'logo_url': job.logo_url,
         }).eq('source', job.source).eq('external_id', job.external_id).execute()
         return 'updated'
     else:

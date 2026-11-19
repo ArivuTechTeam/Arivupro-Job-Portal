@@ -44,6 +44,7 @@ class NormalizedJob:
     posted_at: datetime
     experience_level: Optional[ExperienceLevel] = None
     raw_data: Optional[str] = None
+    logo_url: Optional[str] = None
 
 @dataclass
 class SyncResult:

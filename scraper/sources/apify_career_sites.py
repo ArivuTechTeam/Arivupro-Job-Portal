@@ -1,9 +1,9 @@
 """
 Apify — ATS Career Site Scraper
-Actor: rowcraft/career-site-jobs-scraper
+Actor: openclawai/career-site-ats-jobs-scraper
 Covers: Greenhouse, Lever, Ashby, Workday, Workable, iCIMS — direct employer career pages
-Pricing: ~$3.13/1,000 results. Free plan ≈ 1,600 jobs/month.
-Docs: https://apify.com/rowcraft/career-site-jobs-scraper
+Pricing: ~$0.40–0.50/1,000 results. 110 users, 5-star rating, 95.8% success rate.
+Docs: https://apify.com/openclawai/career-site-ats-jobs-scraper
 
 Target companies: Big 4, mid-tier CA firms, banks, GCCs, asset managers.
 These post on Workday/Greenhouse/Lever — not on Naukri/Indeed — so this is unique coverage.
@@ -17,11 +17,11 @@ import asyncio
 from datetime import datetime
 from scraper.types import NormalizedJob
 from scraper.course_detector import detect_courses
-from scraper.parse_utils import extract_stipend
+from scraper.parse_utils import extract_stipend, logo_url_from_company
 
 logger = logging.getLogger(__name__)
 
-ACTOR_ID = os.getenv("APIFY_CAREER_SITES_ACTOR_ID", "rowcraft/career-site-jobs-scraper")
+ACTOR_ID = os.getenv("APIFY_CAREER_SITES_ACTOR_ID", "openclawai/career-site-ats-jobs-scraper")
 APIFY_BASE = "https://api.apify.com/v2"
 
 # Finance / CA-relevant keywords to filter at the query stage
@@ -234,6 +234,7 @@ async def fetch() -> list[NormalizedJob]:
                 description=desc[:2000] if desc else None,
                 is_remote=bool(item.get("isRemote") or item.get("remote")),
                 posted_at=_parse_date(item.get("postedAt") or item.get("datePosted")),
+                logo_url=logo_url_from_company(employer["name"], employer.get("url", "")),
                 raw_data=f'{{"employer":"{employer["name"][:40]}","ats":"{employer["ats"]}"}}'
             ))
 

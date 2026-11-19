@@ -1,9 +1,9 @@
 """
 Apify — Naukri Jobs Scraper
-Actor: vaclavrut/naukri-jobs-scraper
+Actor: blackfalcondata/naukri-jobs-feed
 Covers: Naukri.com — largest Indian job board, dominant for CA/CMA/CS/ACCA fresher roles
-Pricing: ~$0.75–1/1,000 results. Free plan included.
-Docs: https://apify.com/vaclavrut/naukri-jobs-scraper
+Pricing: ~$0.27–0.39/1,000 results. 6,346 users, 100% success rate.
+Docs: https://apify.com/blackfalcondata/naukri-jobs-feed
 Why dedicated: JobSpy Naukri scraping is unreliable/slow; this hits Naukri API directly.
 """
 import os
@@ -15,11 +15,11 @@ import asyncio
 from datetime import datetime
 from scraper.types import NormalizedJob
 from scraper.course_detector import detect_courses
-from scraper.parse_utils import extract_stipend
+from scraper.parse_utils import extract_stipend, logo_url_from_company
 
 logger = logging.getLogger(__name__)
 
-ACTOR_ID = os.getenv("APIFY_NAUKRI_ACTOR_ID", "vaclavrut/naukri-jobs-scraper")
+ACTOR_ID = os.getenv("APIFY_NAUKRI_ACTOR_ID", "blackfalcondata/naukri-jobs-feed")
 APIFY_BASE = "https://api.apify.com/v2"
 
 SEARCH_QUERIES = [
@@ -58,6 +58,13 @@ SEARCH_QUERIES = [
     {"query": "finance internship fresher",         "courses": ["CA", "CMA India", "ACCA", "B.Com"]},
     {"query": "management trainee finance",         "courses": ["CA", "CMA India"]},
     {"query": "B.Com accounts executive fresher",   "courses": ["B.Com"]},
+    # ── Big 4 specific ───────────────────────────────────────────────────
+    {"query": "Deloitte audit associate fresher",   "courses": ["CA", "ACCA"]},
+    {"query": "EY audit associate fresher India",   "courses": ["CA", "ACCA"]},
+    {"query": "KPMG articleship India",             "courses": ["CA"]},
+    {"query": "PwC audit associate fresher India",  "courses": ["CA", "ACCA"]},
+    {"query": "Big 4 articleship vacancy India",    "courses": ["CA"]},
+    {"query": "Big 4 audit fresher India",          "courses": ["CA", "ACCA"]},
 ]
 
 SENIOR_RE = re.compile(
@@ -210,6 +217,7 @@ async def fetch() -> list[NormalizedJob]:
                 is_remote=bool(item.get("isRemote") or item.get("remote") or
                                re.search(r'\bremote\b', location_str, re.I)),
                 posted_at=_parse_date(item.get("postedAt") or item.get("createdDate")),
+                logo_url=item.get("companyLogo") or logo_url_from_company(company, apply_url),
                 raw_data=f'{{"source":"apify_naukri","id":"{uid}"}}'
             ))
 

@@ -1,8 +1,8 @@
 """
 Apify — LinkedIn + Indeed Jobs Scraper
-Actor: bebity/linkedin-jobs-scraper (LinkedIn) + misceres/indeed-scraper (Indeed)
+Actor: cheap_scraper/linkedin-job-scraper (LinkedIn) + valig/indeed-jobs-scraper (Indeed)
 Single module that runs both actors concurrently and merges results.
-Pricing: LinkedIn ~$0.10–0.20/1,000 · Indeed ~$0.20–0.35/1,000 — cheapest per-job in stack.
+Pricing: LinkedIn ~$0.35–0.70/1,000 (57,991 users, 99.9% success) · Indeed ~$0.07–0.10/1,000 (42,076 users, 100% success).
 Free tier: included on Apify free plan.
 Why: Deepest LinkedIn/Indeed coverage — JobSpy has rate-limit issues at scale.
 """
@@ -15,12 +15,12 @@ import asyncio
 from datetime import datetime
 from scraper.types import NormalizedJob
 from scraper.course_detector import detect_courses
-from scraper.parse_utils import extract_stipend
+from scraper.parse_utils import extract_stipend, logo_url_from_company
 
 logger = logging.getLogger(__name__)
 
-LINKEDIN_ACTOR_ID = os.getenv("APIFY_LINKEDIN_ACTOR_ID", "bebity/linkedin-jobs-scraper")
-INDEED_ACTOR_ID = os.getenv("APIFY_INDEED_ACTOR_ID", "misceres/indeed-scraper")
+LINKEDIN_ACTOR_ID = os.getenv("APIFY_LINKEDIN_ACTOR_ID", "cheap_scraper/linkedin-job-scraper")
+INDEED_ACTOR_ID = os.getenv("APIFY_INDEED_ACTOR_ID", "valig/indeed-jobs-scraper")
 APIFY_BASE = "https://api.apify.com/v2"
 
 # Shared query list — used for both LinkedIn and Indeed
@@ -200,6 +200,7 @@ def _normalize(item: dict, q: dict, platform: str) -> NormalizedJob | None:
         is_remote=bool(item.get("isRemote") or item.get("remote") or
                        re.search(r'\bremote\b', location_str, re.I)),
         posted_at=_parse_date(item.get("postedAt") or item.get("datePosted")),
+        logo_url=item.get("companyLogo") or item.get("logoUrl") or logo_url_from_company(company, apply_url),
         raw_data=f'{{"source":"apify_linkedin_indeed","platform":"{platform}","id":"{uid}"}}'
     )
 

@@ -5,6 +5,7 @@ import httpx
 from datetime import datetime
 from scraper.types import NormalizedJob
 from scraper.course_detector import detect_courses
+from scraper.parse_utils import logo_url_from_company
 
 JSEARCH_BASE = "https://api.openwebninja.com/jsearch"
 
@@ -149,22 +150,25 @@ async def fetch() -> list[NormalizedJob]:
             except Exception:
                 posted_at = datetime.utcnow()
 
+            company_name = item.get('employer_name') or 'Unknown'
+            apply_link = item.get('job_apply_link') or ''
             jobs.append(NormalizedJob(
                 source='jsearch',
                 external_id=job_id,
                 title=title,
-                company=item.get('employer_name') or 'Unknown',
+                company=company_name,
                 location=_build_location(item),
                 stipend=_avg_salary(item),
                 duration='',
                 courses=courses,
                 job_type=job_type,
                 experience_level=exp_level,
-                apply_url=item.get('job_apply_link') or '',
+                apply_url=apply_link,
                 description=description[:2000] or None,
                 is_remote=bool(item.get('job_is_remote')),
                 posted_at=posted_at,
-                raw_data=f'{{"job_id":"{job_id}","employer":"{(item.get("employer_name") or "")[:60]}"}}'
+                logo_url=item.get('employer_logo') or logo_url_from_company(company_name, apply_link),
+                raw_data=f'{{"job_id":"{job_id}","employer":"{company_name[:60]}"}}'
             ))
 
     return jobs

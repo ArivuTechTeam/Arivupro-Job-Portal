@@ -1,6 +1,14 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MapPin, Clock, ExternalLink, CheckCircle2, Bookmark, BookmarkCheck } from 'lucide-react';
 import { JobListing } from '../types/index.ts';
+import { buildJobUrl } from '../lib/slugify.ts';
+
+function jobSection(job: JobListing): 'jobs' | 'internships' | 'articleship' {
+  if (job.jobType.includes('Articleship')) return 'articleship';
+  if (job.jobType === 'Internship') return 'internships';
+  return 'jobs';
+}
 
 interface JobCardProps {
   job: JobListing;
@@ -69,6 +77,7 @@ function TierBadge({ jobType }: { jobType: string }) {
 }
 
 export const JobCard: React.FC<JobCardProps> = ({ job, onApply, onViewDetails, isApplied, isSaved, onSaveToggle }) => {
+  const navigate = useNavigate();
   const isScraped = job.source !== 'arivupro_exclusive' && job.source !== 'direct_recruiter';
   const companyInitials = getCompanyInitials(job.company);
   const postedLabel = relativeTime(job.postedDate);
@@ -107,7 +116,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onApply, onViewDetails, i
 
           {/* Job title */}
           <button
-            onClick={() => onViewDetails(job)}
+            onClick={() => navigate(buildJobUrl(jobSection(job), job))}
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', display: 'block', marginBottom: 4 }}
           >
             <span className="ap-job-title">{job.title}</span>

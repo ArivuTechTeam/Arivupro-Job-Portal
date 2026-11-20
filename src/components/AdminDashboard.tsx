@@ -7,6 +7,7 @@ interface AdminDashboardProps {
   jobs: JobListing[];
   applications: JobApplication[];
   activeTab?: AdminTab;
+  onNavigate?: (tab: 'admin-recruiters' | 'admin-dashboard' | 'admin-students' | 'admin-jobs' | 'admin-companies') => void;
 }
 
 type AdminTab = 'Dashboard' | 'All Students' | 'All Jobs' | 'Companies' | 'Recruiters';
@@ -524,7 +525,7 @@ function DetailItem({ label, value }: { label: string; value: string }) {
 
 // ── Main Component ──────────────────────────────────────────────────────────
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applications, activeTab: propTab }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applications, activeTab: propTab, onNavigate }) => {
   const activeTab: AdminTab = propTab ?? 'Dashboard';
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [studentSearch, setStudentSearch] = useState('');
@@ -757,12 +758,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
                     <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>New registrations pending your review</div>
                   </div>
                 </div>
-                <a
-                  href="/?admin&tab=recruiters"
-                  style={{ background: '#f57f17', color: '#fff', padding: '8px 20px', borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: 'none', display: 'inline-block' }}
+                <button
+                  onClick={() => onNavigate?.('admin-recruiters')}
+                  style={{ background: '#f57f17', color: '#fff', padding: '8px 20px', borderRadius: 8, fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer', fontFamily: 'Manrope, sans-serif' }}
                 >
                   Review Now
-                </a>
+                </button>
               </div>
             )}
 

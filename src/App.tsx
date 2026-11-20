@@ -1,4 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { Routes, Route } from 'react-router-dom';
+import JobDetailPage from './pages/JobDetailPage.tsx';
 import { Navbar, NavTab } from './components/Navbar.tsx';
 import { HeroSection } from './components/HeroSection.tsx';
 import { JobSearchFilters } from './components/JobSearchFilters.tsx';
@@ -73,9 +75,12 @@ function loadAuth(): AuthState {
 function loadTab(): NavTab {
   // Map URL path to initial tab on first load / hard refresh
   const path = window.location.pathname;
-  if (path === '/jobseeker') return 'dashboard';
-  if (path === '/recruiter')  return 'recruiter-jobs';
-  if (path === '/admin')      return 'admin-dashboard';
+  if (path === '/jobseeker')   return 'dashboard';
+  if (path === '/recruiter')   return 'recruiter-jobs';
+  if (path === '/admin')       return 'admin-dashboard';
+  if (path === '/jobs')        return 'jobs';
+  if (path === '/internships') return 'internships';
+  if (path === '/articleship') return 'articleship';
   try {
     const t = sessionStorage.getItem(TAB_KEY) as NavTab | null;
     if (t) return t;
@@ -179,6 +184,13 @@ export default function App() {
     }
   }, [auth.role]);
 
+  const tabPath = (tab: NavTab): string => {
+    if (tab === 'jobs')        return '/jobs';
+    if (tab === 'internships') return '/internships';
+    if (tab === 'articleship') return '/articleship';
+    return window.location.pathname; // preserve /jobseeker, /recruiter, /admin
+  };
+
   const navigateToTab = (tab: NavTab, options?: { replace?: boolean }) => {
     if (tab === 'profile' && auth.role === 'recruiter') {
       setRecruiterProfileSignal(s => s + 1);
@@ -196,11 +208,12 @@ export default function App() {
       tab,
       depth: options?.replace ? depth : depth + 1,
     };
+    const path = tabPath(tab);
 
     if (options?.replace || (currentState?.__arivuproApp && currentState.tab === tab)) {
-      window.history.replaceState(nextState, '', window.location.pathname);
+      window.history.replaceState(nextState, '', path);
     } else {
-      window.history.pushState(nextState, '', window.location.pathname);
+      window.history.pushState(nextState, '', path);
     }
   };
 
@@ -748,6 +761,14 @@ export default function App() {
   const appliedIds = useMemo(() => new Set(applications.map(a => a.jobId)), [applications]);
 
   return (
+    <Routes>
+      {/* Deep-link job detail pages — must come before the catch-all */}
+      <Route path="/jobs/:company/:title/:id" element={<JobDetailPage />} />
+      <Route path="/internships/:company/:title/:id" element={<JobDetailPage />} />
+      <Route path="/articleship/:company/:title/:id" element={<JobDetailPage />} />
+
+      {/* Existing SPA — all other paths */}
+      <Route path="*" element={
     <div style={{ minHeight: '100vh', background: '#f8fffe', fontFamily: 'Manrope, sans-serif' }}>
 
       {/* Toast */}
@@ -1314,6 +1335,7 @@ export default function App() {
                     : currentTab === 'admin-recruiters' ? 'Recruiters'
                     : 'Dashboard'
                   }
+                  onNavigate={navigateToTab}
                 />
               )}
             </div>
@@ -1734,5 +1756,7 @@ export default function App() {
         </>
       )}
     </div>
+      } />
+    </Routes>
   );
 }

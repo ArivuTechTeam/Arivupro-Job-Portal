@@ -1613,6 +1613,14 @@ async def get_external_jobs(
 
     return {"total": len(jobs), "jobs": jobs}
 
+
+@app.get("/api/external-jobs/{job_id}")
+async def get_external_job(job_id: str):
+    result = supabase.table("external_jobs").select("*").eq("id", job_id).single().execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="External job not found")
+    return result.data
+
 # ---------------------------------------------------------------------------
 # AI MATCHING
 # ---------------------------------------------------------------------------
@@ -1801,10 +1809,17 @@ if os.path.isdir(DIST):
 
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
-        # Serve static files from dist root (e.g. logo-white.png, favicon.ico)
-        static_file = os.path.join(DIST, full_path)
-        if full_path and os.path.isfile(static_file):
-            return FileResponse(static_file)
+        # Serve static files from dist root (e.g. logo-white.png, favicon.ico).
+        # Resolve the real path and confirm it stays inside DIST to prevent
+        # path-traversal attacks (e.g. /%2e%2e/%2e%2e/etc/passwd).
+        dist_real = os.path.realpath(DIST)
+        candidate = os.path.realpath(os.path.join(DIST, full_path))
+        if (
+            full_path
+            and candidate.startswith(dist_real + os.sep)
+            and os.path.isfile(candidate)
+        ):
+            return FileResponse(candidate)
         return FileResponse(os.path.join(DIST, "index.html"))
 
 

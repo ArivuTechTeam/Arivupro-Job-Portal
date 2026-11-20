@@ -91,7 +91,7 @@ export const CompanyDirectory: React.FC<CompanyDirectoryProps> = ({ onSelectComp
   return (
     <div style={{ maxWidth: 1180, margin: '0 auto', padding: '40px 24px' }}>
       {/* Header */}
-      <div style={{ marginBottom: 28 }}>
+      <div className="ap-fade-left ap-d0" style={{ marginBottom: 28 }}>
         <h2 style={{ fontSize: 24, fontWeight: 800, color: '#0f2419', margin: '0 0 6px' }}>Hiring Companies</h2>
         <p style={{ color: '#6b7280', fontSize: 14, margin: 0 }}>
           Verified recruiters and MoU partners of ArivuPro Finance Academy
@@ -155,10 +155,10 @@ export const CompanyDirectory: React.FC<CompanyDirectoryProps> = ({ onSelectComp
       {loading ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: 20, minHeight: 100, opacity: 0.5 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 10, background: '#f3f4f6', marginBottom: 12 }} />
-              <div style={{ height: 14, background: '#f3f4f6', borderRadius: 6, marginBottom: 8 }} />
-              <div style={{ height: 11, background: '#f3f4f6', borderRadius: 6, width: '60%' }} />
+            <div key={i} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: 20, minHeight: 100 }}>
+              <div className="ap-skeleton" style={{ width: 44, height: 44, marginBottom: 12 }} />
+              <div className="ap-skeleton" style={{ height: 14, marginBottom: 8 }} />
+              <div className="ap-skeleton" style={{ height: 11, width: '60%' }} />
             </div>
           ))}
         </div>
@@ -174,20 +174,12 @@ export const CompanyDirectory: React.FC<CompanyDirectoryProps> = ({ onSelectComp
       ) : (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
-            {paginated.map(co => (
+            {paginated.map((co, i) => (
               <div
                 key={co.id}
-                className="card"
-                style={{ padding: 20, cursor: 'pointer', transition: 'all 0.15s ease' }}
+                className={`ap-card ap-fade-up ap-d${Math.min(i % 6, 7)}`}
+                style={{ padding: 20, cursor: 'pointer', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14 }}
                 onClick={() => onSelectCompany(co)}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLDivElement).style.borderColor = '#1a7a4a';
-                  (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 16px rgba(26,122,74,0.08)';
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLDivElement).style.borderColor = '#e5e7eb';
-                  (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
-                }}
               >
                 {/* Header row */}
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>

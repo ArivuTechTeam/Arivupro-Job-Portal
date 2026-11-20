@@ -159,7 +159,7 @@ export const ScraperDashboard: React.FC<ScraperDashboardProps> = ({
       <div style={{ maxWidth: 1120, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
 
         {/* ── Hero Banner ── */}
-        <div style={{
+        <div className="ap-fade-up ap-d0" style={{
           background: '#1a7a4a',
           borderRadius: 14,
           padding: '28px 32px',
@@ -281,10 +281,10 @@ export const ScraperDashboard: React.FC<ScraperDashboardProps> = ({
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }} className="scraper-sources-grid">
-            {sources.map((src) => {
+            {sources.map((src, i) => {
               const isSrcRunning = runningSources.has(src.id) || src.status === 'Syncing';
               return (
-              <div key={src.id} style={{ ...card, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div key={src.id} className={`ap-card ap-scale-in ap-d${Math.min(i % 8, 7)}`} style={{ ...card, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {/* Header row */}
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>

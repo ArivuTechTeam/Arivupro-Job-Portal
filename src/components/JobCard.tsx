@@ -77,7 +77,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onApply, onViewDetails, i
   const quals = job.qualifications.slice(0, 3).map(q => q.replace(/_/g, ' '));
 
   return (
-    <div className="ap-job-card">
+    <div className="ap-job-card ap-fade-up">
       {/* ── Row 1: Logo + all content ── */}
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
 
@@ -191,12 +191,14 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onApply, onViewDetails, i
           border: 1px solid #e5e7eb;
           border-radius: 10px;
           padding: 20px 24px;
-          transition: box-shadow 0.15s ease, border-color 0.15s ease;
+          transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
           cursor: default;
+          will-change: transform;
         }
         .ap-job-card:hover {
           border-color: #c8e6d6;
-          box-shadow: 0 2px 16px rgba(15,36,25,0.07);
+          box-shadow: 0 10px 28px rgba(15,36,25,0.10);
+          transform: translateY(-3px);
         }
         .ap-company-logo {
           width: 72px; height: 72px;

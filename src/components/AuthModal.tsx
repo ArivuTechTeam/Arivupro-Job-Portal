@@ -108,6 +108,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, onSuccess, 
 
   return (
     <div
+      className="ap-fade-in"
       style={{
         position: 'fixed', inset: 0, zIndex: 200,
         background: 'rgba(10,30,16,0.65)',
@@ -118,12 +119,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, onSuccess, 
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
+        className="ap-modal-pop"
         style={{
           background: '#fff', borderRadius: 20, maxWidth: 440, width: '100%',
           maxHeight: '95vh', overflowY: 'auto',
           boxShadow: '0 32px 80px rgba(10,30,16,0.25)',
           position: 'relative',
-          animation: 'fade-up 0.25s ease both',
         }}
       >
         {/* Header */}

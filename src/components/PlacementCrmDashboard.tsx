@@ -103,7 +103,7 @@ export const PlacementCrmDashboard: React.FC<PlacementCrmDashboardProps> = ({ on
       <div style={{ maxWidth: 1120, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
 
         {/* ── Hero Banner ── */}
-        <div style={{
+        <div className="ap-fade-up ap-d0" style={{
           background: '#1a7a4a',
           borderRadius: 14,
           padding: '28px 32px',

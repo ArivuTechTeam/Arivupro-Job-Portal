@@ -54,6 +54,7 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
 
   return (
     <div
+      className="ap-fade-in"
       style={{
         position: 'fixed',
         inset: 0,
@@ -70,7 +71,7 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
       }}
     >
       <div
-        className="animate-fade-up"
+        className="ap-modal-pop"
         style={{
           background: '#fff',
           borderRadius: 14,

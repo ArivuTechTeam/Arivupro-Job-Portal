@@ -24,6 +24,10 @@ import {
 } from './types/index.ts';
 import { CheckCircle2, X, ChevronDown, ChevronUp, Home, Briefcase, User } from 'lucide-react';
 import { supabase } from './lib/supabase/client.ts';
+import { injectAnimations } from './lib/animations.ts';
+
+// Inject global animation CSS once at app startup
+injectAnimations();
 
 const SEED_JOBS: JobListing[] = [];
 

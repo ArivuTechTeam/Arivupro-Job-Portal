@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { JobListing } from '../types/index.ts';
+import { AmbientCanvas } from './AmbientCanvas.tsx';
 
 interface AIJobMatchProps {
   jobs: JobListing[];
@@ -243,7 +244,9 @@ export const AIJobMatch: React.FC<AIJobMatchProps> = ({
   return (
     <div style={{ fontFamily: 'Manrope, sans-serif', padding: '0 0 40px' }}>
       {/* Page header */}
-      <div style={{ marginBottom: 28 }}>
+      <div className="ap-fade-up ap-d0" style={{ marginBottom: 28, position: 'relative', overflow: 'hidden', borderRadius: 14, padding: '24px 24px 20px', background: 'linear-gradient(135deg, #f0faf4 0%, #fdf8ee 100%)', border: '1px solid #e5e7eb' }}>
+        <AmbientCanvas density="low" style={{ opacity: 0.3 }} />
+        <div style={{ position: 'relative', zIndex: 1 }}>
         <div
           style={{
             display: 'flex',
@@ -293,6 +296,7 @@ export const AIJobMatch: React.FC<AIJobMatchProps> = ({
           Gemini 2.0 Flash evaluates your fit for every role — select a job below to get your
           personalised analysis, {studentName}.
         </p>
+        </div>
       </div>
 
       {/* Two-column layout */}
@@ -333,13 +337,14 @@ export const AIJobMatch: React.FC<AIJobMatchProps> = ({
           </div>
 
           <div style={{ maxHeight: 540, overflowY: 'auto' }}>
-            {jobs.map((job) => {
+            {jobs.map((job, i) => {
               const isSelected = selectedJobId === job.id;
               const isLoading = loadingJobId === job.id;
 
               return (
                 <div
                   key={job.id}
+                  className={`ap-fade-left ap-d${Math.min(i % 8, 7)}`}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -451,7 +456,7 @@ export const AIJobMatch: React.FC<AIJobMatchProps> = ({
           {!analysis || !displayJob ? (
             /* Empty state */
             <div
-              className="card"
+              className="ap-fade-right ap-d2 card"
               style={{
                 padding: 48,
                 display: 'flex',

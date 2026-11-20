@@ -93,7 +93,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const initials = userName ? getInitials(userName) : '';
 
   return (
-    <header style={{
+    <header className="ap-slide-down" style={{
       position: 'sticky', top: 0, zIndex: 50, background: '#fff',
       boxShadow: scrolled ? '0 2px 16px rgba(15,36,25,0.08)' : '0 1px 0 #e5e7eb',
       transition: 'box-shadow 0.2s ease',
@@ -184,7 +184,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <ChevronDown size={14} color="#6b7280" />
               </button>
               {dropdownOpen && (
-                <div style={{
+                <div className="ap-scale-in" style={{
                   position: 'absolute', right: 0, top: 'calc(100% + 8px)',
                   background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12,
                   boxShadow: '0 8px 32px rgba(15,36,25,0.12)', minWidth: 160, overflow: 'hidden', zIndex: 100,
@@ -228,7 +228,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Mobile drawer */}
       {mobileOpen && (
-        <div style={{ background: '#fff', borderBottom: '2px solid #e5e7eb', padding: '8px 16px 20px' }}>
+        <div className="ap-fade-up" style={{ background: '#fff', borderBottom: '2px solid #e5e7eb', padding: '8px 16px 20px' }}>
           {tabs.map((tab) => (
             <button
               key={tab.id}

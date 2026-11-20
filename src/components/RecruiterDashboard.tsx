@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase/client.ts';
+import { AmbientCanvas } from './AmbientCanvas.tsx';
 import {
   LayoutDashboard, Briefcase, Users, PlusCircle,
   ChevronDown, Download, Eye, CheckCircle2, ArrowLeft,
@@ -417,7 +418,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
       )}
 
       {/* ── SIDEBAR ─────────────────────────────────────────────── */}
-      <aside className={`rec-sidebar${sidebarOpen ? ' rec-sidebar-open' : ''}`} style={{ width: 220, background: '#fff', borderRight: '1px solid #e5e7eb', flexShrink: 0, padding: '24px 0', display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <aside className={`ap-fade-left ap-d0 rec-sidebar${sidebarOpen ? ' rec-sidebar-open' : ''}`} style={{ width: 220, background: '#fff', borderRight: '1px solid #e5e7eb', flexShrink: 0, padding: '24px 0', display: 'flex', flexDirection: 'column', gap: 2 }}>
         {/* Company chip */}
         <div style={{ padding: '0 16px 20px', borderBottom: '1px solid #f3f4f6', marginBottom: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -460,12 +461,13 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
       </aside>
 
       {/* ── MAIN CONTENT ─────────────────────────────────────────── */}
-      <main className="rec-main" style={{ flex: 1, padding: '32px 32px', overflowY: 'auto', minWidth: 0 }}>
+      <main className="rec-main" style={{ flex: 1, padding: '32px 32px', overflowY: 'auto', minWidth: 0, position: 'relative' }}>
+        <AmbientCanvas density="low" style={{ opacity: 0.4 }} />
 
         {/* DASHBOARD */}
         {page === 'dashboard' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            <div>
+            <div className="ap-fade-left ap-d0">
               <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0f2419', margin: '0 0 4px' }}>Recruiter Dashboard</h1>
               <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>{companyName} — Campus Recruitment</p>
             </div>
@@ -473,12 +475,12 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
             {/* Stat cards — FIX 1: rd-stats-grid collapses to 2-col on mobile */}
             <div className="rd-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
               {[
-                { label: 'Active Job Posts',   value: jobs.filter((j: any) => j.status === 'Active').length, sub: 'Currently active', color: '#b45309', border: '#fde68a' },
-                { label: 'Total Applicants',   value: normalizedApplicants.length, sub: 'All time',          color: '#1a7a4a', border: '#d7f4ea' },
-                { label: 'In Interview Stage', value: 0, sub: 'Scheduled this week',               color: '#1d4ed8', border: '#dbeafe' },
-                { label: 'Offers Extended',    value: 0, sub: 'Awaiting acceptance',               color: '#7c3aed', border: '#ede9fe' },
+                { label: 'Active Job Posts',   value: jobs.filter((j: any) => j.status === 'Active').length, sub: 'Currently active', color: '#b45309', border: '#fde68a', delay: 'ap-d1' },
+                { label: 'Total Applicants',   value: normalizedApplicants.length, sub: 'All time',          color: '#1a7a4a', border: '#d7f4ea', delay: 'ap-d2' },
+                { label: 'In Interview Stage', value: 0, sub: 'Scheduled this week',               color: '#1d4ed8', border: '#dbeafe', delay: 'ap-d3' },
+                { label: 'Offers Extended',    value: 0, sub: 'Awaiting acceptance',               color: '#7c3aed', border: '#ede9fe', delay: 'ap-d4' },
               ].map(s => (
-                <div key={s.label} style={{ background: '#fff', border: `1px solid ${s.border}`, borderLeft: `4px solid ${s.color}`, borderRadius: 12, padding: '20px 20px 16px' }}>
+                <div key={s.label} className={`ap-card ap-scale-in ${s.delay}`} style={{ background: '#fff', border: `1px solid ${s.border}`, borderLeft: `4px solid ${s.color}`, borderRadius: 12, padding: '20px 20px 16px' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>{s.label}</div>
                   <div style={{ fontSize: 34, fontWeight: 900, color: s.color, letterSpacing: '-0.03em', lineHeight: 1 }}>{s.value}</div>
                   <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 6 }}>{s.sub}</div>

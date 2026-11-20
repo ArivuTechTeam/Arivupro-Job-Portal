@@ -1,5 +1,6 @@
 import React from 'react';
 import { RefreshCw, FileText, Calendar, User, CheckCircle2, Clock } from 'lucide-react';
+import { AmbientCanvas } from './AmbientCanvas.tsx';
 import { JobApplication, StudentProfile } from '../types/index.ts';
 
 interface ApplicationTrackerProps {
@@ -48,6 +49,7 @@ export const ApplicationTracker: React.FC<ApplicationTrackerProps> = ({
     <div style={{ maxWidth: 1180, margin: '0 auto', padding: '32px 20px', display: 'flex', flexDirection: 'column', gap: 24 }}>
       {/* Header */}
       <div
+        className="ap-fade-up ap-d0"
         style={{
           background: 'linear-gradient(135deg, #0f2419 0%, #1a7a4a 100%)',
           borderRadius: 14,
@@ -55,9 +57,12 @@ export const ApplicationTracker: React.FC<ApplicationTrackerProps> = ({
           display: 'flex',
           flexDirection: 'column',
           gap: 16,
+          position: 'relative',
+          overflow: 'hidden',
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+        <AmbientCanvas density="low" style={{ opacity: 0.25 }} />
+        <div style={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#fede6d', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
               ArivuPro Placement Directorate · Real-Time Tracking
@@ -74,7 +79,7 @@ export const ApplicationTracker: React.FC<ApplicationTrackerProps> = ({
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', zIndex: 1 }}>
             <div
               style={{
                 padding: '10px 16px',
@@ -94,16 +99,7 @@ export const ApplicationTracker: React.FC<ApplicationTrackerProps> = ({
                   gap: 6,
                 }}
               >
-                <span
-                  style={{
-                    width: 7,
-                    height: 7,
-                    borderRadius: '50%',
-                    background: '#4ade80',
-                    display: 'inline-block',
-                  }}
-                  className="animate-pulse-dot"
-                />
+                <span className="ap-dot-live" style={{ background: '#4ade80' }} />
                 Live Syncing
               </div>
             </div>
@@ -174,15 +170,15 @@ export const ApplicationTracker: React.FC<ApplicationTrackerProps> = ({
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {applications.map((app) => {
+          {applications.map((app, i) => {
             const stageIdx = getStageIndex(app.status);
             const stageColor = getStageColor(app.status);
 
             return (
               <div
                 key={app.id}
-                className="card"
-                style={{ padding: '20px 22px' }}
+                className={`ap-card ap-fade-up ap-d${Math.min(i, 7)}`}
+                style={{ padding: '20px 22px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14 }}
               >
                 {/* Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>

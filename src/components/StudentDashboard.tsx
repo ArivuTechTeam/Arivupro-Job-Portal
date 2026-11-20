@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { AmbientCanvas } from './AmbientCanvas.tsx';
 import {
   BookmarkCheck, Briefcase, User, ChevronRight,
   CheckCircle2, Clock, TrendingUp, MapPin, GraduationCap,
@@ -79,15 +80,23 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', fontFamily: 'Manrope, sans-serif' }} className="sd-root">
-    <div className="sd-scroll-area" style={{ padding: '32px 24px' }}>
 
-      {/* Welcome header */}
-      <div style={{ marginBottom: 20 }}>
-        {firstName && (
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0f2419', margin: '0 0 3px', letterSpacing: '-0.02em' }}>
-            Hey, {firstName} 👋
-          </h1>
-        )}
+      {/* Ambient background strip */}
+      <div style={{ position: 'relative', height: 80, overflow: 'hidden', borderBottom: '1px solid #f0faf4' }}>
+        <AmbientCanvas density="low" />
+        <div style={{ position: 'relative', zIndex: 1, padding: '20px 24px 0' }} className="ap-fade-left ap-d0">
+          {firstName && (
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0f2419', margin: 0, letterSpacing: '-0.02em' }}>
+              Hey, {firstName} 👋
+            </h1>
+          )}
+        </div>
+      </div>
+
+    <div className="sd-scroll-area" style={{ padding: '24px 24px 32px' }}>
+
+      {/* Welcome sub-text */}
+      <div style={{ marginBottom: 20 }} className="ap-fade-up ap-d1">
         <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>
           {applications.length === 0
             ? 'Start applying to kick off your journey'
@@ -98,9 +107,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       {/* Top stat strip */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 24 }}>
         {[
-          { icon: <Briefcase size={14} />, label: 'Applied', value: applications.length, tab: 'applications', accent: '#1a7a4a', bg: '#f0faf4', border: '#d7f4ea' },
-          { icon: <BookmarkCheck size={14} />, label: 'Saved', value: savedJobIds.size, tab: 'jobs', accent: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
-          { icon: <TrendingUp size={14} />, label: 'Active', value: applications.filter(a => a.status !== 'Declined' && a.status !== 'Placed').length, tab: 'applications', accent: '#7c3aed', bg: '#f5f3ff', border: '#ede9fe' },
+          { icon: <Briefcase size={14} />, label: 'Applied', value: applications.length, tab: 'applications', accent: '#1a7a4a', bg: '#f0faf4', border: '#d7f4ea', delay: 'ap-d2' },
+          { icon: <BookmarkCheck size={14} />, label: 'Saved', value: savedJobIds.size, tab: 'jobs', accent: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe', delay: 'ap-d3' },
+          { icon: <TrendingUp size={14} />, label: 'Active', value: applications.filter(a => a.status !== 'Declined' && a.status !== 'Placed').length, tab: 'applications', accent: '#7c3aed', bg: '#f5f3ff', border: '#ede9fe', delay: 'ap-d4' },
         ].map(item => (
           <div
             key={item.label}
@@ -108,9 +117,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             style={{
               background: item.bg, border: `1px solid ${item.border}`,
               borderRadius: 12, padding: '12px 14px', cursor: 'pointer',
-              transition: 'transform 0.12s ease, box-shadow 0.12s ease',
             }}
-            className="stat-tile"
+            className={`ap-card ap-scale-in ${item.delay}`}
           >
             <div style={{ color: item.accent, marginBottom: 6 }}>{item.icon}</div>
             <div style={{ fontSize: 22, fontWeight: 800, color: '#0f2419', letterSpacing: '-0.03em', lineHeight: 1 }}>{item.value}</div>
@@ -125,7 +133,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
           {/* Recent Applications */}
-          <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, overflow: 'hidden' }}>
+          <div className="ap-fade-up ap-d5" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, overflow: 'hidden' }}>
             <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Briefcase size={16} color="#1a7a4a" />
@@ -178,7 +186,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           </div>
 
           {/* Saved Jobs */}
-          <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, overflow: 'hidden' }}>
+          <div className="ap-fade-up ap-d6" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, overflow: 'hidden' }}>
             <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <BookmarkCheck size={16} color="#1d4ed8" />
@@ -292,7 +300,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
           {/* Profile completion card */}
-          <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '20px' }}>
+          <div className="ap-fade-right ap-d4" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <User size={15} color="#1a7a4a" />
@@ -303,7 +311,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
             {/* Progress bar */}
             <div style={{ height: 6, background: '#f3f4f6', borderRadius: 4, overflow: 'hidden', marginBottom: 14 }}>
-              <div style={{ height: '100%', width: `${pct}%`, background: pctColor, borderRadius: 4, transition: 'width 0.5s ease' }} />
+              <div className="ap-bar-fill" style={{ height: '100%', width: `${pct}%`, background: pctColor, borderRadius: 4 }} />
             </div>
 
             {pct < 100 && missing.length > 0 && (

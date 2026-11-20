@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, MapPin } from 'lucide-react';
+import * as THREE from 'three';
 
 interface HeroSectionProps {
   onGetStarted: () => void;
@@ -28,6 +29,143 @@ const LOCATIONS = [
 export const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onSearch, onCompanyClick: _onCompanyClick }) => {
   const [query, setQuery] = useState('');
   const [location, setLocation] = useState('');
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x000000, 0);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
+    camera.position.z = 20;
+
+    const resize = () => {
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    // Brand colors
+    const COLORS = [0x1a7a4a, 0x2ea567, 0xfede6d, 0xb8dfc8, 0x0f2419];
+
+    // ── Particle field — small dots drifting upward ──
+    const particleCount = 120;
+    const positions = new Float32Array(particleCount * 3);
+    const colorArr = new Float32Array(particleCount * 3);
+    const velocities: number[] = [];
+
+    for (let i = 0; i < particleCount; i++) {
+      positions[i * 3]     = (Math.random() - 0.5) * 60;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 30;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 10;
+      velocities.push(0.008 + Math.random() * 0.012); // upward speed
+      const c = new THREE.Color(COLORS[Math.floor(Math.random() * COLORS.length)]);
+      colorArr[i * 3]     = c.r;
+      colorArr[i * 3 + 1] = c.g;
+      colorArr[i * 3 + 2] = c.b;
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(colorArr, 3));
+    const mat = new THREE.PointsMaterial({ size: 0.22, vertexColors: true, transparent: true, opacity: 0.55, sizeAttenuation: true });
+    const particles = new THREE.Points(geo, mat);
+    scene.add(particles);
+
+    // ── Floating rings — representing career milestones ──
+    const rings: { mesh: THREE.Mesh; vy: number; vr: number }[] = [];
+    const ringGeo = new THREE.TorusGeometry(0.5, 0.06, 8, 32);
+    for (let i = 0; i < 8; i++) {
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: COLORS[i % COLORS.length],
+        transparent: true,
+        opacity: 0.18 + Math.random() * 0.14,
+        wireframe: false,
+      });
+      const mesh = new THREE.Mesh(ringGeo, ringMat);
+      mesh.position.set(
+        (Math.random() - 0.5) * 50,
+        (Math.random() - 0.5) * 25,
+        (Math.random() - 0.5) * 5 - 3
+      );
+      mesh.scale.setScalar(0.6 + Math.random() * 1.2);
+      mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      scene.add(mesh);
+      rings.push({ mesh, vy: 0.006 + Math.random() * 0.008, vr: (Math.random() - 0.5) * 0.008 });
+    }
+
+    // ── Small floating triangles — finance chart arrows ──
+    const tris: { mesh: THREE.Mesh; vy: number }[] = [];
+    const triGeo = new THREE.ConeGeometry(0.22, 0.4, 3);
+    for (let i = 0; i < 12; i++) {
+      const triMat = new THREE.MeshBasicMaterial({
+        color: i % 2 === 0 ? 0x1a7a4a : 0xfede6d,
+        transparent: true,
+        opacity: 0.20 + Math.random() * 0.15,
+      });
+      const mesh = new THREE.Mesh(triGeo, triMat);
+      mesh.position.set(
+        (Math.random() - 0.5) * 54,
+        (Math.random() - 0.5) * 28,
+        (Math.random() - 0.5) * 4 - 2
+      );
+      mesh.rotation.z = i % 2 === 0 ? 0 : Math.PI; // up or down arrow
+      scene.add(mesh);
+      tris.push({ mesh, vy: 0.005 + Math.random() * 0.01 });
+    }
+
+    let frameId: number;
+    const animate = () => {
+      frameId = requestAnimationFrame(animate);
+
+      // drift particles upward, wrap at top
+      const pos = geo.attributes.position.array as Float32Array;
+      for (let i = 0; i < particleCount; i++) {
+        pos[i * 3 + 1] += velocities[i];
+        if (pos[i * 3 + 1] > 15) pos[i * 3 + 1] = -15;
+      }
+      geo.attributes.position.needsUpdate = true;
+
+      // drift rings
+      rings.forEach(({ mesh, vy, vr }) => {
+        mesh.position.y += vy;
+        mesh.rotation.x += vr;
+        mesh.rotation.y += vr * 0.7;
+        if (mesh.position.y > 16) mesh.position.y = -16;
+      });
+
+      // drift triangles
+      tris.forEach(({ mesh, vy }) => {
+        mesh.position.y += vy;
+        if (mesh.position.y > 16) mesh.position.y = -16;
+      });
+
+      // gentle whole-scene sway
+      particles.rotation.z += 0.0003;
+
+      renderer.render(scene, camera);
+    };
+    animate();
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      window.removeEventListener('resize', resize);
+      renderer.dispose();
+      geo.dispose();
+      mat.dispose();
+      ringGeo.dispose();
+      triGeo.dispose();
+    };
+  }, []);
+
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +184,12 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onSearch
         overflow: 'hidden',
         minHeight: 480,
       }}>
+
+        {/* ── Three.js animated canvas background ── */}
+        <canvas ref={canvasRef} style={{
+          position: 'absolute', inset: 0, width: '100%', height: '100%',
+          pointerEvents: 'none', zIndex: 0,
+        }} />
 
         {/* ── SVG background scene — dotted path + flag ── */}
         <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} viewBox="0 0 1400 480" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
@@ -70,8 +214,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onSearch
           background: '#fff', borderRadius: 14, padding: '14px 16px',
           boxShadow: '0 8px 32px rgba(15,36,25,0.10)',
           width: 190, pointerEvents: 'none',
-          transform: 'rotate(-3deg)',
-        }} className="hero-float-card">
+        }} className="hero-float-card hero-float-card-a">
           {/* checkmark badge */}
           <div style={{ position: 'absolute', top: -8, right: -8, width: 22, height: 22, borderRadius: '50%', background: '#1a7a4a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="11" height="11" viewBox="0 0 11 11"><path d="M2 5.5 L4.5 8 L9 3" stroke="#fff" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -93,8 +236,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onSearch
           background: '#fff', borderRadius: 14, padding: '14px 16px',
           boxShadow: '0 8px 32px rgba(15,36,25,0.10)',
           width: 200, pointerEvents: 'none',
-          transform: 'rotate(2.5deg)',
-        }} className="hero-float-card">
+        }} className="hero-float-card hero-float-card-b">
           <div style={{ position: 'absolute', top: -8, right: -8, width: 22, height: 22, borderRadius: '50%', background: '#1a7a4a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="11" height="11" viewBox="0 0 11 11"><path d="M2 5.5 L4.5 8 L9 3" stroke="#fff" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </div>
@@ -115,8 +257,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onSearch
           background: '#fff', borderRadius: 10, padding: '10px 12px',
           boxShadow: '0 4px 16px rgba(15,36,25,0.08)',
           width: 150, pointerEvents: 'none',
-          transform: 'rotate(1.5deg)',
-        }} className="hero-float-card">
+        }} className="hero-float-card hero-float-card-c">
           <div style={{ height: 6, background: '#f3f4f6', borderRadius: 3, marginBottom: 5, width: '80%' }}><div style={{ height: '100%', width: '90%', background: '#bfdbfe', borderRadius: 3 }} /></div>
           <div style={{ height: 5, background: '#f3f4f6', borderRadius: 3, width: '55%', marginBottom: 8 }} />
           <div style={{ display: 'flex', gap: 4 }}>
@@ -131,8 +272,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onSearch
           background: '#0f2419', borderRadius: 10, padding: '10px 14px',
           boxShadow: '0 4px 16px rgba(15,36,25,0.15)',
           width: 160, pointerEvents: 'none',
-          transform: 'rotate(-2deg)',
-        }} className="hero-float-card">
+        }} className="hero-float-card hero-float-card-d">
           <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontFamily: 'Manrope,sans-serif', marginBottom: 4 }}>New today</div>
           <div style={{ height: 6, background: 'rgba(255,255,255,0.12)', borderRadius: 3, marginBottom: 5 }}><div style={{ height: '100%', width: '70%', background: '#4ade80', borderRadius: 3 }} /></div>
           <div style={{ height: 5, background: 'rgba(255,255,255,0.08)', borderRadius: 3, width: '50%' }} />
@@ -228,6 +368,31 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onGetStarted, onSearch
         </div>
 
         <style>{`
+          @keyframes float-a {
+            0%   { transform: rotate(-3deg) translateY(0px); }
+            50%  { transform: rotate(-3deg) translateY(-12px); }
+            100% { transform: rotate(-3deg) translateY(0px); }
+          }
+          @keyframes float-b {
+            0%   { transform: rotate(2.5deg) translateY(0px); }
+            50%  { transform: rotate(2.5deg) translateY(-16px); }
+            100% { transform: rotate(2.5deg) translateY(0px); }
+          }
+          @keyframes float-c {
+            0%   { transform: rotate(1.5deg) translateY(0px) translateX(0px); }
+            33%  { transform: rotate(1.5deg) translateY(-8px) translateX(4px); }
+            66%  { transform: rotate(1.5deg) translateY(-14px) translateX(-3px); }
+            100% { transform: rotate(1.5deg) translateY(0px) translateX(0px); }
+          }
+          @keyframes float-d {
+            0%   { transform: rotate(-2deg) translateY(0px); }
+            50%  { transform: rotate(-2deg) translateY(-10px); }
+            100% { transform: rotate(-2deg) translateY(0px); }
+          }
+          .hero-float-card-a { animation: float-a 5.5s ease-in-out infinite; }
+          .hero-float-card-b { animation: float-b 6.8s ease-in-out infinite; }
+          .hero-float-card-c { animation: float-c 7.5s ease-in-out infinite; }
+          .hero-float-card-d { animation: float-d 5.0s ease-in-out infinite; }
           @media (max-width: 900px) {
             .hero-float-card { display: none !important; }
           }

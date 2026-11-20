@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { JobListing, JobApplication } from '../types/index.ts';
 import { adminFetch } from '../lib/supabase/auth.ts';
+import { AmbientCanvas } from './AmbientCanvas.tsx';
 
 interface AdminDashboardProps {
   jobs: JobListing[];
@@ -696,14 +697,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
   const maxPipelineCount = Math.max(1, ...PIPELINE_STAGE_KEYS.map(s => stageCounts[s.key] ?? 0));
 
   return (
-    <div style={styles.wrapper}>
+    <div style={{ ...styles.wrapper, position: 'relative' }}>
+      <AmbientCanvas density="low" style={{ opacity: 0.35 }} />
       {/* ── Tab Content ── */}
-      <div style={styles.pageContent}>
+      <div style={{ ...styles.pageContent, position: 'relative', zIndex: 1 }}>
 
         {/* TAB 1: DASHBOARD */}
         {activeTab === 'Dashboard' && (
           <>
-            <div style={styles.pageHeader}>
+            <div className="ap-fade-left ap-d0" style={styles.pageHeader}>
               <h1 style={styles.pageTitle}>Admin Dashboard</h1>
               <p style={styles.pageSubtitle}>
                 ArivuPro Placement Operations — Live Overview
@@ -713,28 +715,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
             {/* Stat Cards */}
             <div style={styles.grid4}>
               {/* Total Jobs */}
-              <div style={{ ...styles.statCard, borderLeft: '4px solid #f59e0b' }}>
+              <div className="ap-card ap-scale-in ap-d1" style={{ ...styles.statCard, borderLeft: '4px solid #f59e0b' }}>
                 <div style={styles.statLabel}>Total Jobs (Live)</div>
                 <div style={styles.statNum}>{liveStats?.active_jobs ?? '—'}</div>
                 <div style={styles.statSub}>Active jobs on portal</div>
               </div>
 
               {/* Total Placed */}
-              <div style={{ ...styles.statCard, borderLeft: '4px solid #1a7a4a' }}>
+              <div className="ap-card ap-scale-in ap-d2" style={{ ...styles.statCard, borderLeft: '4px solid #1a7a4a' }}>
                 <div style={styles.statLabel}>Total Placed</div>
                 <div style={styles.statNum}>{liveStats?.total_placed ?? '—'}</div>
                 <div style={styles.statSub}>Confirmed placements</div>
               </div>
 
               {/* Active Interviews */}
-              <div style={{ ...styles.statCard, borderLeft: '4px solid #3b82f6' }}>
+              <div className="ap-card ap-scale-in ap-d3" style={{ ...styles.statCard, borderLeft: '4px solid #3b82f6' }}>
                 <div style={styles.statLabel}>Active Interviews</div>
                 <div style={styles.statNum}>{liveStats?.active_interviews ?? '—'}</div>
                 <div style={styles.statSub}>In interview stage</div>
               </div>
 
               {/* Student Applicants */}
-              <div style={{ ...styles.statCard, borderLeft: '4px solid #7c3aed' }}>
+              <div className="ap-card ap-scale-in ap-d4" style={{ ...styles.statCard, borderLeft: '4px solid #7c3aed' }}>
                 <div style={styles.statLabel}>Student Applicants</div>
                 <div style={styles.statNum}>{liveStats?.total_applications ?? '—'}</div>
                 <div style={styles.statSub}>Total applications submitted</div>

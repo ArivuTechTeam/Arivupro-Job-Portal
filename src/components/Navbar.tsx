@@ -87,7 +87,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const tabs =
     userRole === 'recruiter' ? recruiterTabs
     : userRole === 'admin' ? adminTabs
-    : userRole === 'guest' ? studentTabs.slice(1, 4)   // Jobs, Articleship, Internships
+    : userRole === 'guest' ? studentTabs.slice(1, 5)   // Jobs, Articleship, Internships, Companies
     : studentTabs;
 
   const initials = userName ? getInitials(userName) : '';

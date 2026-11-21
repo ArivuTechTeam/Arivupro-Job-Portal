@@ -4,6 +4,7 @@ import JobDetailPage from './pages/JobDetailPage.tsx';
 import { Navbar, NavTab } from './components/Navbar.tsx';
 import { HeroSection } from './components/HeroSection.tsx';
 import { JobSearchFilters } from './components/JobSearchFilters.tsx';
+import { CategoryPills } from './components/CategoryPills.tsx';
 import { JobCard } from './components/JobCard.tsx';
 import { JobDetailsModal } from './components/JobDetailsModal.tsx';
 import { ApplicationTracker } from './components/ApplicationTracker.tsx';
@@ -952,6 +953,13 @@ export default function App() {
           <>
             <div id="job-feed-anchor" style={{ scrollMarginTop: 100 }} />
             <JobSearchFilters filters={filters} onFiltersChange={setFilters} totalCount={filteredJobs.length} />
+            {(currentTab as string) === 'jobs' && (
+              <CategoryPills
+                jobs={jobs}
+                activeDepartment={filters.department}
+                onSelect={dept => setFilters(f => ({ ...f, department: dept }))}
+              />
+            )}
             <div style={{ maxWidth: 1180, margin: '0 auto', padding: '28px 24px' }}>
               {currentTab === 'articleship' && (
                 <div style={{ marginBottom: 24 }}>

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, MapPin, Globe, Users, Briefcase, CheckCircle, ExternalLink, Building2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Globe, Users, Briefcase, Building2 } from 'lucide-react';
 import { JobListing } from '../types/index.ts';
 import { ApiCompany } from './CompanyDirectory.tsx';
+import { JobCard } from './JobCard.tsx';
 
 interface CompanyProfileFromApiProps {
   company: ApiCompany;
@@ -27,6 +28,39 @@ interface ApiJobListing {
   applicants_count?: number;
   arivupro_exclusive?: boolean;
   is_urgent?: boolean;
+}
+
+function mapApiJobToListing(job: ApiJobListing, companyName: string): JobListing {
+  const logoText = companyName.slice(0, 2).toUpperCase();
+  return {
+    id: job.id,
+    title: job.title,
+    company: companyName,
+    logoText,
+    location: job.location || '',
+    city: (job.location || '').split(',')[0].trim(),
+    workplaceType: (job.workplace_type as JobListing['workplaceType']) || 'Onsite',
+    jobType: (job.job_type === 'articleship' ? 'Articleship / Industrial Training'
+      : job.job_type === 'internship' ? 'Internship' : 'Full-Time') as JobListing['jobType'],
+    experienceLevel: '0-1 yr (Fresher)' as JobListing['experienceLevel'],
+    minExperienceYears: 0,
+    salaryText: job.salary_text || 'As per norms',
+    salaryMinLPA: job.salary_min_lpa,
+    salaryMaxLPA: job.salary_max_lpa,
+    qualifications: [],
+    mandatorySkills: job.mandatory_skills || [],
+    goodToHaveSkills: [],
+    description: '',
+    keyResponsibilities: [],
+    source: job.apply_url ? 'direct_recruiter' : 'direct_recruiter',
+    sourceUrl: job.apply_url,
+    arivuproExclusive: job.arivupro_exclusive || false,
+    isUrgent: job.is_urgent || false,
+    postedDate: job.posted_date?.split('T')[0] || '',
+    deadlineDate: job.deadline_date?.split('T')[0] || '',
+    applicantsCount: job.applicants_count || 0,
+    department: 'Audit & Assurance',
+  };
 }
 
 export const CompanyProfileFromApi: React.FC<CompanyProfileFromApiProps> = ({
@@ -209,108 +243,10 @@ export const CompanyProfileFromApi: React.FC<CompanyProfileFromApiProps> = ({
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {apiJobs.map(job => (
-                <div key={job.id} style={{
-                  background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14,
-                  padding: '20px 20px 16px', transition: 'all 0.15s ease',
-                }}
-                  onMouseEnter={e => {
-                    (e.currentTarget as HTMLDivElement).style.borderColor = '#1a7a4a';
-                    (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 16px rgba(26,122,74,0.08)';
-                  }}
-                  onMouseLeave={e => {
-                    (e.currentTarget as HTMLDivElement).style.borderColor = '#e5e7eb';
-                    (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 10 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                        <span style={{ fontSize: 16, fontWeight: 800, color: '#0f2419' }}>{job.title}</span>
-                        {job.arivupro_exclusive && <span className="badge badge-green">⭐ Exclusive</span>}
-                        {job.is_urgent && <span className="badge badge-red">🔥 Urgent</span>}
-                      </div>
-                      <div style={{ fontSize: 13, color: '#6b7280' }}>
-                        {[job.location, job.workplace_type, job.job_type].filter(Boolean).join(' · ')}
-                      </div>
-                    </div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: '#1a7a4a', flexShrink: 0 }}>
-                      {job.salary_text || 'As per norms'}
-                    </div>
-                  </div>
-
-                  {(job.mandatory_skills || []).length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
-                      {(job.mandatory_skills || []).slice(0, 5).map(skill => (
-                        <span key={skill} style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 999, background: '#f3f4f6', color: '#374151' }}>
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-                    <div style={{ fontSize: 12, color: '#9ca3af' }}>
-                      {job.applicants_count != null ? `${job.applicants_count} applicants · ` : ''}
-                      {job.posted_date ? `Posted ${job.posted_date.split('T')[0]}` : ''}
-                    </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      {appliedIds.has(job.id) ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: '#1a7a4a' }}>
-                          <CheckCircle size={14} /> Applied
-                        </span>
-                      ) : job.apply_url ? (
-                        <a
-                          href={job.apply_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn-outline"
-                          style={{ fontSize: 12, padding: '7px 16px' }}
-                        >
-                          Apply ↗ <ExternalLink size={11} />
-                        </a>
-                      ) : (
-                        <button
-                          className="btn-primary"
-                          style={{ fontSize: 12, padding: '7px 20px' }}
-                          onClick={() => {
-                            if (isGuest) return;
-                            // Build a minimal JobListing for onApply
-                            onApply({
-                              id: job.id,
-                              title: job.title,
-                              company: companyDetail.name,
-                              logoText: logoFallback(companyDetail.name),
-                              location: job.location || '',
-                              city: (job.location || '').split(',')[0].trim(),
-                              workplaceType: (job.workplace_type as any) || 'Onsite',
-                              jobType: (job.job_type as any) || 'Full-Time',
-                              experienceLevel: '0-1 yr (Fresher)' as any,
-                              minExperienceYears: 0,
-                              salaryText: job.salary_text || 'As per norms',
-                              salaryMinLPA: job.salary_min_lpa,
-                              salaryMaxLPA: job.salary_max_lpa,
-                              qualifications: [],
-                              mandatorySkills: job.mandatory_skills || [],
-                              goodToHaveSkills: [],
-                              description: '',
-                              keyResponsibilities: [],
-                              source: 'direct_recruiter' as any,
-                              sourceUrl: undefined,
-                              arivuproExclusive: job.arivupro_exclusive || false,
-                              isUrgent: job.is_urgent || false,
-                              postedDate: job.posted_date?.split('T')[0] || '',
-                              deadlineDate: job.deadline_date?.split('T')[0] || '',
-                              applicantsCount: job.applicants_count || 0,
-                              department: 'Audit & Assurance',
-                            } as JobListing);
-                          }}
-                        >
-                          Easy Apply →
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                <JobCard
+                  key={job.id}
+                  job={mapApiJobToListing(job, companyDetail.name)}
+                />
               ))}
             </div>
           )}

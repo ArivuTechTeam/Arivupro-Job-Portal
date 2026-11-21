@@ -1,9 +1,16 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, MapPin, Briefcase, Clock, Building2, ExternalLink, Share2, CheckCircle2 } from 'lucide-react';
 import { AmbientCanvas } from '../components/AmbientCanvas.tsx';
 import { JobListing } from '../types/index.ts';
 import { injectAnimations } from '../lib/animations.ts';
+import { buildJobUrl } from '../lib/slugify.ts';
+
+function jobSection(job: JobListing): 'jobs' | 'internships' | 'articleship' {
+  if (job.jobType.includes('Articleship')) return 'articleship';
+  if (job.jobType === 'Internship') return 'internships';
+  return 'jobs';
+}
 
 injectAnimations();
 
@@ -79,6 +86,7 @@ export default function JobDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [similarJobs, setSimilarJobs] = useState<JobListing[]>([]);
 
   useEffect(() => {
     if (!id) { setError(true); setLoading(false); return; }
@@ -97,6 +105,21 @@ export default function JobDetailPage() {
       .then(j => { setJob(j); setLoading(false); })
       .catch(() => { setError(true); setLoading(false); });
   }, [id]);
+
+  // Similar jobs — same department, different id
+  useEffect(() => {
+    if (!job) return;
+    fetch('/api/external-jobs?limit=200')
+      .then(r => r.ok ? r.json() : { jobs: [] })
+      .then(data => {
+        const related: JobListing[] = (data.jobs || [])
+          .map(mapExternal)
+          .filter((j: JobListing) => j.id !== job.id && j.department === job.department)
+          .slice(0, 4);
+        setSimilarJobs(related);
+      })
+      .catch(() => {});
+  }, [job]);
 
   const handleApply = () => {
     if (!job) return;
@@ -187,8 +210,9 @@ export default function JobDetailPage() {
         </div>
       </div>
 
-      {/* Main content */}
-      <div style={{ maxWidth: 860, margin: '0 auto', padding: '28px 24px', display: 'grid', gridTemplateColumns: '1fr', gap: 24 }}>
+      {/* Main content — two columns on desktop when similar jobs exist */}
+      <div style={{ maxWidth: similarJobs.length > 0 ? 1140 : 860, margin: '0 auto', padding: '28px 24px', display: 'grid', gridTemplateColumns: similarJobs.length > 0 ? 'minmax(0,1fr) 280px' : '1fr', gap: 28, alignItems: 'start' }} className="job-detail-grid">
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24 }}>
         {/* Quick facts row */}
         <div className="ap-fade-up ap-d1" style={{ background: '#fff', borderRadius: 14, border: '1px solid #e5e7eb', padding: '20px 24px', display: 'flex', flexWrap: 'wrap', gap: 20 }}>
           {[
@@ -295,6 +319,63 @@ export default function JobDetailPage() {
             {copied ? 'Copied!' : 'Share'}
           </button>
         </div>
+      </div>
+
+      {/* Similar jobs sidebar */}
+      {similarJobs.length > 0 && (
+        <div className="ap-fade-right ap-d2" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0f2419', margin: '0 0 4px' }}>Similar jobs</h3>
+          {similarJobs.map(sj => (
+            <Link
+              key={sj.id}
+              to={buildJobUrl(jobSection(sj), sj)}
+              style={{ textDecoration: 'none', display: 'block' }}
+            >
+              <div style={{
+                background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12,
+                padding: '14px 16px', transition: 'all 0.15s ease', cursor: 'pointer',
+              }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLDivElement).style.borderColor = '#1a7a4a';
+                  (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 14px rgba(26,122,74,0.09)';
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLDivElement).style.borderColor = '#e5e7eb';
+                  (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
+                }}
+              >
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                    background: '#f0faf4', border: '1px solid #d7f4ea',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: 800, fontSize: 13, color: '#1a7a4a',
+                  }}>
+                    {sj.logoText}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f2419', lineHeight: 1.3, marginBottom: 3 }}
+                      className="similar-job-title">
+                      {sj.title}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 500 }}>{sj.company}</div>
+                    <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <MapPin size={10} /> {sj.city}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      <style>{`
+        @media (max-width: 768px) {
+          .job-detail-grid { grid-template-columns: 1fr !important; }
+        }
+        .similar-job-title { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+      `}</style>
       </div>
     </div>
   );

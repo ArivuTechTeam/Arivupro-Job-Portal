@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useSearchParams } from 'react-router-dom';
 import JobDetailPage from './pages/JobDetailPage.tsx';
 import { Navbar, NavTab } from './components/Navbar.tsx';
 import { HeroSection } from './components/HeroSection.tsx';
@@ -90,6 +90,7 @@ function loadTab(): NavTab {
 
 export default function App() {
   const { user: supabaseUser, loading: authLoading } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [auth, setAuth] = useState<AuthState>(loadAuth);
   const [currentTab, setCurrentTab] = useState<NavTab>(loadTab);
 
@@ -659,6 +660,17 @@ export default function App() {
     }
   };
 
+  // Phase B: recruiter job "Apply via ArivuPro" from JobDetailPage lands here
+  // via /jobs?apply=<id>. Read once, fire handleApply, clear the param.
+  useEffect(() => {
+    const applyId = searchParams.get('apply');
+    if (!applyId || jobs.length === 0) return;
+    const target = jobs.find(j => j.id === applyId);
+    if (target) handleApply(target);
+    setSearchParams({}, { replace: true });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, jobs]);
+
   const handleSaveToggle = async (job: JobListing) => {
     if (auth.role !== 'student' || !studentSessionToken) return;
     const jobKey = job.id;
@@ -977,7 +989,7 @@ export default function App() {
                 <>
                   <div className="jobs-grid">
                     {pagedJobs.map(job => (
-                      <JobCard key={job.id} job={job} onViewDetails={setSelectedJob} onApply={handleApply} isApplied={appliedIds.has(job.id)} isSaved={savedJobIds.has(job.id)} onSaveToggle={auth.role === 'student' ? handleSaveToggle : undefined} />
+                      <JobCard key={job.id} job={job} isSaved={savedJobIds.has(job.id)} onSaveToggle={auth.role === 'student' ? handleSaveToggle : undefined} />
                     ))}
                   </div>
 

@@ -1,6 +1,6 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { MapPin, Clock, ExternalLink, CheckCircle2, Bookmark, BookmarkCheck } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { MapPin, Clock, Bookmark, BookmarkCheck } from 'lucide-react';
 import { JobListing } from '../types/index.ts';
 import { buildJobUrl } from '../lib/slugify.ts';
 
@@ -12,9 +12,6 @@ function jobSection(job: JobListing): 'jobs' | 'internships' | 'articleship' {
 
 interface JobCardProps {
   job: JobListing;
-  onApply: (job: JobListing) => void;
-  onViewDetails: (job: JobListing) => void;
-  isApplied: boolean;
   isSaved?: boolean;
   onSaveToggle?: (job: JobListing) => void;
 }
@@ -35,7 +32,6 @@ function getCompanyInitials(company: string): string {
   return company.split(' ').filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase();
 }
 
-// Qualification badge — matches the real portal's credential pills
 function QualBadge({ qual }: { qual: string }) {
   const map: Record<string, { bg: string; color: string }> = {
     'CA':       { bg: '#eff6ff', color: '#1d4ed8' },
@@ -60,10 +56,8 @@ function QualBadge({ qual }: { qual: string }) {
   );
 }
 
-// Tier badge
 function TierBadge({ jobType }: { jobType: string }) {
-  const isArticleship = jobType === 'Articleship / Industrial Training';
-  if (!isArticleship) return null;
+  if (jobType !== 'Articleship / Industrial Training') return null;
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center',
@@ -76,29 +70,23 @@ function TierBadge({ jobType }: { jobType: string }) {
   );
 }
 
-export const JobCard: React.FC<JobCardProps> = ({ job, onApply, onViewDetails, isApplied, isSaved, onSaveToggle }) => {
-  const navigate = useNavigate();
-  const isScraped = job.source !== 'arivupro_exclusive' && job.source !== 'direct_recruiter';
+export const JobCard: React.FC<JobCardProps> = ({ job, isSaved, onSaveToggle }) => {
   const companyInitials = getCompanyInitials(job.company);
   const postedLabel = relativeTime(job.postedDate);
-
-  // Show qualification badges — up to 3
   const quals = job.qualifications.slice(0, 3).map(q => q.replace(/_/g, ' '));
+  const detailUrl = buildJobUrl(jobSection(job), job);
 
   return (
     <div className="ap-job-card ap-fade-up">
-      {/* ── Row 1: Logo + all content ── */}
-      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+      {/* Stretched link covers the entire card — real <a> for keyboard + right-click */}
+      <Link to={detailUrl} className="ap-card-link" aria-label={`${job.title} at ${job.company}`} />
 
-        {/* Company logo — 72×72 like the real portal */}
+      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
         <div className="ap-company-logo">
           {job.logoText || companyInitials}
         </div>
 
-        {/* Right column */}
         <div style={{ flex: 1, minWidth: 0 }}>
-
-          {/* Badges row — qualification + job type */}
           <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 6 }}>
             {quals.map(q => <QualBadge key={q} qual={q} />)}
             <TierBadge jobType={job.jobType} />
@@ -114,20 +102,12 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onApply, onViewDetails, i
             )}
           </div>
 
-          {/* Job title */}
-          <button
-            onClick={() => navigate(buildJobUrl(jobSection(job), job))}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', display: 'block', marginBottom: 4 }}
-          >
-            <span className="ap-job-title">{job.title}</span>
-          </button>
+          <span className="ap-job-title">{job.title}</span>
 
-          {/* Company name */}
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 10 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 10, marginTop: 4 }}>
             {job.company}
           </div>
 
-          {/* Meta row: location · stipend · duration · posted */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 0, alignItems: 'center' }}>
             <span className="ap-meta-item">
               <MapPin size={12} color="#9ca3af" />
@@ -161,37 +141,17 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onApply, onViewDetails, i
           </div>
         </div>
 
-        {/* Action buttons — right aligned on desktop */}
-        <div className="ap-card-actions">
-          {onSaveToggle && (
-            <button
-              onClick={e => { e.stopPropagation(); onSaveToggle(job); }}
-              className={`ap-save-btn${isSaved ? ' saved' : ''}`}
-              title={isSaved ? 'Remove from saved' : 'Save'}
-            >
-              {isSaved ? <BookmarkCheck size={15} /> : <Bookmark size={15} />}
-            </button>
-          )}
-
-          {isApplied ? (
-            <span className="ap-applied-chip">
-              <CheckCircle2 size={13} /> Applied
-            </span>
-          ) : isScraped ? (
-            <a
-              href={job.sourceUrl || '#'}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ap-btn-view"
-            >
-              View <ExternalLink size={11} />
-            </a>
-          ) : (
-            <button onClick={() => onApply(job)} className="ap-btn-apply">
-              Apply
-            </button>
-          )}
-        </div>
+        {/* Save button — above the stretched link via z-index */}
+        {onSaveToggle && (
+          <button
+            onClick={e => { e.preventDefault(); e.stopPropagation(); onSaveToggle(job); }}
+            className={`ap-save-btn${isSaved ? ' saved' : ''}`}
+            title={isSaved ? 'Remove from saved' : 'Save'}
+            style={{ position: 'relative', zIndex: 1, flexShrink: 0 }}
+          >
+            {isSaved ? <BookmarkCheck size={15} /> : <Bookmark size={15} />}
+          </button>
+        )}
       </div>
 
       <style>{`
@@ -200,14 +160,25 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onApply, onViewDetails, i
           border: 1px solid #e5e7eb;
           border-radius: 10px;
           padding: 20px 24px;
+          position: relative;
           transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
-          cursor: default;
           will-change: transform;
+          cursor: pointer;
         }
         .ap-job-card:hover {
           border-color: #c8e6d6;
           box-shadow: 0 10px 28px rgba(15,36,25,0.10);
           transform: translateY(-3px);
+        }
+        .ap-card-link {
+          position: absolute;
+          inset: 0;
+          border-radius: 10px;
+          z-index: 0;
+        }
+        .ap-card-link:focus-visible {
+          outline: 2px solid #1a7a4a;
+          outline-offset: 2px;
         }
         .ap-company-logo {
           width: 72px; height: 72px;
@@ -217,6 +188,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onApply, onViewDetails, i
           display: flex; align-items: center; justify-content: center;
           font-weight: 800; font-size: 15px; color: #495057;
           letter-spacing: -0.01em; font-family: Manrope, sans-serif;
+          position: relative; z-index: 1;
         }
         .ap-job-title {
           font-size: 15px; font-weight: 700; color: #111827;
@@ -224,17 +196,15 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onApply, onViewDetails, i
           font-family: Manrope, sans-serif;
           text-transform: uppercase; letter-spacing: 0.01em;
         }
-        .ap-job-title:hover { color: #1a7a4a; }
+        .ap-job-card:hover .ap-job-title { color: #1a7a4a; }
         .ap-meta-item {
           display: inline-flex; align-items: center; gap: 4px;
           font-size: 13px; color: #6b7280; font-weight: 500;
+          position: relative; z-index: 1;
         }
         .ap-meta-sep {
           margin: 0 8px; color: #d1d5db; font-size: 13px;
-        }
-        .ap-card-actions {
-          display: flex; flex-direction: column; gap: 8px;
-          align-items: flex-end; flex-shrink: 0;
+          position: relative; z-index: 1;
         }
         .ap-save-btn {
           background: none; border: 1px solid #e5e7eb;
@@ -246,37 +216,9 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onApply, onViewDetails, i
         .ap-save-btn:hover, .ap-save-btn.saved {
           border-color: #1a7a4a; color: #1a7a4a; background: #f0faf4;
         }
-        .ap-btn-view {
-          display: inline-flex; align-items: center; gap: 5px;
-          padding: 7px 18px; border-radius: 6px;
-          background: #0f2419; color: #fff;
-          font-size: 13px; font-weight: 700;
-          text-decoration: none; font-family: Manrope, sans-serif;
-          border: none; cursor: pointer;
-          transition: background 0.15s;
-          white-space: nowrap;
-        }
-        .ap-btn-view:hover { background: #1a7a4a; }
-        .ap-btn-apply {
-          display: inline-flex; align-items: center;
-          padding: 7px 18px; border-radius: 6px;
-          background: #0f2419; color: #fff;
-          font-size: 13px; font-weight: 700;
-          border: none; cursor: pointer; font-family: Manrope, sans-serif;
-          transition: background 0.15s;
-        }
-        .ap-btn-apply:hover { background: #1a7a4a; }
-        .ap-applied-chip {
-          display: inline-flex; align-items: center; gap: 5px;
-          background: #f0faf4; color: #1a7a4a;
-          border-radius: 6px; padding: 7px 14px;
-          font-size: 13px; font-weight: 700;
-          border: 1px solid #d7f4ea;
-        }
         @media (max-width: 640px) {
           .ap-job-card { padding: 14px 14px; }
           .ap-company-logo { width: 48px; height: 48px; font-size: 12px; }
-          .ap-card-actions { flex-direction: row; }
         }
       `}</style>
     </div>

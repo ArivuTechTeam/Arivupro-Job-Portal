@@ -103,8 +103,9 @@ export default function JobDetailPage() {
     if (job.sourceUrl) {
       window.open(job.sourceUrl, '_blank', 'noopener,noreferrer');
     } else {
-      // Recruiter job — navigate back to job feed where the apply flow lives
-      navigate('/jobs', { state: { applyJobId: job.id } });
+      // Recruiter job — pass intent to App.tsx via search param (history.state
+      // gets overwritten by the app's own pushState before it can be read)
+      navigate('/jobs?apply=' + job.id);
     }
   };
 

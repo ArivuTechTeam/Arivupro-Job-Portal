@@ -348,7 +348,9 @@ export default function App() {
       minExperienceYears: 0,
       salaryText: j.stipend > 0 ? `₹${(j.stipend).toLocaleString('en-IN')}/mo` : 'As per norms',
       salaryMinLPA: j.stipend > 0 ? parseFloat((j.stipend * 12 / 100000).toFixed(1)) : undefined,
-      qualifications: j.courses || ['CA'],
+      qualifications: (j.courses || ['CA']).map((c: string) =>
+        c === 'CPA US' ? 'US CPA' : c === 'B.Com' ? 'B.Com / M.Com' : c === 'M.Com' ? 'B.Com / M.Com' : c
+      ),
       mandatorySkills: [],
       goodToHaveSkills: [],
       description: j.description || '',

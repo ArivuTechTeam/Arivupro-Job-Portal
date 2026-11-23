@@ -262,7 +262,12 @@ async def run_source_sync(supabase: Client, source: str) -> SyncResult:
 
 async def run_all_sources(supabase: Client, sources: Optional[list[str]] = None, include_weekly: bool = False) -> list[SyncResult]:
     env_enabled = os.getenv('SYNC_SOURCES_ENABLED', '')
-    default = [s.strip() for s in env_enabled.split(',') if s.strip()] if env_enabled else SOURCE_NAMES
+    parsed = [s.strip() for s in env_enabled.split(',') if s.strip()]
+    # Never fall back to SOURCE_NAMES (which includes paid Apify sources) when the env var is unset.
+    # If SYNC_SOURCES_ENABLED is empty/missing, run only the free sources by default.
+    FREE_SOURCES = ['caclubindia', 'buddingca', 'icai_eirc', 'icai_sirc', 'icai_wirc',
+                    'icai_kochi', 'icai_pune', 'icai_bangalore', 'icmai', 'jobspy', 'greenhouse', 'lever']
+    default = parsed if parsed else FREE_SOURCES
     if include_weekly:
         env_weekly = os.getenv('SYNC_SOURCES_WEEKLY', '')
         weekly = [s.strip() for s in env_weekly.split(',') if s.strip()]

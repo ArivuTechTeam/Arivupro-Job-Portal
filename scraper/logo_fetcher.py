@@ -1,7 +1,6 @@
 """
-Company logo fetcher — Clearbit free tier with Google favicon fallback.
+Company logo fetcher — Google favicon (Clearbit shut down Dec 2025).
 Fetches once per company name; subsequent jobs reuse the cached URL.
-No API key required for Clearbit free tier.
 """
 import re
 import logging
@@ -84,10 +83,6 @@ def _guess_domain(company: str) -> Optional[str]:
     return f"{domain_root}.com"
 
 
-def _clearbit_url(domain: str) -> str:
-    return f"https://logo.clearbit.com/{domain}"
-
-
 def _favicon_url(domain: str) -> str:
     return f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
 
@@ -95,8 +90,8 @@ def _favicon_url(domain: str) -> str:
 async def fetch_logo(company: str, client: httpx.AsyncClient) -> Optional[str]:
     """
     Return a logo URL for the given company name.
-    Uses in-memory cache; fetches Clearbit on miss, falls back to Google favicon.
-    Returns None if no logo can be found (small CA firms).
+    Uses in-memory cache; only fetches for well-known companies (domain overrides).
+    Returns None for small CA firms where domain guessing is unreliable.
     """
     key = company.strip().lower()
     if key in _cache:
@@ -107,18 +102,7 @@ async def fetch_logo(company: str, client: httpx.AsyncClient) -> Optional[str]:
         _cache[key] = None
         return None
 
-    # Try Clearbit first
-    try:
-        resp = await client.head(_clearbit_url(domain), timeout=3.0, follow_redirects=True)
-        if resp.status_code == 200:
-            url = _clearbit_url(domain)
-            _cache[key] = url
-            return url
-    except Exception:
-        pass
-
-    # Fall back to Google favicon (always returns something, even a generic globe)
-    # We only use it for well-known companies where we're confident about the domain
+    # Only use Google favicon for companies where we're confident about the domain
     for key_name in _DOMAIN_OVERRIDES:
         if key_name in key:
             url = _favicon_url(domain)

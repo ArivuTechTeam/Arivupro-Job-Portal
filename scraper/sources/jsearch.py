@@ -52,6 +52,13 @@ SEARCH_QUERIES = [
     "audit internship fresher India",
     "management trainee finance India",
     "finance graduate trainee India",
+
+    # ── EA / CIA / FRM / CFP (ArivuPro courses with zero prior coverage) ──────
+    # 4 queries added 2026-11-23; total now 43 → ~172 calls/month on weekly schedule
+    "Enrolled Agent US tax fresher India",
+    "internal auditor CIA fresher India",
+    "risk analyst FRM fresher India",
+    "financial planner CFP fresher India",
 ]
 
 SENIOR_RE = re.compile(

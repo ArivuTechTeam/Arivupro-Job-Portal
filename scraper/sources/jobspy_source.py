@@ -63,6 +63,12 @@ QUERIES = [
     {'term': 'credit analyst fresher India',               'courses': ['CA', 'CFA']},
     {'term': 'B.Com finance fresher jobs India',           'courses': ['CA']},
     {'term': 'BBA finance fresher jobs India',             'courses': ['CA']},
+
+    # ── EA / CIA / FRM / CFP (ArivuPro courses with zero prior coverage) ──────
+    {'term': 'Enrolled Agent US tax fresher India',        'courses': ['EA']},
+    {'term': 'internal auditor CIA fresher India',         'courses': ['CIA']},
+    {'term': 'risk analyst FRM fresher India',             'courses': ['FRM']},
+    {'term': 'financial planner CFP fresher India',        'courses': ['CFP']},
 ]
 
 DEFAULT_SITES = ['indeed', 'glassdoor', 'linkedin']

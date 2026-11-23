@@ -2,7 +2,7 @@
 Apify — ATS Career Site Scraper
 Actor: openclawai/career-site-ats-jobs-scraper
 Covers: Greenhouse, Lever, Ashby, Workday, Workable, iCIMS — direct employer career pages
-Pricing: ~$0.40–0.50/1,000 results. 110 users, 5-star rating, 95.8% success rate.
+Pricing: PAY_PER_EVENT per job (~$0.50–2.00/1k). Price rises 2026-12-06 — keep maxJobsPerCompany capped.
 Docs: https://apify.com/openclawai/career-site-ats-jobs-scraper
 
 Target companies: Big 4, mid-tier CA firms, banks, GCCs, asset managers.
@@ -120,7 +120,8 @@ async def _run_actor(api_token: str, payload: dict, timeout_secs: int = 120) -> 
         if not run_id:
             raise RuntimeError("Apify run start returned no run ID")
 
-        logger.info(f"[apify_career] Run {run_id} started for {payload.get('urls', ['?'])[0]}, polling…")
+        queries_preview = (payload.get('queries') or ['?'])[:1]
+        logger.info(f"[apify_career] Run {run_id} started for {queries_preview[0]}, polling…")
 
         for _ in range(timeout_secs // 5):
             await asyncio.sleep(5)
@@ -146,10 +147,14 @@ async def _run_actor(api_token: str, payload: dict, timeout_secs: int = 120) -> 
 
 
 async def _fetch_employer(api_token: str, employer: dict) -> tuple[dict, list[dict]]:
+    # Actor input schema: queries/keywords/locations/maxJobsPerCompany/includeDescription
+    # ATS type is auto-detected from the URL — do NOT pass atsType.
+    # Cap is critical: default is 500/company = ~16,500 jobs/run at $2/1k after 2026-12-06.
     payload = {
-        "urls": [employer["url"]],
-        "atsType": employer.get("ats", "workday"),
-        "maxItems": int(os.getenv("APIFY_CAREER_MAX_PER_EMPLOYER", "50")),
+        "queries": [employer["url"]],
+        "keywords": SEARCH_KEYWORDS,
+        "locations": ["India"],
+        "maxJobsPerCompany": int(os.getenv("APIFY_CAREER_MAX_PER_EMPLOYER", "50")),
         "includeDescription": True,
     }
     try:

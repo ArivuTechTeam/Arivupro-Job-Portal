@@ -126,9 +126,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
           >
             <img
-              src="/logo-white.png"
+              src="/arivupro-logo.png"
               alt="ArivuPro Academy"
-              style={{ height: 40, width: 'auto', background: '#1b5234', borderRadius: 10, padding: '6px 14px' }}
+              style={{ height: 40, width: 'auto', objectFit: 'contain' }}
             />
           </button>
         </div>

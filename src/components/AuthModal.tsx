@@ -132,8 +132,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose, onSuccess, 
           <div>
             {/* Logo mark */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-              <img src="https://www.arivupro.com/wp-content/uploads/2026/03/ArivuPro-Logo-1-e1786698803352.webp" alt="ArivuPro" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'contain' }} />
-              <span style={{ fontWeight: 800, fontSize: 14, color: '#0f2419' }}>ArivuPro Finance Careers</span>
+              <img src="/arivupro-logo.png" alt="ArivuPro" style={{ height: 36, width: 'auto', objectFit: 'contain' }} />
+              <span style={{ fontWeight: 800, fontSize: 14, color: '#0f2419' }}>Finance Careers</span>
             </div>
             <div style={{ fontSize: 22, fontWeight: 800, color: '#0f2419', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
               {step === 'verify' ? 'Verify your email' : mode === 'login' ? 'Welcome back' : 'Create your account'}

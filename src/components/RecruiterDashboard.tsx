@@ -18,7 +18,7 @@ interface RecruiterDashboardProps {
 type RecruiterPage = 'dashboard' | 'jobs' | 'applicants' | 'post' | 'profile';
 
 const STAGES = [
-  'Applied', 'ArivuPro Review', 'Recruiter Screen',
+  'Applied', 'Recruiter Screen',
   'Technical Round', 'Partner Interview', 'Offer Released', 'Placed', 'Declined',
 ] as const;
 
@@ -41,6 +41,159 @@ function matchBadge(score: number) {
   if (score >= 85) return { cls: 'badge badge-green', label: 'Excellent' };
   if (score >= 70) return { cls: 'badge badge-blue',  label: 'Strong' };
   return                 { cls: 'badge badge-amber',  label: 'Good' };
+}
+
+// ── Recruiter Profile Page ───────────────────────────────────────────────────
+const FIRM_TYPES = ['Big 4', 'Mid-tier CA Firm', 'Small CA Firm', 'MNC', 'Indian Corporate', 'NBFC / BFSI', 'GCC / Captive', 'Startup'];
+const COMPANY_SIZES = ['1–10', '11–50', '51–200', '201–500', '500–1000', '1000+'];
+
+interface RecruiterProfilePageProps {
+  profileData: Record<string, string>;
+  companyName: string;
+  recruiterName: string;
+  recruiterEmail: string;
+  logoPreview: string | null;
+  logoUploading: boolean;
+  logoError: string | null;
+  logoSuccess: boolean;
+  handleLogoChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  getToken: () => Promise<string>;
+  onSaved: (updated: Record<string, string>) => void;
+}
+
+function RecruiterProfilePage({ profileData, companyName, recruiterName, recruiterEmail, logoPreview, logoUploading, logoError, logoSuccess, handleLogoChange, getToken, onSaved }: RecruiterProfilePageProps) {
+  const [editForm, setEditForm] = useState({
+    company_summary: profileData.company_summary || '',
+    founded_year: profileData.founded_year || '',
+    company_size: profileData.company_size || '',
+    firm_type: profileData.firm_type || '',
+    linkedin_page: profileData.linkedin_page || '',
+    office_address: profileData.office_address || '',
+    company_website: profileData.company_website || '',
+    company_domain: profileData.company_domain || '',
+    phone: profileData.phone || '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const field = (label: string, key: keyof typeof editForm, opts?: { type?: string; placeholder?: string; textarea?: boolean; select?: string[] }) => (
+    <div key={key}>
+      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase' as const, letterSpacing: '0.07em', marginBottom: 5 }}>{label}</label>
+      {opts?.select ? (
+        <select value={editForm[key]} onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))}
+          style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e5e7eb', fontSize: 13, fontFamily: 'Manrope, sans-serif', background: '#fff', color: '#0f2419', outline: 'none' }}>
+          <option value="">— Select —</option>
+          {opts.select.map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+      ) : opts?.textarea ? (
+        <textarea value={editForm[key]} onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))} rows={4}
+          placeholder={opts?.placeholder}
+          style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e5e7eb', fontSize: 13, fontFamily: 'Manrope, sans-serif', resize: 'vertical', boxSizing: 'border-box' as const, outline: 'none' }} />
+      ) : (
+        <input type={opts?.type || 'text'} value={editForm[key]} onChange={e => setEditForm(f => ({ ...f, [key]: e.target.value }))}
+          placeholder={opts?.placeholder}
+          style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e5e7eb', fontSize: 13, fontFamily: 'Manrope, sans-serif', boxSizing: 'border-box' as const, outline: 'none' }} />
+      )}
+    </div>
+  );
+
+  const handleSave = async () => {
+    setSaving(true); setSaveError(null);
+    try {
+      const token = await getToken();
+      const body: Record<string, string | number | null> = {};
+      for (const [k, v] of Object.entries(editForm)) {
+        if (k === 'founded_year') {
+          body[k] = v ? (parseInt(v) || null) : null;
+        } else {
+          body[k] = v || null;
+        }
+      }
+      const res = await fetch('/api/recruiters/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error('Save failed');
+      onSaved(editForm);
+    } catch (e) {
+      setSaveError('Could not save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ maxWidth: 620, margin: '0 auto', padding: '8px 0' }}>
+      <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f2419', marginBottom: 24 }}>My Profile</h2>
+
+      {/* Logo */}
+      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: 24, marginBottom: 16 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#0f2419', marginBottom: 4 }}>Company Logo</div>
+        <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 16 }}>PNG, JPG or WebP · max 2 MB · shown on all your job listings</div>
+        {logoPreview ? (
+          <img src={logoPreview} alt="Company logo" style={{ width: 160, height: 80, objectFit: 'contain', borderRadius: 8, border: '1px solid #e5e7eb', background: '#f9fafb', marginBottom: 16, display: 'block' }} />
+        ) : (
+          <div style={{ width: 160, height: 80, borderRadius: 8, border: '2px dashed #d1d5db', background: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+            <span style={{ fontSize: 12, color: '#9ca3af' }}>No logo yet</span>
+          </div>
+        )}
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: '#1a7a4a', color: '#fff', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Manrope, sans-serif' }}>
+          <input type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} onChange={handleLogoChange} />
+          {logoUploading ? 'Uploading…' : 'Upload Logo'}
+        </label>
+        {logoError && <div style={{ marginTop: 8, fontSize: 12, color: '#dc2626' }}>{logoError}</div>}
+        {logoSuccess && <div style={{ marginTop: 8, fontSize: 12, color: '#1a7a4a' }}>Logo saved!</div>}
+      </div>
+
+      {/* Read-only identity */}
+      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: 24, marginBottom: 16 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#0f2419', marginBottom: 16 }}>Account Details</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 24px' }} className="rd-form-row">
+          {[
+            { label: 'Company Name', value: profileData.company_name || companyName },
+            { label: 'Contact Name', value: profileData.full_name || recruiterName || '—' },
+            { label: 'Email', value: profileData.email || recruiterEmail || '—' },
+            { label: 'City', value: profileData.city || '—' },
+            { label: 'State', value: profileData.state || '—' },
+            { label: 'Status', value: profileData.approval_status || '—' },
+          ].map(({ label, value }) => (
+            <div key={label}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' as const, letterSpacing: '0.07em', marginBottom: 3 }}>{label}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#0f2419', wordBreak: 'break-word' as const }}>{value}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 14, fontSize: 11, color: '#9ca3af' }}>Company name, city, and state are set during registration. Contact support to update them.</div>
+      </div>
+
+      {/* Editable company profile */}
+      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: 24, marginBottom: 16 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#0f2419', marginBottom: 20 }}>Company Profile</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 24px' }} className="rd-form-row">
+            {field('Firm Type', 'firm_type', { select: FIRM_TYPES })}
+            {field('Company Size', 'company_size', { select: COMPANY_SIZES })}
+            {field('Founded Year', 'founded_year', { type: 'number', placeholder: 'e.g. 2005' })}
+            {field('Phone', 'phone', { type: 'tel', placeholder: '+91 98765 43210' })}
+            {field('Website', 'company_website', { placeholder: 'https://yourfirm.com' })}
+            {field('Industry Domain', 'company_domain', { placeholder: 'e.g. Audit & Tax Advisory' })}
+            {field('LinkedIn Page', 'linkedin_page', { placeholder: 'https://linkedin.com/company/...' })}
+            {field('Office Address', 'office_address', { placeholder: 'Full address' })}
+          </div>
+          {field('About Your Company', 'company_summary', { textarea: true, placeholder: 'What your firm does, culture, who you hire (up to 500 chars)…' })}
+        </div>
+        {saveError && <div style={{ marginTop: 12, fontSize: 13, color: '#dc2626' }}>{saveError}</div>}
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          style={{ marginTop: 20, padding: '10px 28px', background: saving ? '#9ca3af' : '#1a7a4a', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 700, fontFamily: 'Manrope, sans-serif', cursor: saving ? 'default' : 'pointer' }}
+        >
+          {saving ? 'Saving…' : 'Save Profile'}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -131,22 +284,21 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
   const [form, setForm] = useState({ title: '', company: '', type: 'Full-Time', workplace: 'Hybrid', experience: 'Fresher / 0-1 yr', location: '', salary: '', skills: '', deadline: '', description: '', qualifications: [] as string[] });
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
-  const getStage = (id: string, def: string) => stages[id] ?? def;
+  const normalizeStage = (s: string) => s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const getStage = (id: string, def: string) => normalizeStage(stages[id] ?? def);
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setLogoError(null);
     setLogoSuccess(false);
-    if (file.type !== 'image/webp') { setLogoError('Please upload a .webp file only.'); return; }
+    if (!['image/webp', 'image/png', 'image/jpeg'].includes(file.type)) { setLogoError('Please upload a PNG, JPG or WebP file.'); return; }
+    if (file.size > 2 * 1024 * 1024) { setLogoError('File too large — max 2 MB.'); return; }
+    setLogoPreview(URL.createObjectURL(file));
     const url = URL.createObjectURL(file);
     const img = new window.Image();
     img.onload = async () => {
       URL.revokeObjectURL(url);
-      if (img.width !== 500 || img.height !== 300) {
-        setLogoError(`Must be exactly 500×300px. Yours is ${img.width}×${img.height}px.`); return;
-      }
-      setLogoPreview(URL.createObjectURL(file));
       setLogoUploading(true);
       try {
         const token = await getToken();
@@ -868,12 +1020,12 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                 {/* Stage updater */}
                 <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '20px' }}>
                   <div style={{ fontSize: 14, fontWeight: 800, color: '#0f2419', marginBottom: 4 }}>Update Stage</div>
-                  <p style={{ fontSize: 11, color: '#9ca3af', marginBottom: 12 }}>Applied & ArivuPro Review are handled by ArivuPro team.</p>
+                  <p style={{ fontSize: 11, color: '#9ca3af', marginBottom: 12 }}>Move the candidate through the hiring pipeline.</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {STAGES.map(s => {
                       const current = getStage(viewingApplicant.id, viewingApplicant.stage);
                       const isActive = current === s;
-                      const locked = s === 'Applied' || s === 'ArivuPro Review';
+                      const locked = s === 'Applied';
                       return (
                         <button
                           key={s}
@@ -951,7 +1103,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
                         </td>
                         <td style={{ padding: '14px 20px' }}>
                           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                            <button className="btn-primary" style={{ fontSize: 11, padding: '6px 12px' }} onClick={() => { setViewingApplicant(ap); if (getStage(ap.id, ap.stage) === 'Applied' || getStage(ap.id, ap.stage) === 'ArivuPro Review') { setStage(ap.id, 'Recruiter Screen'); } }}>
+                            <button className="btn-primary" style={{ fontSize: 11, padding: '6px 12px' }} onClick={() => { setViewingApplicant(ap); if (getStage(ap.id, ap.stage) === 'Applied') { setStage(ap.id, 'Recruiter Screen'); } }}>
                               <Eye size={11} /> View
                             </button>
                             <button className="btn-outline" style={{ fontSize: 11, padding: '6px 12px' }} onClick={() => handleResumeOpen(ap.resumeUrl, ap.name)}>
@@ -1115,57 +1267,19 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
 
         {/* MY PROFILE */}
         {page === 'profile' && (
-          <div style={{ maxWidth: 560, margin: '0 auto', padding: '8px 0' }}>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f2419', marginBottom: 24 }}>My Profile</h2>
-
-            {/* Logo upload card */}
-            <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '24px', marginBottom: 16 }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#0f2419', marginBottom: 4 }}>Company Logo</div>
-              <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 16 }}>Upload a .webp image at exactly 500×300px. Shown on your job listings.</div>
-              {logoPreview ? (
-                <img src={logoPreview} alt="Company logo" style={{ width: 200, height: 120, objectFit: 'contain', borderRadius: 8, border: '1px solid #e5e7eb', background: '#f9fafb', marginBottom: 16, display: 'block' }} />
-              ) : (
-                <div style={{ width: 200, height: 120, borderRadius: 8, border: '2px dashed #d1d5db', background: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-                  <span style={{ fontSize: 12, color: '#9ca3af' }}>No logo yet</span>
-                </div>
-              )}
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 18px', background: '#1a7a4a', color: '#fff', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Manrope, sans-serif' }}>
-                <input type="file" accept=".webp,image/webp" style={{ display: 'none' }} onChange={handleLogoChange} />
-                {logoUploading ? 'Uploading…' : 'Upload Logo (.webp)'}
-              </label>
-              {logoError && <div style={{ marginTop: 8, fontSize: 12, color: '#dc2626' }}>{logoError}</div>}
-              {logoSuccess && <div style={{ marginTop: 8, fontSize: 12, color: '#1a7a4a' }}>Logo saved successfully.</div>}
-            </div>
-
-            {/* Full company details */}
-            <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '24px' }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#0f2419', marginBottom: 20 }}>Company Details</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 24px' }} className="rd-form-row">
-                {[
-                  { label: 'Company Name',   value: profileData.company_name   || companyName },
-                  { label: 'Contact Name',   value: profileData.full_name      || recruiterName || '—' },
-                  { label: 'Email',          value: profileData.email          || recruiterEmail || '—' },
-                  { label: 'Phone',          value: profileData.phone          || '—' },
-                  { label: 'City',           value: profileData.city           || '—' },
-                  { label: 'State',          value: profileData.state          || '—' },
-                  { label: 'Company Website',value: profileData.company_website|| '—' },
-                  { label: 'Industry Domain',value: profileData.company_domain || '—' },
-                  { label: 'Office Address', value: profileData.office_address || '—' },
-                  { label: 'CIN',            value: profileData.cin            || '—' },
-                  { label: 'GSTIN',          value: profileData.gstin          || '—' },
-                  { label: 'LinkedIn Page',  value: profileData.linkedin_page  || '—' },
-                ].map(({ label, value }) => (
-                  <div key={label}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' as const, letterSpacing: '0.07em', marginBottom: 3 }}>{label}</div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0f2419', wordBreak: 'break-word' as const }}>{value}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ marginTop: 20, padding: '12px 16px', background: '#f8faf9', borderRadius: 8, border: '1px solid #e5e7eb' }}>
-                <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600 }}>To update company details, contact <span style={{ color: '#1a7a4a' }}>support@arivupro.com</span></div>
-              </div>
-            </div>
-          </div>
+          <RecruiterProfilePage
+            profileData={profileData}
+            companyName={companyName}
+            recruiterName={recruiterName}
+            recruiterEmail={recruiterEmail}
+            logoPreview={logoPreview}
+            logoUploading={logoUploading}
+            logoError={logoError}
+            logoSuccess={logoSuccess}
+            handleLogoChange={handleLogoChange}
+            getToken={getToken}
+            onSaved={(updated) => { setProfileData(p => ({ ...p, ...updated })); showToast('Profile saved!'); }}
+          />
         )}
 
       </main>

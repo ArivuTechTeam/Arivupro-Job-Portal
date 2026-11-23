@@ -76,6 +76,21 @@ COMPANY_SLUGS: dict[str, str] = {
     "bcg":          "BCG",
     "icra":         "ICRA",
     "crisil":       "CRISIL",
+    # Big 4 / Mid-tier — try common Greenhouse slugs (404s silently skipped)
+    "deloitte":         "Deloitte",
+    "deloitteindia":    "Deloitte India",
+    "kpmg":             "KPMG",
+    "kpmgindia":        "KPMG India",
+    "ey":               "EY",
+    "eygds":            "EY GDS",
+    "pwc":              "PwC",
+    "pwcindia":         "PwC India",
+    "grantthornton":    "Grant Thornton",
+    "bdo":              "BDO India",
+    "rsm":              "RSM India",
+    "mazars":           "Mazars",
+    "mgtconsulting":    "MGT Consulting",
+    "skpgroup":         "SKP Group",
 }
 
 FINANCE_RE = re.compile(

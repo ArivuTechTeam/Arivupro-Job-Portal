@@ -54,6 +54,15 @@ COMPANY_SLUGS: dict[str, str] = {
     "genpact":        "Genpact",
     "wns":            "WNS Global Services",
     "exlservice":     "EXL Service",
+    # Big 4 / Mid-tier Lever slugs (404s silently skipped)
+    "deloitte":       "Deloitte",
+    "kpmg":           "KPMG",
+    "pwc":            "PwC",
+    "ey":             "EY",
+    "grantthornton":  "Grant Thornton",
+    "bdo":            "BDO India",
+    "rsm":            "RSM India",
+    "protiviti":      "Protiviti",
 }
 
 FINANCE_RE = re.compile(

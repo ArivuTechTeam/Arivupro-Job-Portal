@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, MapPin, Briefcase, Clock, Building2, ExternalLink, Share2, CheckCircle2 } from 'lucide-react';
 import { AmbientCanvas } from '../components/AmbientCanvas.tsx';
+import { PromoSlot } from '../components/PromoSlot.tsx';
 import { JobListing } from '../types/index.ts';
 import { injectAnimations } from '../lib/animations.ts';
 import { buildJobUrl } from '../lib/slugify.ts';
+import { renderRichText } from '../lib/richText.ts';
 
 function jobSection(job: JobListing): 'jobs' | 'internships' | 'articleship' {
   if (job.jobType.includes('Articleship')) return 'articleship';
@@ -191,8 +193,11 @@ export default function JobDetailPage() {
 
           <div className="ap-fade-up" style={{ display: 'flex', alignItems: 'flex-start', gap: 18 }}>
             {/* Logo circle */}
-            <div style={{ width: 60, height: 60, borderRadius: 14, background: '#1a7a4a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 900, color: '#fede6d', flexShrink: 0 }}>
-              {job.logoText}
+            <div style={{ width: 60, height: 60, borderRadius: 14, background: job.logoUrl ? '#fff' : '#1a7a4a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 900, color: '#fede6d', flexShrink: 0, border: job.logoUrl ? '1px solid rgba(255,255,255,0.15)' : undefined, overflow: 'hidden', padding: job.logoUrl ? 4 : 0 }}>
+              {job.logoUrl
+                ? <img src={job.logoUrl} alt={job.company} style={{ width: '100%', height: '100%', objectFit: 'contain' }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; (e.currentTarget.parentElement as HTMLElement).textContent = job.logoText; }} />
+                : job.logoText
+              }
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <h1 style={{ fontSize: 22, fontWeight: 900, color: '#fff', margin: '0 0 4px', letterSpacing: '-0.02em', lineHeight: 1.3 }}>{job.title}</h1>
@@ -254,7 +259,7 @@ export default function JobDetailPage() {
           {job.description && (
             <div className="ap-fade-up ap-d3" style={{ background: '#fff', borderRadius: 14, border: '1px solid #e5e7eb', padding: '24px' }}>
               <h2 style={{ fontSize: 16, fontWeight: 800, color: '#0f2419', margin: '0 0 14px' }}>About this role</h2>
-              <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.75, margin: 0, whiteSpace: 'pre-wrap' }}>{job.description}</p>
+              <div className="rich-content" dangerouslySetInnerHTML={{ __html: renderRichText(job.description) }} />
             </div>
           )}
 
@@ -297,6 +302,12 @@ export default function JobDetailPage() {
           )}
         </div>
 
+        {/* Promo — below apply button */}
+        <PromoSlot
+          placement="job_detail_after_apply"
+          context={{ qualifications: job.qualifications, jobType: job.jobType, city: job.city, title: job.title, description: job.description }}
+        />
+
         {/* CTA row */}
         <div className="ap-fade-up ap-d6" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', paddingBottom: 40 }}>
           <button
@@ -321,9 +332,13 @@ export default function JobDetailPage() {
         </div>
       </div>
 
-      {/* Similar jobs sidebar */}
+      {/* Right sidebar — similar jobs + promo card */}
       {similarJobs.length > 0 && (
         <div className="ap-fade-right ap-d2" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <PromoSlot
+            placement="job_detail_sidebar"
+            context={{ qualifications: job.qualifications, jobType: job.jobType, city: job.city, title: job.title, description: job.description }}
+          />
           <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0f2419', margin: '0 0 4px' }}>Similar jobs</h3>
           {similarJobs.map(sj => (
             <Link
@@ -347,11 +362,14 @@ export default function JobDetailPage() {
                 <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                   <div style={{
                     width: 36, height: 36, borderRadius: 8, flexShrink: 0,
-                    background: '#f0faf4', border: '1px solid #d7f4ea',
+                    background: sj.logoUrl ? '#fff' : '#f0faf4', border: '1px solid #d7f4ea',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontWeight: 800, fontSize: 13, color: '#1a7a4a',
+                    fontWeight: 800, fontSize: 13, color: '#1a7a4a', overflow: 'hidden', padding: sj.logoUrl ? 3 : 0,
                   }}>
-                    {sj.logoText}
+                    {sj.logoUrl
+                      ? <img src={sj.logoUrl} alt={sj.company} style={{ width: '100%', height: '100%', objectFit: 'contain' }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; (e.currentTarget.parentElement as HTMLElement).textContent = sj.logoText; }} />
+                      : sj.logoText
+                    }
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: '#0f2419', lineHeight: 1.3, marginBottom: 3 }}

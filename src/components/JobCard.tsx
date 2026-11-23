@@ -82,8 +82,11 @@ export const JobCard: React.FC<JobCardProps> = ({ job, isSaved, onSaveToggle }) 
       <Link to={detailUrl} className="ap-card-link" aria-label={`${job.title} at ${job.company}`} />
 
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-        <div className="ap-company-logo">
-          {job.logoText || companyInitials}
+        <div className="ap-company-logo" style={job.logoUrl ? { background: '#fff', padding: 2, border: '1px solid #e5e7eb' } : undefined}>
+          {job.logoUrl
+            ? <img src={job.logoUrl} alt={job.company} style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 6 }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; (e.currentTarget.parentElement as HTMLElement).textContent = job.logoText || companyInitials; }} />
+            : (job.logoText || companyInitials)
+          }
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>

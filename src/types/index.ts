@@ -53,6 +53,37 @@ export interface JobListing {
   applicantsCount: number;
   department: 'Audit & Assurance' | 'Taxation' | 'FP&A & Corporate Finance' | 'Investment Banking & M&A' | 'Global Accounting (US GAAP/IFRS)' | 'Risk & Compliance' | 'Articleship Desk' | 'Banking & Financial Services' | 'Consulting & Advisory' | 'Finance Operations & GCCs';
   crmDriveCode?: string;
+  logoUrl?: string;
+}
+
+export interface WorkExperience {
+  company: string;
+  role: string;
+  startMonth: string;
+  endMonth: string;
+  description: string;
+}
+
+export interface InternshipExperience {
+  company: string;
+  role: string;
+  startMonth: string;
+  endMonth: string;
+  stipend: string;
+  description: string;
+}
+
+export interface Project {
+  title: string;
+  role: string;
+  outcome: string;
+  url?: string;
+}
+
+export interface Certification {
+  name: string;
+  issuer: string;
+  year: string;
 }
 
 export interface StudentProfile {
@@ -74,11 +105,31 @@ export interface StudentProfile {
   verifiedStudent: boolean;
   gpaOrScore?: string;
   resumeFileName?: string;
+  linkedinUrl?: string;
+  // Exam & qualification details
+  attemptCount?: string;         // 'first' | 'second' | 'multiple'
+  icitssCompleted?: boolean;
+  // Articleship details
+  articleshipFirm?: string;
+  articleshipFirmType?: string;  // 'Big 4' | 'Mid-tier' | 'Small firm'
+  articleshipAreas?: string[];
+  joiningAvailability?: string;
+  willingToRelocate?: boolean;
+  // Education
+  graduationDegree?: string;
+  graduationCollege?: string;
+  graduationYear?: number;
+  graduationPercent?: string;
+  twelfthPercent?: string;
+  // JSONB extras
+  workExperience?: WorkExperience[];
+  internshipExperience?: InternshipExperience[];
+  projects?: Project[];
+  certifications?: Certification[];
 }
 
 export type ApplicationStage =
   | 'Applied'
-  | 'ArivuPro Review'
   | 'Recruiter Screen'
   | 'Technical Round'
   | 'Partner Interview'

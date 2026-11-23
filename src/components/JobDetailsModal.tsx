@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { X, MapPin, CheckCircle2, ExternalLink, Bookmark, BookmarkCheck } from 'lucide-react';
 import { JobListing } from '../types/index.ts';
+import { renderRichText } from '../lib/richText.ts';
 
 interface JobDetailsModalProps {
   job: JobListing | null;
@@ -208,7 +209,7 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
               Role overview
             </div>
-            <p style={{ fontSize: 14, lineHeight: 1.7, color: '#374151' }}>{job.description}</p>
+            <div className="rich-content" dangerouslySetInnerHTML={{ __html: renderRichText(job.description) }} />
           </div>
 
           {/* Key responsibilities */}

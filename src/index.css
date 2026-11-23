@@ -165,6 +165,18 @@
 .delay-300 { animation-delay: 0.3s; }
 .delay-400 { animation-delay: 0.4s; }
 
+/* ── Rich text job description ── */
+.rich-content { font-size: 14px; color: #374151; line-height: 1.75; }
+.rich-content p { margin: 0 0 12px; }
+.rich-content p:last-child { margin-bottom: 0; }
+.rich-content h3, .rich-content h4 { font-size: 15px; font-weight: 800; color: #0f2419; margin: 20px 0 8px; font-family: 'Manrope', sans-serif; }
+.rich-content ul, .rich-content ol { margin: 0 0 12px; padding-left: 20px; }
+.rich-content li { margin-bottom: 4px; }
+.rich-content strong, .rich-content b { font-weight: 700; color: #0f2419; }
+.rich-content em { font-style: italic; }
+.rich-content hr { border: none; border-top: 1px solid #e5e7eb; margin: 16px 0; }
+.rich-content blockquote { border-left: 3px solid #1a7a4a; padding-left: 12px; color: #6b7280; margin: 12px 0; }
+
 /* ── Shimmer skeleton ── */
 .shimmer {
   position: relative; overflow: hidden;

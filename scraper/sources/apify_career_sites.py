@@ -21,7 +21,7 @@ from scraper.parse_utils import extract_stipend, logo_url_from_company
 
 logger = logging.getLogger(__name__)
 
-ACTOR_ID = os.getenv("APIFY_CAREER_SITES_ACTOR_ID", "openclawai/career-site-ats-jobs-scraper")
+ACTOR_ID = os.getenv("APIFY_CAREER_SITES_ACTOR_ID", "openclawai/career-site-ats-jobs-scraper").replace("~", "/")
 APIFY_BASE = "https://api.apify.com/v2"
 
 # Finance / CA-relevant keywords to filter at the query stage

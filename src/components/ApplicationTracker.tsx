@@ -12,7 +12,6 @@ interface ApplicationTrackerProps {
 
 const STAGES = [
   'Applied',
-  'ArivuPro Review',
   'Recruiter Screen',
   'Technical Round',
   'Partner Interview',
@@ -30,7 +29,6 @@ function getStageColor(stage: string): string {
   if (stage === 'Declined') return '#dc2626';
   if (stage === 'Technical Round' || stage === 'Partner Interview') return '#7c3aed';
   if (stage === 'Recruiter Screen') return '#1d4ed8';
-  if (stage === 'ArivuPro Review') return '#b45309';
   return '#6b7280';
 }
 

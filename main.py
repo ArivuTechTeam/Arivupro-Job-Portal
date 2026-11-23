@@ -464,7 +464,6 @@ async def submit_application(body: ApplicationPost, student: dict = Depends(requ
 
     timeline = [
         {"stage": "Applied", "timestamp": now_str(), "note": "Application submitted via ArivuPro Portal"},
-        {"stage": "ArivuPro Review", "timestamp": now_str(), "note": "Queued for placement team verification"},
     ]
 
     record = {
@@ -541,6 +540,27 @@ class StudentProfilePost(BaseModel):
     resume_url: Optional[str] = None
     arivupro_student_id: Optional[str] = None
     enrollment_cohort: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    # Exam details
+    attempt_count: Optional[str] = None
+    icitss_completed: Optional[bool] = None
+    # Articleship
+    articleship_firm: Optional[str] = None
+    articleship_firm_type: Optional[str] = None
+    articleship_areas: Optional[list] = []
+    joining_availability: Optional[str] = None
+    willing_to_relocate: Optional[bool] = None
+    # Education
+    graduation_degree: Optional[str] = None
+    graduation_college: Optional[str] = None
+    graduation_year: Optional[int] = None
+    graduation_percent: Optional[str] = None
+    twelfth_percent: Optional[str] = None
+    # JSONB extras
+    work_experience: Optional[list] = []
+    internship_experience: Optional[list] = []
+    projects: Optional[list] = []
+    certifications: Optional[list] = []
 
 
 @app.get("/api/students/profile")
@@ -569,6 +589,23 @@ async def upsert_student_profile(body: StudentProfilePost, student: dict = Depen
         "resume_url": body.resume_url,
         "arivupro_student_id": body.arivupro_student_id,
         "enrollment_cohort": body.enrollment_cohort,
+        "linkedin_url": body.linkedin_url,
+        "attempt_count": body.attempt_count,
+        "icitss_completed": body.icitss_completed,
+        "articleship_firm": body.articleship_firm,
+        "articleship_firm_type": body.articleship_firm_type,
+        "articleship_areas": body.articleship_areas or [],
+        "joining_availability": body.joining_availability,
+        "willing_to_relocate": body.willing_to_relocate,
+        "graduation_degree": body.graduation_degree,
+        "graduation_college": body.graduation_college,
+        "graduation_year": body.graduation_year,
+        "graduation_percent": body.graduation_percent,
+        "twelfth_percent": body.twelfth_percent,
+        "work_experience": body.work_experience or [],
+        "internship_experience": body.internship_experience or [],
+        "projects": body.projects or [],
+        "certifications": body.certifications or [],
         "updated_at": now_iso(),
     }
     result = supabase.table("student_profiles").upsert(record).execute()
@@ -1072,23 +1109,41 @@ async def recruiter_upload_logo(
     logo: UploadFile = File(...),
     recruiter: dict = Depends(require_recruiter),
 ):
-    """Upload a 500x300 .webp company logo for the recruiter's profile."""
-    if logo.content_type not in ("image/webp",):
-        raise HTTPException(status_code=400, detail="Only .webp images are accepted.")
+    """Upload a company logo (PNG/JPG/WebP, max 2 MB) for the recruiter's profile."""
+    allowed = ("image/webp", "image/png", "image/jpeg", "image/jpg")
+    if logo.content_type not in allowed:
+        raise HTTPException(status_code=400, detail="Only PNG, JPG or WebP images are accepted.")
     contents = await logo.read()
-    # Store as base64 data-URL in logo_url (no separate storage bucket needed)
-    import base64 as _b64
-    data_url = f"data:image/webp;base64,{_b64.b64encode(contents).decode()}"
-    supabase.table("recruiter_profiles").update({"logo_url": data_url}).eq("id", recruiter["id"]).execute()
-    return {"ok": True}
+    if len(contents) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Logo must be under 2 MB.")
+
+    # Try Supabase Storage bucket 'recruiter-logos' first; fall back to base64
+    logo_url: Optional[str] = None
+    try:
+        file_ext = (logo.filename or "logo.png").rsplit(".", 1)[-1].lower()
+        storage_path = f"{recruiter['id']}/logo.{file_ext}"
+        supabase.storage.from_("recruiter-logos").upload(
+            path=storage_path,
+            file=contents,
+            file_options={"content-type": logo.content_type or "image/png", "upsert": "true"},
+        )
+        public = supabase.storage.from_("recruiter-logos").get_public_url(storage_path)
+        logo_url = public
+    except Exception:
+        # Storage bucket doesn't exist yet — store as base64 data-URL
+        import base64 as _b64
+        logo_url = f"data:{logo.content_type};base64,{_b64.b64encode(contents).decode()}"
+
+    supabase.table("recruiter_profiles").update({"logo_url": logo_url}).eq("id", recruiter["id"]).execute()
+    return {"ok": True, "logo_url": logo_url}
 
 
 @app.get("/api/recruiters/profile")
 async def recruiter_get_profile(recruiter: dict = Depends(require_recruiter)):
-    """Return the recruiter's full profile including logo_url."""
+    """Return the recruiter's full profile including logo_url and new fields."""
     result = (
         supabase.table("recruiter_profiles")
-        .select("id, full_name, email, company_name, company_website, city, state, logo_url, approval_status")
+        .select("id, full_name, email, company_name, company_website, city, state, logo_url, approval_status, phone, office_address, linkedin_page, company_domain, company_summary, founded_year, company_size, firm_type, cin, gstin")
         .eq("id", recruiter["id"])
         .maybe_single()
         .execute()
@@ -1098,13 +1153,37 @@ async def recruiter_get_profile(recruiter: dict = Depends(require_recruiter)):
     return result.data
 
 
+class RecruiterProfileUpdate(BaseModel):
+    company_summary: Optional[str] = None
+    founded_year: Optional[int] = None
+    company_size: Optional[str] = None
+    firm_type: Optional[str] = None
+    linkedin_page: Optional[str] = None
+    office_address: Optional[str] = None
+    company_website: Optional[str] = None
+    company_domain: Optional[str] = None
+    phone: Optional[str] = None
+
+
+@app.patch("/api/recruiters/profile")
+async def recruiter_update_profile(body: RecruiterProfileUpdate, recruiter: dict = Depends(require_recruiter)):
+    """Update editable recruiter profile fields."""
+    updates = body.model_dump()
+    supabase.table("recruiter_profiles").update(updates).eq("id", recruiter["id"]).execute()
+    return {"ok": True}
+
+
 @app.post("/api/recruiters/jobs", status_code=201)
 async def recruiter_create_job(body: JobPost, recruiter: dict = Depends(require_recruiter)):
     job_id = str(uuid.uuid4())
+    # Pull logo_url from recruiter profile — no re-upload needed
+    profile_res = supabase.table("recruiter_profiles").select("logo_url").eq("id", recruiter["id"]).maybe_single().execute()
+    recruiter_logo = (profile_res.data or {}).get("logo_url")
     job = {
         "id": job_id,
         "title": body.title,
         "company": recruiter["company_name"],
+        "logo_url": recruiter_logo,
         "salary_text": body.salary_text or "As per norms",
         "location": body.location or "",
         "city": body.city or "",
@@ -1228,7 +1307,8 @@ async def recruiter_update_applicant_stage(app_id: str, body: ApplicationPatch, 
     updates: dict = {"updated_at": now_iso()}
 
     if body.stage:
-        updates["stage"] = body.stage
+        db_stage = body.stage.lower().replace(" ", "_")
+        updates["stage"] = db_stage
         timeline.append({"stage": body.stage, "timestamp": now_str(), "note": body.counselor_notes or f"Stage updated to {body.stage}"})
         updates["timeline"] = timeline
     if body.counselor_notes:
@@ -1620,6 +1700,37 @@ async def get_external_job(job_id: str):
     if not result.data:
         raise HTTPException(status_code=404, detail="External job not found")
     return result.data
+
+# ---------------------------------------------------------------------------
+# ARIVUPRO BATCH DATES — live from arivupro.com scrape
+# ---------------------------------------------------------------------------
+@app.get("/api/batches")
+async def get_batches(course: Optional[str] = None):
+    """Return upcoming ArivuPro batch dates. Cached from daily scrape."""
+    q = supabase.table("arivupro_batches").select(
+        "course, level, city, mode, start_date, schedule, batch_label, course_url"
+    )
+    if course:
+        q = q.eq("course", course)
+    result = q.order("start_date").limit(200).execute()
+    return {"batches": result.data or []}
+
+
+@app.post("/api/cron/sync-batches")
+async def cron_sync_batches(x_cron_secret: Optional[str] = Header(default=None)):
+    """Daily cron: scrape arivupro.com batch dates and upsert to DB."""
+    if CRON_SECRET and x_cron_secret != CRON_SECRET:
+        raise HTTPException(status_code=401, detail="Invalid cron secret")
+    from scraper.sources.arivupro_batches import fetch_batches, upsert_batches
+    try:
+        rows = await fetch_batches()
+        counts = upsert_batches(supabase, rows)
+        logger.info(f"[batch-cron] scraped={len(rows)} {counts}")
+        return {"scraped": len(rows), **counts}
+    except Exception as e:
+        logger.error(f"[batch-cron] failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # ---------------------------------------------------------------------------
 # AI MATCHING

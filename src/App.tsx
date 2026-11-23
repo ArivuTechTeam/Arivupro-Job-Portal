@@ -4,7 +4,9 @@ import JobDetailPage from './pages/JobDetailPage.tsx';
 import { Navbar, NavTab } from './components/Navbar.tsx';
 import { HeroSection } from './components/HeroSection.tsx';
 import { JobSearchFilters } from './components/JobSearchFilters.tsx';
-import { CategoryPills } from './components/CategoryPills.tsx';
+import { matchesCategory } from './components/CategoryPills.tsx';
+import { PromoSlot } from './components/PromoSlot.tsx';
+import { FilterSidebar } from './components/JobSearchFilters.tsx';
 import { JobCard } from './components/JobCard.tsx';
 import { JobDetailsModal } from './components/JobDetailsModal.tsx';
 import { ApplicationTracker } from './components/ApplicationTracker.tsx';
@@ -82,6 +84,7 @@ function loadTab(): NavTab {
   if (path === '/jobs')        return 'jobs';
   if (path === '/internships') return 'internships';
   if (path === '/articleship') return 'articleship';
+  if (path === '/companies')   return 'companies';
   try {
     const t = sessionStorage.getItem(TAB_KEY) as NavTab | null;
     if (t) return t;
@@ -112,7 +115,7 @@ export default function App() {
   const [applyBlockJob, setApplyBlockJob] = useState<JobListing | null>(null);
   const [selectedJob, setSelectedJob] = useState<JobListing | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [filters, setFilters] = useState({ search: '', type: '', city: '', qualification: '', workplace: '', salary: '', department: '', experience: '', recency: '' });
+  const [filters, setFilters] = useState<import('./components/JobSearchFilters.tsx').Filters>({ search: '', type: '', city: [], qualification: [], workplace: [], salary: '', department: '', category: [], experience: '', recency: '' });
   const [jobPage, setJobPage] = useState(1);
   const [selectedCompany, setSelectedCompany] = useState<ApiCompany | null>(null);
   const [showRecruiterPortal, setShowRecruiterPortal] = useState(false);
@@ -190,12 +193,17 @@ export default function App() {
     if (tab === 'jobs')        return '/jobs';
     if (tab === 'internships') return '/internships';
     if (tab === 'articleship') return '/articleship';
+    if (tab === 'companies')   return '/companies';
     return window.location.pathname; // preserve /jobseeker, /recruiter, /admin
   };
 
   const navigateToTab = (tab: NavTab, options?: { replace?: boolean }) => {
     if (tab === 'profile' && auth.role === 'recruiter') {
       setRecruiterProfileSignal(s => s + 1);
+      return;
+    }
+    if (tab === 'profile' && auth.role === 'admin') {
+      setCurrentTab('admin-profile' as NavTab);
       return;
     }
     if (tab === 'profile' && auth.role !== 'student') return;
@@ -326,6 +334,7 @@ export default function App() {
       title,
       company: company || 'CA Firm',
       logoText: (company || 'CA').charAt(0).toUpperCase(),
+      logoUrl: j.logo_url || undefined,
       location: location || 'India',
       city: (location || 'India').split(',')[0].trim(),
       workplaceType: j.is_remote ? 'Remote' : 'Onsite' as const,
@@ -369,6 +378,7 @@ export default function App() {
       title: j.title,
       company: j.company || '',
       logoText: (j.company || '?').charAt(0).toUpperCase(),
+      logoUrl: j.logo_url || undefined,
       location: j.location || '',
       city: j.city || (j.location || '').split(',')[0].trim(),
       workplaceType: (j.workplace_type === 'remote' ? 'Remote' : j.workplace_type === 'hybrid' ? 'Hybrid' : 'Onsite') as any,
@@ -422,8 +432,8 @@ export default function App() {
 
   const handleSignIn = (mode: 'login' | 'signup' = 'login') => setAuthModal({ open: true, mode, role: 'student' as const });
 
-  const handleSignOut = () => {
-    import('./lib/supabase/client').then(({ supabase }) => supabase.auth.signOut());
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
     sessionStorage.removeItem(AUTH_KEY);
     sessionStorage.removeItem(TAB_KEY);
     localStorage.removeItem('arivupro_student_profile');
@@ -459,7 +469,7 @@ export default function App() {
           studentRoll: a.student_id || '',
           studentCourse: a.primary_course || '',
           appliedDate: a.created_at || '',
-          status: (a.stage ? a.stage.charAt(0).toUpperCase() + a.stage.slice(1).replace(/_/g, ' ') : 'Applied') as JobApplication['status'],
+          status: (a.stage ? a.stage.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) : 'Applied') as JobApplication['status'],
           aiMatchScore: a.ai_match_score || 0,
           matchGrade: (a.match_grade || 'Moderate') as JobApplication['matchGrade'],
           crmLeadId: a.crm_lead_id || '',
@@ -728,10 +738,20 @@ export default function App() {
       const q = filters.search.toLowerCase();
       const matchSearch = !q || j.title.toLowerCase().includes(q) || j.company.toLowerCase().includes(q) || j.mandatorySkills.some(s => s.toLowerCase().includes(q));
       const matchType = !filters.type || j.jobType.toLowerCase().includes(filters.type.toLowerCase());
-      const matchCity = !filters.city || j.city === filters.city;
-      const matchQual = !filters.qualification || j.qualifications.includes(filters.qualification as any);
-      const matchWorkplace = !filters.workplace || j.workplaceType === filters.workplace;
+      const KNOWN_CITIES = ['Bengaluru', 'Mumbai', 'Delhi NCR', 'Chennai', 'Hyderabad', 'Pune', 'Gurugram', 'Ahmedabad', 'Jaipur', 'Remote'];
+      const matchCity = filters.city.length === 0 ? true : filters.city.some(c =>
+        c === 'other' ? !KNOWN_CITIES.includes(j.city) : j.city === c
+      );
+      const KNOWN_QUALS = ['CA', 'CMA India', 'CS', 'ACCA', 'CFA', 'US CPA', 'US CMA', 'B.Com / M.Com'];
+      const matchQual = filters.qualification.length === 0 ? true : filters.qualification.some(q =>
+        q === 'other' ? !j.qualifications?.some(jq => KNOWN_QUALS.includes(jq as string)) : j.qualifications?.includes(q as any)
+      );
+      const matchWorkplace = filters.workplace.length === 0 || filters.workplace.includes(j.workplaceType);
       const matchDepartment = !filters.department || j.department === filters.department;
+      const ALL_CAT_KEYS = ['ca-articleship','cma-articleship','cs-training','internship','big4','fpa-finance','taxation','audit','investment-banking','compliance','acca-cfa','remote'];
+      const matchCategory = filters.category.length === 0 ? true : filters.category.some(cat =>
+        cat === 'other' ? !ALL_CAT_KEYS.some(k => matchesCategory(j, k)) : matchesCategory(j, cat)
+      );
       const matchExperience = !filters.experience || j.experienceLevel === filters.experience;
       const matchRecency = (() => {
         if (!filters.recency || !j.postedDate) return true;
@@ -757,7 +777,7 @@ export default function App() {
       })();
       if (currentTab === 'articleship') return j.jobType.includes('Articleship') && matchSearch && matchCity && matchQual && matchSalary;
       if (currentTab === 'internships') return j.jobType === 'Internship' && matchSearch && matchCity && matchQual && matchSalary;
-      return matchSearch && matchType && matchCity && matchQual && matchWorkplace && matchSalary && matchDepartment && matchExperience && matchRecency;
+      return matchSearch && matchType && matchCity && matchQual && matchWorkplace && matchSalary && matchDepartment && matchCategory && matchExperience && matchRecency;
     });
   }, [jobs, filters, currentTab]);
 
@@ -934,7 +954,7 @@ export default function App() {
           <HeroSection
             onGetStarted={() => setAuthModal({ open: true, mode: 'signup', role: 'student' })}
             onSearch={(query, location) => {
-              setFilters(prev => ({ ...prev, search: query, city: location || '' }));
+              setFilters(prev => ({ ...prev, search: query, city: location ? [location] : [] }));
               document.getElementById('job-feed-anchor')?.scrollIntoView({ behavior: 'smooth' });
             }}
             onCompanyClick={(companyName) => {
@@ -952,54 +972,81 @@ export default function App() {
         {isJobsTab && auth.role !== 'recruiter' && (
           <>
             <div id="job-feed-anchor" style={{ scrollMarginTop: 100 }} />
-            <JobSearchFilters filters={filters} onFiltersChange={setFilters} totalCount={filteredJobs.length} />
-            {(currentTab as string) === 'jobs' && (
-              <CategoryPills
-                jobs={jobs}
-                activeDepartment={filters.department}
-                onSelect={dept => setFilters(f => ({ ...f, department: dept }))}
-              />
-            )}
-            <div style={{ maxWidth: 1180, margin: '0 auto', padding: '28px 24px' }}>
-              {currentTab === 'articleship' && (
-                <div style={{ marginBottom: 24 }}>
-                  <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f2419', margin: '0 0 4px' }}>Articleship Openings</h2>
-                  <p style={{ color: '#6b7280', fontSize: 14, margin: 0 }}>CA Articleship positions from ICAI registered firms across India</p>
-                </div>
-              )}
-              {currentTab === 'internships' && (
-                <div style={{ marginBottom: 24 }}>
-                  <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f2419', margin: '0 0 4px' }}>Finance Internships</h2>
-                  <p style={{ color: '#6b7280', fontSize: 14, margin: 0 }}>Paid internships for finance students — B.Com, M.Com, MBA and more</p>
-                </div>
-              )}
-              {/* Results header */}
-              {filteredJobs.length > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
-                  <div style={{ fontSize: 13, color: '#6b7280', fontWeight: 500 }}>
-                    Showing <span style={{ fontWeight: 800, color: '#0f2419' }}>{(jobPage - 1) * JOBS_PER_PAGE + 1}–{Math.min(jobPage * JOBS_PER_PAGE, filteredJobs.length)}</span> of <span style={{ fontWeight: 800, color: '#0f2419' }}>{filteredJobs.length}</span> jobs
-                  </div>
-                  <div style={{ fontSize: 12, color: '#9ca3af', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block', animation: 'pulse-dot 2s ease-in-out infinite' }} />
-                    Updated just now
-                  </div>
-                </div>
-              )}
 
-              {filteredJobs.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '60px 20px', background: '#fff', borderRadius: 14, border: '1px solid #e5e7eb' }}>
-                  <div style={{ fontSize: 36, marginBottom: 12 }}>🔍</div>
-                  <div style={{ fontWeight: 700, color: '#0f2419', marginBottom: 6 }}>No jobs found</div>
-                  <p style={{ color: '#9ca3af', fontSize: 13, marginBottom: 16 }}>Try adjusting your filters</p>
-                  <button className="btn-outline" onClick={() => setFilters({ search: '', type: '', city: '', qualification: '', workplace: '', salary: '', department: '', experience: '', recency: '' })}>Clear filters</button>
+            {/* Articleship strip promo */}
+            {currentTab === 'articleship' && (
+              <PromoSlot placement="articleship_header" context={{}} />
+            )}
+
+            <JobSearchFilters
+              filters={filters}
+              onFiltersChange={setFilters}
+              totalCount={filteredJobs.length}
+              jobType={currentTab === 'articleship' ? 'articleship' : currentTab === 'internships' ? 'internships' : 'all'}
+            />
+
+            {/* Sidebar + feed layout */}
+            <div style={{ maxWidth: 1180, margin: '0 auto', padding: '24px 24px' }}>
+              <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+
+                {/* LEFT: Filter sidebar — rendered by JobSearchFilters via portal */}
+                <div className="filter-sidebar" style={{
+                  width: 220, flexShrink: 0,
+                  background: '#fff', borderRadius: 14,
+                  border: '1px solid #e5e7eb',
+                  padding: '20px 18px',
+                  position: 'sticky', top: 120,
+                  maxHeight: 'calc(100vh - 140px)',
+                  overflowY: 'auto',
+                }}>
+                  <FilterSidebar
+                    filters={filters}
+                    onFiltersChange={setFilters}
+                    jobType={currentTab === 'articleship' ? 'articleship' : currentTab === 'internships' ? 'internships' : 'all'}
+                  />
                 </div>
-              ) : (
-                <>
-                  <div className="jobs-grid">
-                    {pagedJobs.map(job => (
-                      <JobCard key={job.id} job={job} isSaved={savedJobIds.has(job.id)} onSaveToggle={auth.role === 'student' ? handleSaveToggle : undefined} />
-                    ))}
-                  </div>
+
+                {/* RIGHT: Job list */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {currentTab === 'articleship' && (
+                    <div style={{ marginBottom: 20 }}>
+                      <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f2419', margin: '0 0 4px' }}>Articleship Openings</h2>
+                      <p style={{ color: '#6b7280', fontSize: 13, margin: 0 }}>CA Articleship positions from ICAI registered firms across India</p>
+                    </div>
+                  )}
+                  {currentTab === 'internships' && (
+                    <div style={{ marginBottom: 20 }}>
+                      <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f2419', margin: '0 0 4px' }}>Finance Internships</h2>
+                      <p style={{ color: '#6b7280', fontSize: 13, margin: 0 }}>Paid internships for finance students — B.Com, M.Com, MBA and more</p>
+                    </div>
+                  )}
+
+                  {filteredJobs.length > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+                      <div style={{ fontSize: 13, color: '#6b7280', fontWeight: 500 }}>
+                        Showing <span style={{ fontWeight: 800, color: '#0f2419' }}>{(jobPage - 1) * JOBS_PER_PAGE + 1}–{Math.min(jobPage * JOBS_PER_PAGE, filteredJobs.length)}</span> of <span style={{ fontWeight: 800, color: '#0f2419' }}>{filteredJobs.length}</span> jobs
+                      </div>
+                      <div style={{ fontSize: 12, color: '#9ca3af', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block', animation: 'pulse-dot 2s ease-in-out infinite' }} />
+                        Updated just now
+                      </div>
+                    </div>
+                  )}
+
+                  {filteredJobs.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '60px 20px', background: '#fff', borderRadius: 14, border: '1px solid #e5e7eb' }}>
+                      <div style={{ fontSize: 36, marginBottom: 12 }}>🔍</div>
+                      <div style={{ fontWeight: 700, color: '#0f2419', marginBottom: 6 }}>No jobs found</div>
+                      <p style={{ color: '#9ca3af', fontSize: 13, marginBottom: 16 }}>Try adjusting your filters</p>
+                      <button className="btn-outline" onClick={() => setFilters({ search: '', type: '', city: [], qualification: [], workplace: [], salary: '', department: '', category: [], experience: '', recency: '' })}>Clear filters</button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="jobs-grid">
+                        {pagedJobs.map(job => (
+                          <JobCard key={job.id} job={job} isSaved={savedJobIds.has(job.id)} onSaveToggle={auth.role === 'student' ? handleSaveToggle : undefined} />
+                        ))}
+                      </div>
 
                   {/* Pagination */}
                   {totalPages > 1 && (
@@ -1034,18 +1081,15 @@ export default function App() {
                       >Next →</button>
                     </div>
                   )}
-                </>
-              )}
+                    </>
+                  )}
+                </div>{/* end job list */}
+              </div>{/* end flex row */}
               <style>{`
-                .jobs-grid {
-                  display: grid;
-                  gap: 14px;
-                  grid-template-columns: 1fr;
-                }
-                @media (min-width: 1024px) {
-                  .jobs-grid {
-                    grid-template-columns: 1fr 1fr;
-                  }
+                .jobs-grid { display: grid; gap: 14px; grid-template-columns: 1fr; }
+                @media (min-width: 900px) { .jobs-grid { grid-template-columns: 1fr 1fr; } }
+                @media (max-width: 768px) {
+                  .filter-sidebar { display: none !important; }
                 }
               `}</style>
             </div>
@@ -1113,6 +1157,23 @@ export default function App() {
                     resume_url: s.resumeFileName,
                     arivupro_student_id: s.arivuproStudentId,
                     enrollment_cohort: s.enrollmentCohort,
+                    attempt_count: s.attemptCount,
+                    icitss_completed: s.icitssCompleted,
+                    linkedin_url: s.linkedinUrl,
+                    joining_availability: s.joiningAvailability,
+                    willing_to_relocate: s.willingToRelocate,
+                    graduation_degree: s.graduationDegree,
+                    graduation_college: s.graduationCollege,
+                    graduation_year: s.graduationYear,
+                    graduation_percent: s.graduationPercent,
+                    twelfth_percent: s.twelfthPercent,
+                    articleship_firm: s.articleshipFirm,
+                    articleship_firm_type: s.articleshipFirmType,
+                    articleship_areas: s.articleshipAreas,
+                    work_experience: s.workExperience,
+                    internship_experience: s.internshipExperience,
+                    projects: s.projects,
+                    certifications: s.certifications,
                   }),
                 }).catch(() => {});
               }
@@ -1241,6 +1302,12 @@ export default function App() {
                       { id: 'synced-jobs', label: 'Synced Jobs' },
                     ],
                   },
+                  {
+                    group: 'Account',
+                    items: [
+                      { id: 'admin-profile', label: 'My Profile' },
+                    ],
+                  },
                 ] as { group: string; items: { id: NavTab; label: string }[] }[]).map((section) => {
                   const isOpen = expandedGroups[section.group] !== false;
                   return (
@@ -1344,6 +1411,40 @@ export default function App() {
                   return res.json();
                 }} />
               )}
+              {currentTab === 'admin-profile' && (
+                <div style={{ maxWidth: 480, margin: '40px auto', padding: '0 24px' }}>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: '#0f2419', marginBottom: 24 }}>My Profile</div>
+                  <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: 28, marginBottom: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+                      <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#1a7a4a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800, color: '#fede6d', flexShrink: 0 }}>
+                        {auth.name ? auth.name.split(' ').map((n: string) => n[0]).slice(0,2).join('').toUpperCase() : 'A'}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 17, fontWeight: 800, color: '#0f2419' }}>{auth.name || 'Admin'}</div>
+                        <div style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }}>{auth.email}</div>
+                        <span style={{ display: 'inline-block', marginTop: 6, padding: '2px 10px', borderRadius: 999, background: '#fef3c7', color: '#92400e', fontSize: 11, fontWeight: 700, letterSpacing: '0.04em' }}>ADMINISTRATOR</span>
+                      </div>
+                    </div>
+                    <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 20 }}>
+                      {[
+                        { label: 'Full Name', value: auth.name || '—' },
+                        { label: 'Email', value: auth.email || '—' },
+                        { label: 'Role', value: 'Super Admin' },
+                        { label: 'Portal', value: 'ArivuPro Finance Career Portal' },
+                      ].map(({ label, value }) => (
+                        <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #f9fafb' }}>
+                          <span style={{ fontSize: 13, color: '#6b7280', fontWeight: 600 }}>{label}</span>
+                          <span style={{ fontSize: 13, color: '#0f2419', fontWeight: 700 }}>{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ background: '#f0faf4', border: '1px solid #d7f4ea', borderRadius: 10, padding: '12px 16px', fontSize: 13, color: '#1a7a4a', fontWeight: 600 }}>
+                    To change your password or email, use Supabase Auth or contact your platform administrator.
+                  </div>
+                </div>
+              )}
+
               {(['admin-dashboard', 'admin-students', 'admin-jobs', 'admin-companies', 'admin-recruiters'] as string[]).includes(currentTab as string) && (
                 <AdminDashboard
                   jobs={jobs}
@@ -1455,6 +1556,23 @@ export default function App() {
                   resume_url: s.resumeFileName,
                   arivupro_student_id: s.arivuproStudentId,
                   enrollment_cohort: s.enrollmentCohort,
+                  attempt_count: s.attemptCount,
+                  icitss_completed: s.icitssCompleted,
+                  linkedin_url: s.linkedinUrl,
+                  joining_availability: s.joiningAvailability,
+                  willing_to_relocate: s.willingToRelocate,
+                  graduation_degree: s.graduationDegree,
+                  graduation_college: s.graduationCollege,
+                  graduation_year: s.graduationYear,
+                  graduation_percent: s.graduationPercent,
+                  twelfth_percent: s.twelfthPercent,
+                  articleship_firm: s.articleshipFirm,
+                  articleship_firm_type: s.articleshipFirmType,
+                  articleship_areas: s.articleshipAreas,
+                  work_experience: s.workExperience,
+                  internship_experience: s.internshipExperience,
+                  projects: s.projects,
+                  certifications: s.certifications,
                 }),
               }).catch(() => {});
             }

@@ -95,6 +95,14 @@ from scraper.sources.workday import fetch as fetch_workday
 
 logger = logging.getLogger(__name__)
 
+# Logo fetching — imported lazily to avoid import errors if httpx missing
+try:
+    from scraper.logo_fetcher import fetch_logo, prime_cache_from_db
+    _LOGO_ENABLED = True
+except ImportError:
+    _LOGO_ENABLED = False
+    logger.warning("[logo] logo_fetcher unavailable — logos will not be fetched")
+
 SOURCE_FETCHERS: dict = {
     'caclubindia':    fetch_caclubindia,
     'icai_eirc':      fetch_icai_eirc,
@@ -193,6 +201,21 @@ async def run_source_sync(supabase: Client, source: str) -> SyncResult:
         jobs: list[NormalizedJob] = await fetcher()
         result.fetched = len(jobs)
 
+        # Fetch logos for all unique companies in this batch
+        if _LOGO_ENABLED and jobs:
+            try:
+                import httpx
+                async with httpx.AsyncClient() as logo_client:
+                    unique_companies = {j.company for j in jobs if j.company and not j.logo_url}
+                    for company in unique_companies:
+                        url = await fetch_logo(company, logo_client)
+                        if url:
+                            for j in jobs:
+                                if j.company == company and not j.logo_url:
+                                    j.logo_url = url
+            except Exception as e:
+                logger.warning(f"[logo] batch fetch failed for {source}: {e}")
+
         for job in jobs:
             if not _is_relevant(job):
                 result.skipped += 1
@@ -237,10 +260,22 @@ async def run_source_sync(supabase: Client, source: str) -> SyncResult:
     return result
 
 
-async def run_all_sources(supabase: Client, sources: Optional[list[str]] = None) -> list[SyncResult]:
+async def run_all_sources(supabase: Client, sources: Optional[list[str]] = None, include_weekly: bool = False) -> list[SyncResult]:
     env_enabled = os.getenv('SYNC_SOURCES_ENABLED', '')
     default = [s.strip() for s in env_enabled.split(',') if s.strip()] if env_enabled else SOURCE_NAMES
+    if include_weekly:
+        env_weekly = os.getenv('SYNC_SOURCES_WEEKLY', '')
+        weekly = [s.strip() for s in env_weekly.split(',') if s.strip()]
+        default = list(dict.fromkeys(default + weekly))  # merge, deduplicate, preserve order
     enabled = sources or default
+
+    # Prime logo cache from DB so we don't re-fetch logos we already have
+    if _LOGO_ENABLED:
+        try:
+            prime_cache_from_db(supabase)
+        except Exception as e:
+            logger.warning(f"[logo] prime_cache_from_db failed: {e}")
+
     tasks = [run_source_sync(supabase, s) for s in enabled]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 

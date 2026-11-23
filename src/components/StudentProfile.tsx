@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { X, Edit2, Upload, Plus, CheckCircle2 } from 'lucide-react';
-import { StudentProfile as StudentProfileType } from '../types/index.ts';
+import { X, Edit2, Upload, Plus, CheckCircle2, Trash2 } from 'lucide-react';
+import { StudentProfile as StudentProfileType, WorkExperience, InternshipExperience, Project, Certification } from '../types/index.ts';
 import { supabase } from '../lib/supabase/client';
 
 interface StudentProfileProps {
@@ -29,6 +29,7 @@ export const StudentProfile: React.FC<StudentProfileProps> = ({ student, onUpdat
     !!form.name, !!form.email, !!form.phone, !!form.aboutBio,
     form.keySkills.length > 0, !!form.resumeFileName,
     form.qualificationsCompleted.length > 0, form.preferredLocations.length > 0,
+    !!form.graduationDegree, !!form.articleshipFirm || form.articleshipCompletedMonths > 0,
   ];
   const completionPct = Math.round((completionFields.filter(Boolean).length / completionFields.length) * 100);
 
@@ -449,6 +450,272 @@ export const StudentProfile: React.FC<StudentProfileProps> = ({ student, onUpdat
             </div>
           </Section>
 
+          {/* 7. Exam & Qualification Details */}
+          <Section
+            title="Exam & Qualification Details"
+            isEditing={editingSection === 'exam'}
+            onEdit={() => setEditingSection(editingSection === 'exam' ? null : 'exam')}
+          >
+            {editingSection === 'exam' ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <div style={labelSt}>Attempt Count</div>
+                  <select className="input-field" value={form.attemptCount || ''} onChange={e => set('attemptCount', e.target.value)}>
+                    <option value="">— Select —</option>
+                    <option value="first">First attempt</option>
+                    <option value="second">Second attempt</option>
+                    <option value="multiple">Multiple attempts</option>
+                  </select>
+                </div>
+                <div>
+                  <div style={labelSt}>ICITSS Completed</div>
+                  <select className="input-field" value={form.icitssCompleted ? 'yes' : 'no'} onChange={e => set('icitssCompleted', e.target.value === 'yes')}>
+                    <option value="no">No</option>
+                    <option value="yes">Yes</option>
+                  </select>
+                </div>
+                <Field label="LinkedIn URL" value={form.linkedinUrl || ''} onChange={v => set('linkedinUrl', v)} />
+                <div>
+                  <div style={labelSt}>Joining Availability</div>
+                  <select className="input-field" value={form.joiningAvailability || ''} onChange={e => set('joiningAvailability', e.target.value)}>
+                    <option value="">— Select —</option>
+                    <option value="Immediate">Immediate</option>
+                    <option value="1 month">1 month</option>
+                    <option value="2 months">2 months</option>
+                    <option value="3 months">3 months</option>
+                  </select>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 14 }}>
+                <Info label="Attempt Count" value={form.attemptCount?.replace('_', ' ') || '—'} />
+                <Info label="ICITSS Completed" value={form.icitssCompleted ? 'Yes' : 'No'} />
+                <Info label="Joining Availability" value={form.joiningAvailability || '—'} />
+                <Info label="LinkedIn" value={form.linkedinUrl || '—'} />
+              </div>
+            )}
+          </Section>
+
+          {/* 8. Education */}
+          <Section
+            title="Education"
+            isEditing={editingSection === 'education'}
+            onEdit={() => setEditingSection(editingSection === 'education' ? null : 'education')}
+          >
+            {editingSection === 'education' ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <Field label="Graduation Degree" value={form.graduationDegree || ''} onChange={v => set('graduationDegree', v)} placeholder="e.g. B.Com" />
+                <Field label="College / University" value={form.graduationCollege || ''} onChange={v => set('graduationCollege', v)} />
+                <Field label="Graduation Year" value={String(form.graduationYear || '')} onChange={v => set('graduationYear', parseInt(v) || undefined)} type="number" />
+                <Field label="Graduation %" value={form.graduationPercent || ''} onChange={v => set('graduationPercent', v)} placeholder="e.g. 78.5" />
+                <Field label="12th / HSC %" value={form.twelfthPercent || ''} onChange={v => set('twelfthPercent', v)} placeholder="e.g. 82.0" />
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 14 }}>
+                <Info label="Degree" value={form.graduationDegree || '—'} />
+                <Info label="College" value={form.graduationCollege || '—'} />
+                <Info label="Year" value={String(form.graduationYear || '—')} />
+                <Info label="Graduation %" value={form.graduationPercent || '—'} />
+                <Info label="12th %" value={form.twelfthPercent || '—'} />
+              </div>
+            )}
+          </Section>
+
+          {/* 9. Articleship Details */}
+          <Section
+            title="Articleship / Training"
+            isEditing={editingSection === 'articleship'}
+            onEdit={() => setEditingSection(editingSection === 'articleship' ? null : 'articleship')}
+          >
+            {editingSection === 'articleship' ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <Field label="Firm Name" value={form.articleshipFirm || ''} onChange={v => set('articleshipFirm', v)} placeholder="e.g. Deloitte India" />
+                <div>
+                  <div style={labelSt}>Firm Type</div>
+                  <select className="input-field" value={form.articleshipFirmType || ''} onChange={e => set('articleshipFirmType', e.target.value)}>
+                    <option value="">— Select —</option>
+                    <option>Big 4</option>
+                    <option>Mid-tier</option>
+                    <option>Small firm</option>
+                  </select>
+                </div>
+                <Field label="Months Completed" value={String(form.articleshipCompletedMonths || 0)} onChange={v => set('articleshipCompletedMonths', parseInt(v) || 0)} type="number" />
+                <Field label="Areas (comma-separated)" value={(form.articleshipAreas || []).join(', ')} onChange={v => set('articleshipAreas', v.split(',').map((x: string) => x.trim()).filter(Boolean))} placeholder="Audit, Tax, MCA filings" />
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 14 }}>
+                <Info label="Firm" value={form.articleshipFirm || '—'} />
+                <Info label="Type" value={form.articleshipFirmType || '—'} />
+                <Info label="Months" value={String(form.articleshipCompletedMonths || 0)} />
+                <Info label="Areas" value={(form.articleshipAreas || []).join(', ') || '—'} />
+              </div>
+            )}
+          </Section>
+
+          {/* 10. Work Experience */}
+          <Section
+            title="Work Experience"
+            isEditing={editingSection === 'work'}
+            onEdit={() => setEditingSection(editingSection === 'work' ? null : 'work')}
+          >
+            {editingSection === 'work' ? (
+              <div>
+                {(form.workExperience || []).map((exp: WorkExperience, i: number) => (
+                  <div key={i} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 14, marginBottom: 10, position: 'relative' }}>
+                    <button type="button" onClick={() => set('workExperience', (form.workExperience || []).filter((_: WorkExperience, j: number) => j !== i))}
+                      style={{ position: 'absolute', top: 10, right: 10, background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626' }}>
+                      <Trash2 size={13} />
+                    </button>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <Field label="Company" value={exp.company} onChange={v => { const a = [...(form.workExperience || [])]; a[i] = { ...a[i], company: v }; set('workExperience', a); }} />
+                      <Field label="Role" value={exp.role} onChange={v => { const a = [...(form.workExperience || [])]; a[i] = { ...a[i], role: v }; set('workExperience', a); }} />
+                      <Field label="From (MM/YYYY)" value={exp.startMonth} onChange={v => { const a = [...(form.workExperience || [])]; a[i] = { ...a[i], startMonth: v }; set('workExperience', a); }} />
+                      <Field label="To (MM/YYYY or Present)" value={exp.endMonth} onChange={v => { const a = [...(form.workExperience || [])]; a[i] = { ...a[i], endMonth: v }; set('workExperience', a); }} />
+                    </div>
+                    <div style={{ marginTop: 10 }}>
+                      <div style={labelSt}>Description</div>
+                      <textarea className="input-field" rows={2} value={exp.description} onChange={e => { const a = [...(form.workExperience || [])]; a[i] = { ...a[i], description: e.target.value }; set('workExperience', a); }} />
+                    </div>
+                  </div>
+                ))}
+                <button type="button" onClick={() => set('workExperience', [...(form.workExperience || []), { company: '', role: '', startMonth: '', endMonth: '', description: '' }])}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1.5px dashed #d7f4ea', background: '#f0faf4', color: '#1a7a4a', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Manrope, sans-serif' }}>
+                  <Plus size={14} /> Add Experience
+                </button>
+              </div>
+            ) : (
+              (form.workExperience || []).length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {(form.workExperience || []).map((exp: WorkExperience, i: number) => (
+                    <div key={i} style={{ padding: '10px 14px', borderRadius: 9, background: '#f9fafb', border: '1px solid #e5e7eb' }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: '#0f2419' }}>{exp.role} · {exp.company}</div>
+                      <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{exp.startMonth} – {exp.endMonth}</div>
+                      {exp.description && <div style={{ fontSize: 12, color: '#374151', marginTop: 4 }}>{exp.description}</div>}
+                    </div>
+                  ))}
+                </div>
+              ) : <span style={{ fontSize: 13, color: '#9ca3af' }}>No work experience added.</span>
+            )}
+          </Section>
+
+          {/* 11. Internship Experience */}
+          <Section
+            title="Internship Experience"
+            isEditing={editingSection === 'internship'}
+            onEdit={() => setEditingSection(editingSection === 'internship' ? null : 'internship')}
+          >
+            {editingSection === 'internship' ? (
+              <div>
+                {(form.internshipExperience || []).map((exp: InternshipExperience, i: number) => (
+                  <div key={i} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 14, marginBottom: 10, position: 'relative' }}>
+                    <button type="button" onClick={() => set('internshipExperience', (form.internshipExperience || []).filter((_: InternshipExperience, j: number) => j !== i))}
+                      style={{ position: 'absolute', top: 10, right: 10, background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626' }}>
+                      <Trash2 size={13} />
+                    </button>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <Field label="Company" value={exp.company} onChange={v => { const a = [...(form.internshipExperience || [])]; a[i] = { ...a[i], company: v }; set('internshipExperience', a); }} />
+                      <Field label="Role" value={exp.role} onChange={v => { const a = [...(form.internshipExperience || [])]; a[i] = { ...a[i], role: v }; set('internshipExperience', a); }} />
+                      <Field label="From" value={exp.startMonth} onChange={v => { const a = [...(form.internshipExperience || [])]; a[i] = { ...a[i], startMonth: v }; set('internshipExperience', a); }} />
+                      <Field label="To" value={exp.endMonth} onChange={v => { const a = [...(form.internshipExperience || [])]; a[i] = { ...a[i], endMonth: v }; set('internshipExperience', a); }} />
+                      <Field label="Stipend (₹/mo)" value={exp.stipend} onChange={v => { const a = [...(form.internshipExperience || [])]; a[i] = { ...a[i], stipend: v }; set('internshipExperience', a); }} />
+                    </div>
+                  </div>
+                ))}
+                <button type="button" onClick={() => set('internshipExperience', [...(form.internshipExperience || []), { company: '', role: '', startMonth: '', endMonth: '', stipend: '', description: '' }])}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1.5px dashed #d7f4ea', background: '#f0faf4', color: '#1a7a4a', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Manrope, sans-serif' }}>
+                  <Plus size={14} /> Add Internship
+                </button>
+              </div>
+            ) : (
+              (form.internshipExperience || []).length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {(form.internshipExperience || []).map((exp: InternshipExperience, i: number) => (
+                    <div key={i} style={{ padding: '10px 14px', borderRadius: 9, background: '#f9fafb', border: '1px solid #e5e7eb' }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: '#0f2419' }}>{exp.role} · {exp.company}</div>
+                      <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{exp.startMonth} – {exp.endMonth}{exp.stipend ? ` · ₹${exp.stipend}/mo` : ''}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : <span style={{ fontSize: 13, color: '#9ca3af' }}>No internships added.</span>
+            )}
+          </Section>
+
+          {/* 12. Projects */}
+          <Section
+            title="Projects"
+            isEditing={editingSection === 'projects'}
+            onEdit={() => setEditingSection(editingSection === 'projects' ? null : 'projects')}
+          >
+            {editingSection === 'projects' ? (
+              <div>
+                {(form.projects || []).map((proj: Project, i: number) => (
+                  <div key={i} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 14, marginBottom: 10, position: 'relative' }}>
+                    <button type="button" onClick={() => set('projects', (form.projects || []).filter((_: Project, j: number) => j !== i))}
+                      style={{ position: 'absolute', top: 10, right: 10, background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626' }}>
+                      <Trash2 size={13} />
+                    </button>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <Field label="Project Title" value={proj.title} onChange={v => { const a = [...(form.projects || [])]; a[i] = { ...a[i], title: v }; set('projects', a); }} />
+                      <Field label="Your Role" value={proj.role} onChange={v => { const a = [...(form.projects || [])]; a[i] = { ...a[i], role: v }; set('projects', a); }} />
+                      <Field label="Outcome / Impact" value={proj.outcome} onChange={v => { const a = [...(form.projects || [])]; a[i] = { ...a[i], outcome: v }; set('projects', a); }} />
+                      <Field label="URL (optional)" value={proj.url || ''} onChange={v => { const a = [...(form.projects || [])]; a[i] = { ...a[i], url: v }; set('projects', a); }} />
+                    </div>
+                  </div>
+                ))}
+                <button type="button" onClick={() => set('projects', [...(form.projects || []), { title: '', role: '', outcome: '', url: '' }])}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1.5px dashed #d7f4ea', background: '#f0faf4', color: '#1a7a4a', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Manrope, sans-serif' }}>
+                  <Plus size={14} /> Add Project
+                </button>
+              </div>
+            ) : (
+              (form.projects || []).length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {(form.projects || []).map((proj: Project, i: number) => (
+                    <div key={i} style={{ padding: '10px 14px', borderRadius: 9, background: '#f9fafb', border: '1px solid #e5e7eb' }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: '#0f2419' }}>{proj.title}</div>
+                      <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{proj.role} · {proj.outcome}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : <span style={{ fontSize: 13, color: '#9ca3af' }}>No projects added.</span>
+            )}
+          </Section>
+
+          {/* 13. Certifications */}
+          <Section
+            title="Certifications"
+            isEditing={editingSection === 'certs'}
+            onEdit={() => setEditingSection(editingSection === 'certs' ? null : 'certs')}
+          >
+            {editingSection === 'certs' ? (
+              <div>
+                {(form.certifications || []).map((cert: Certification, i: number) => (
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px 32px', gap: 8, marginBottom: 8, alignItems: 'end' }}>
+                    <Field label="Certification Name" value={cert.name} onChange={v => { const a = [...(form.certifications || [])]; a[i] = { ...a[i], name: v }; set('certifications', a); }} />
+                    <Field label="Issuer" value={cert.issuer} onChange={v => { const a = [...(form.certifications || [])]; a[i] = { ...a[i], issuer: v }; set('certifications', a); }} />
+                    <Field label="Year" value={cert.year} onChange={v => { const a = [...(form.certifications || [])]; a[i] = { ...a[i], year: v }; set('certifications', a); }} />
+                    <button type="button" onClick={() => set('certifications', (form.certifications || []).filter((_: Certification, j: number) => j !== i))}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: '0 0 8px' }}>
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => set('certifications', [...(form.certifications || []), { name: '', issuer: '', year: '' }])}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1.5px dashed #d7f4ea', background: '#f0faf4', color: '#1a7a4a', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Manrope, sans-serif' }}>
+                  <Plus size={14} /> Add Certification
+                </button>
+              </div>
+            ) : (
+              (form.certifications || []).length > 0 ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {(form.certifications || []).map((cert: Certification, i: number) => (
+                    <span key={i} className="badge badge-mint">{cert.name} · {cert.issuer} {cert.year}</span>
+                  ))}
+                </div>
+              ) : <span style={{ fontSize: 13, color: '#9ca3af' }}>No certifications added.</span>
+            )}
+          </Section>
+
           {/* Save button */}
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 4 }}>
             <button onClick={onClose} className="btn-ghost">Cancel</button>
@@ -524,11 +791,13 @@ function Field({
   value,
   onChange,
   type = 'text',
+  placeholder,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   type?: string;
+  placeholder?: string;
 }) {
   return (
     <div>
@@ -538,6 +807,7 @@ function Field({
         className="input-field"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
       />
     </div>
   );

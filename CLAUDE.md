@@ -1,5 +1,11 @@
 # CLAUDE.md
-
+### Senior Architect gate
+- Before any new task, load the `senior-preflight` skill and follow it.
+- Consult the `senior-architect` agent before adding a dependency, changing AI/LLM code,
+  schema/RLS/auth, scrapers/cron, routing/URLs, build/deploy, or any change over ~3 files.
+- Its verdict (APPROVE / SIMPLIFY / REJECT / NEEDS-INFO) is final unless the user overrides it.
+- Never use a version, model name, price or API from memory: check it and note the source and date.
+- Save decision records in docs/decisions/.
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.

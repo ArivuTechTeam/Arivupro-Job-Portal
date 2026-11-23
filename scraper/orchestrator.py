@@ -125,8 +125,24 @@ SOURCE_FETCHERS: dict = {
 }
 
 
+_DEAD_STATUS = {301, 302, 303, 307, 308}  # redirects that may land on 404 pages
+_DEAD_FINAL  = {404, 410, 403, 400, 500, 503}
+
+async def _url_is_live(url: str) -> bool:
+    """HEAD request to check the apply_url is reachable. Treats 404/410 as dead."""
+    if not url or not url.startswith('http'):
+        return False
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=8, follow_redirects=True, max_redirects=5) as client:
+            r = await client.head(url, headers={'User-Agent': 'Mozilla/5.0'})
+            return r.status_code not in _DEAD_FINAL
+    except Exception:
+        return True  # network error ≠ dead job; don't skip on timeout
+
+
 async def upsert_job(supabase: Client, job: NormalizedJob) -> str:
-    """Returns 'created' | 'updated' | 'duplicate' | 'capped'"""
+    """Returns 'created' | 'updated' | 'duplicate' | 'capped' | 'dead'"""
     if is_over_experience_cap(job):
         return 'capped'
 
@@ -165,7 +181,7 @@ async def upsert_job(supabase: Client, job: NormalizedJob) -> str:
     }
 
     if existing.data:
-        # Update — refresh key fields
+        # Update — refresh key fields (don't re-check URL on updates, too slow)
         supabase.table('external_jobs').update({
             'title': job.title,
             'company': job.company,
@@ -181,6 +197,10 @@ async def upsert_job(supabase: Client, job: NormalizedJob) -> str:
         }).eq('source', job.source).eq('external_id', job.external_id).execute()
         return 'updated'
     else:
+        # Only check URL liveness for new insertions
+        if not await _url_is_live(job.apply_url):
+            logger.info(f'[{job.source}] dead URL skipped: {job.apply_url}')
+            return 'dead'
         supabase.table('external_jobs').insert(record).execute()
         return 'created'
 
@@ -230,7 +250,7 @@ async def run_source_sync(supabase: Client, source: str) -> SyncResult:
                 elif outcome == 'duplicate':
                     result.duplicates += 1
                 else:
-                    result.skipped += 1
+                    result.skipped += 1  # 'capped' | 'dead'
             except Exception as e:
                 result.skipped += 1
                 logger.warning(f'[{source}] upsert failed for {job.external_id}: {e}')

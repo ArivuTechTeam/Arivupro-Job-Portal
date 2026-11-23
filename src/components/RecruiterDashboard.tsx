@@ -649,7 +649,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: '#f9fafb' }}>
-                    {['Candidate', 'Course', 'AI Match', 'Stage', 'Applied', 'Action'].map(h => (
+                    {['Candidate', 'Course', 'Match', 'Stage', 'Applied', 'Action'].map(h => (
                       <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
                     ))}
                   </tr>
@@ -779,7 +779,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: '#f9fafb' }}>
-                    {['Candidate', 'Course', 'AI Match', 'Stage', 'Applied', 'Actions'].map(h => (
+                    {['Candidate', 'Course', 'Match', 'Stage', 'Applied', 'Actions'].map(h => (
                       <th key={h} style={{ padding: '12px 20px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
                     ))}
                   </tr>
@@ -994,27 +994,14 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
 
               {/* Right: stage updater + AI score */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {/* AI Match breakdown */}
+                {/* Match Score */}
                 <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: '20px' }}>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: '#0f2419', marginBottom: 16 }}>
-                    Match Score
-                  </div>
-                  <div style={{ fontSize: 40, fontWeight: 900, color: '#1a7a4a', textAlign: 'center', marginBottom: 4 }}>{viewingApplicant.match}%</div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: '#0f2419', marginBottom: 16 }}>Match Score</div>
+                  <div style={{ fontSize: 40, fontWeight: 900, color: '#1a7a4a', textAlign: 'center', marginBottom: 8 }}>{viewingApplicant.match}%</div>
                   <div style={{ textAlign: 'center', marginBottom: 16 }}><span className={matchBadge(viewingApplicant.match).cls}>{matchBadge(viewingApplicant.match).label} Match</span></div>
-                  {[
-                    { label: 'Qualification Fit', pct: Math.min(99, viewingApplicant.match + 7) },
-                    { label: 'Skills Match',      pct: viewingApplicant.match },
-                    { label: 'Experience Fit',    pct: Math.max(60, viewingApplicant.match - 10) },
-                  ].map(bar => (
-                    <div key={bar.label} style={{ marginBottom: 10 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
-                        <span>{bar.label}</span><span style={{ color: '#1a7a4a' }}>{bar.pct}%</span>
-                      </div>
-                      <div style={{ height: 6, background: '#f0faf4', borderRadius: 4, overflow: 'hidden' }}>
-                        <div style={{ width: `${bar.pct}%`, height: '100%', background: '#1a7a4a', borderRadius: 4 }} />
-                      </div>
-                    </div>
-                  ))}
+                  <p style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', margin: 0 }}>
+                    Based on course alignment and application details.
+                  </p>
                 </div>
 
                 {/* Stage updater */}
@@ -1066,7 +1053,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: '#f9fafb' }}>
-                    {['Candidate', 'Mobile', 'Course', 'AI Match', 'Stage', 'Applied For', 'Actions'].map(h => (
+                    {['Candidate', 'Mobile', 'Course', 'Match', 'Stage', 'Applied For', 'Actions'].map(h => (
                       <th key={h} style={{ padding: '12px 20px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
                     ))}
                   </tr>

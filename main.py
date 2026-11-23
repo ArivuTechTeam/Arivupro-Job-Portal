@@ -1716,6 +1716,44 @@ async def get_batches(course: Optional[str] = None):
     return {"batches": result.data or []}
 
 
+@app.post("/api/admin/purge-dead-links")
+async def purge_dead_links(
+    limit: int = Query(default=200, le=500),
+    _admin=Depends(require_admin),
+):
+    """
+    Admin: HEAD-check up to `limit` active external_jobs and mark dead ones is_active=false.
+    Run once manually from the admin panel after noticing dead links.
+    """
+    import httpx
+    rows = (
+        supabase.table("external_jobs")
+        .select("id,apply_url")
+        .eq("is_active", True)
+        .not_.is_("apply_url", "null")
+        .limit(limit)
+        .execute()
+    )
+    dead_ids: list[str] = []
+    async with httpx.AsyncClient(timeout=8, follow_redirects=True, max_redirects=5) as client:
+        for row in rows.data or []:
+            url = row.get("apply_url", "")
+            if not url or not url.startswith("http"):
+                continue
+            try:
+                r = await client.head(url, headers={"User-Agent": "Mozilla/5.0"})
+                if r.status_code in {404, 410, 400, 403, 500, 503}:
+                    dead_ids.append(row["id"])
+            except Exception:
+                pass  # timeout = assume alive
+
+    if dead_ids:
+        supabase.table("external_jobs").update({"is_active": False}).in_("id", dead_ids).execute()
+        logger.info(f"[purge-dead-links] deactivated {len(dead_ids)} jobs")
+
+    return {"checked": len(rows.data or []), "deactivated": len(dead_ids), "dead_ids": dead_ids}
+
+
 @app.post("/api/cron/sync-batches")
 async def cron_sync_batches(x_cron_secret: Optional[str] = Header(default=None)):
     """Daily cron: scrape arivupro.com batch dates and upsert to DB."""

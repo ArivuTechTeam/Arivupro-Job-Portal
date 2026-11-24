@@ -27,7 +27,8 @@ import { useAuth } from './lib/supabase/AuthContext.tsx';
 import {
   JobListing, JobApplication, StudentProfile as StudentProfileType,
 } from './types/index.ts';
-import { CheckCircle2, X, ChevronDown, ChevronUp, Home, Briefcase, User } from 'lucide-react';
+import { CheckCircle2, X, Home, Briefcase, User } from 'lucide-react';
+import { DashboardIcon, JobPostsIcon, StudentsIcon, RecruitersIcon, CompaniesIcon, PlacementCrmIcon, ScraperIcon, SyncedJobsIcon, ProfileIcon } from './components/icons/AdminNavIcons.tsx';
 import { supabase } from './lib/supabase/client.ts';
 import { injectAnimations } from './lib/animations.ts';
 
@@ -126,9 +127,7 @@ export default function App() {
   const [showAdminLogin, setShowAdminLogin] = useState(
     () => window.location.search.includes('admin') || window.location.pathname === '/admin'
   );
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
-    Overview: true, People: true, Listings: true, Placement: true, System: true,
-  });
+  const [adminPendingCount, setAdminPendingCount] = useState(0);
   const [adminSidebarOpen, setAdminSidebarOpen] = useState(false);
   const [recruiterProfileSignal, setRecruiterProfileSignal] = useState(0);
 
@@ -169,6 +168,19 @@ export default function App() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   // The listener is installed once so it can handle browser back events.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Re-fetch applications when JobDetailPage records an external application
+  useEffect(() => {
+    const handler = () => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.access_token) loadStudentData(session.access_token);
+      });
+    };
+    window.addEventListener('arivupro:external-applied', handler);
+    return () => window.removeEventListener('arivupro:external-applied', handler);
+  // loadStudentData is stable (defined outside effect); supabase is module-level
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -458,20 +470,22 @@ export default function App() {
     fetch('/api/applications/mine', {
       headers: { 'Authorization': `Bearer ${token}` },
     })
-      .then(r => r.ok ? r.json() : { applications: [] })
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(d => {
         const apps: JobApplication[] = (d.applications || []).map((a: any) => ({
           id: a.id,
-          jobId: a.job_id || '',
+          jobId: a.job_id || a.external_job_id || '',
           jobTitle: a.job_title || '',
           company: a.company || '',
-          location: '',
+          location: a.location || '',
           studentId: a.student_id || '',
           studentName: a.student_name || '',
           studentRoll: a.student_id || '',
           studentCourse: a.primary_course || '',
           appliedDate: a.created_at || '',
-          status: (a.stage ? a.stage.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) : 'Applied') as JobApplication['status'],
+          status: (a.kind === 'external' ? 'Applied' : (a.stage ? a.stage.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) : 'Applied')) as JobApplication['status'],
+          kind: (a.kind === 'external' ? 'external' : 'internal') as JobApplication['kind'],
+          applyUrl: a.apply_url || undefined,
           aiMatchScore: a.ai_match_score || 0,
           matchGrade: (a.match_grade || 'Moderate') as JobApplication['matchGrade'],
           crmLeadId: a.crm_lead_id || '',
@@ -482,7 +496,7 @@ export default function App() {
         }));
         setApplications(apps);
       })
-      .catch(() => {});
+      .catch((e) => { console.error('[loadStudentData] /api/applications/mine failed:', e); });
 
     // Load saved jobs
     fetch('/api/saved-jobs/mine', {
@@ -590,13 +604,62 @@ export default function App() {
 
   const handleApply = async (job: JobListing) => {
     if (auth.role === 'guest') { setAuthModal({ open: true, mode: 'login', role: 'student' }); return; }
-    if (applications.find(a => a.jobId === job.id)) { showToast('Already applied to this job.'); return; }
 
-    // For scraped jobs — open source URL in new tab
+    // External (scraped) job — open the site immediately (must be synchronous for popup blockers)
     if (job.sourceUrl) {
-      window.open(job.sourceUrl, '_blank');
+      window.open(job.sourceUrl, '_blank', 'noopener');
+      const alreadyTracked = applications.find(a => a.jobId === job.id && a.kind === 'external');
+      if (alreadyTracked) return; // repeat click — just reopen, no duplicate toast/record
+
+      const { siteName: sn } = await import('./lib/siteName.ts');
+      showToast(`Opened on ${sn(job.sourceUrl)}. Complete your application there.`);
+
+      const optimistic: JobApplication = {
+        id: `ext-${Date.now()}`,
+        jobId: job.id,
+        jobTitle: job.title,
+        company: job.company,
+        location: job.location,
+        studentId: student.id,
+        studentName: student.name,
+        studentRoll: student.arivuproStudentId,
+        studentCourse: student.primaryCourse,
+        appliedDate: new Date().toISOString(),
+        status: 'Applied',
+        kind: 'external',
+        applyUrl: job.sourceUrl,
+        aiMatchScore: 0,
+        matchGrade: 'Moderate',
+        crmLeadId: '',
+        crmSyncStatus: 'Synced',
+        assignedCounselor: '',
+        lastUpdated: new Date().toISOString(),
+        timeline: [],
+      };
+      setApplications(prev => [optimistic, ...prev]);
+      setSelectedJob(null);
+
+      try {
+        const { supabase: sb } = await import('./lib/supabase/client');
+        const { data: { session: freshSession } } = await sb.auth.getSession();
+        const token = freshSession?.access_token || studentSessionToken;
+        if (!token) { console.error('[apply/external] no auth token'); return; }
+        const res = await fetch('/api/applications/external', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ external_job_id: job.id }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          console.error('[apply/external] backend error:', res.status, err);
+        }
+      } catch (err) {
+        console.error('[apply/external] network error:', err);
+      }
       return;
     }
+
+    if (applications.find(a => a.jobId === job.id)) { showToast('Already applied to this job.'); return; }
 
     // Profile completeness gate: must be ≥65% and have a resume
     const pct = getProfilePct(student);
@@ -617,7 +680,8 @@ export default function App() {
       studentCourse: student.primaryCourse,
       appliedDate: new Date().toISOString(),
       status: 'Applied',
-      aiMatchScore: Math.floor(70 + Math.random() * 25),
+      kind: 'internal',
+      aiMatchScore: 0,
       matchGrade: 'Strong',
       crmLeadId: `CRM-${Date.now()}`,
       crmSyncStatus: 'Synced',
@@ -626,13 +690,10 @@ export default function App() {
       timeline: [{ stage: 'Applied', timestamp: new Date().toISOString(), note: 'Submitted via ArivuPro Portal — resume + profile forwarded to recruiter' }],
     };
 
-    // Update local state immediately for optimistic UI
     setApplications(prev => [app, ...prev]);
     setSelectedJob(null);
     showToast(`Applied to ${job.title} at ${job.company}!`);
 
-    // Persist to backend — always get a fresh token directly from Supabase so
-    // we don't depend on studentSessionToken state being set yet.
     try {
       const { supabase: sb } = await import('./lib/supabase/client');
       const { data: { session: freshSession } } = await sb.auth.getSession();
@@ -666,7 +727,6 @@ export default function App() {
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         console.error('[apply] backend error:', res.status, err);
-        // If duplicate, that's fine — local state already shows applied
       }
     } catch (err) {
       console.error('[apply] network error:', err);
@@ -1228,7 +1288,7 @@ export default function App() {
 
         {/* ── ADMIN LAYOUT (sidebar + content) ── */}
         {auth.role === 'admin' && (
-          <div style={{ display: 'flex', minHeight: 'calc(100vh - 64px)', background: '#f7fbf9', position: 'relative' }}>
+          <div style={{ display: 'flex', minHeight: 'calc(100vh - 112px)', background: '#f3f4f2', position: 'relative' }}>
 
             {/* Mobile sidebar toggle button */}
             <button
@@ -1236,10 +1296,10 @@ export default function App() {
               style={{
                 display: 'none',
                 position: 'fixed', bottom: 20, left: 20, zIndex: 300,
-                width: 48, height: 48, borderRadius: '50%',
-                background: '#1a7a4a', border: 'none', cursor: 'pointer',
+                width: 44, height: 44, borderRadius: 10,
+                background: '#163d2e', border: 'none', cursor: 'pointer',
                 alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 4px 16px rgba(26,122,74,0.4)',
+                boxShadow: '0 4px 16px rgba(22,61,46,0.4)',
               }}
               className="admin-sidebar-toggle"
               aria-label="Toggle menu"
@@ -1259,129 +1319,99 @@ export default function App() {
             {/* Sidebar */}
             <aside
               className={`admin-sidebar${adminSidebarOpen ? ' admin-sidebar-open' : ''}`}
-              style={{
-                width: 220,
-                flexShrink: 0,
-                background: '#1a7a4a',
-                display: 'flex',
-                flexDirection: 'column',
-              }}>
-              {/* Branding strip */}
-              <div style={{ padding: '22px 20px 18px', borderBottom: '1px solid rgba(255,255,255,0.12)' }}>
-                <div style={{ fontSize: 15, fontWeight: 800, color: '#fff', letterSpacing: '-0.01em' }}>ArivuPro</div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginTop: 3, fontWeight: 500, letterSpacing: '0.03em' }}>Administration</div>
+              style={{ width: 232, flexShrink: 0, background: '#163d2e', display: 'flex', flexDirection: 'column', padding: '16px 12px' }}>
+
+              {/* Brand chip */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 6px 16px', borderBottom: '1px solid rgba(255,255,255,.12)', marginBottom: 8 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 6, background: '#fff', color: '#163d2e', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>AP</div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#fff', lineHeight: 1.2 }}>ArivuPro</div>
+                  <div style={{ fontSize: 12, color: '#a9c4b6', marginTop: 2 }}>Admin console</div>
+                </div>
               </div>
 
-              {/* Nav groups */}
-              <nav style={{ flex: 1, padding: '10px 0', overflowY: 'auto' }}>
-                {([
-                  {
-                    group: 'Overview',
-                    items: [{ id: 'admin-dashboard', label: 'Dashboard' }],
-                  },
-                  {
-                    group: 'People',
-                    items: [
-                      { id: 'admin-students', label: 'Students' },
-                      { id: 'admin-recruiters', label: 'Recruiters' },
-                    ],
-                  },
-                  {
-                    group: 'Listings',
-                    items: [
-                      { id: 'admin-jobs', label: 'Job Postings' },
-                      { id: 'admin-companies', label: 'Companies' },
-                    ],
-                  },
-                  {
-                    group: 'Placement',
-                    items: [{ id: 'crm', label: 'Placement CRM' }],
-                  },
-                  {
-                    group: 'System',
-                    items: [
-                      { id: 'scraper', label: 'Job Scraper' },
-                      { id: 'synced-jobs', label: 'Synced Jobs' },
-                    ],
-                  },
-                  {
-                    group: 'Account',
-                    items: [
-                      { id: 'admin-profile', label: 'My Profile' },
-                    ],
-                  },
-                ] as { group: string; items: { id: NavTab; label: string }[] }[]).map((section) => {
-                  const isOpen = expandedGroups[section.group] !== false;
+              {/* Nav */}
+              <nav style={{ flex: 1 }}>
+                {/* Dashboard (no group label) */}
+                {(() => {
+                  const active = currentTab === 'admin-dashboard';
                   return (
-                    <div key={section.group} style={{ marginBottom: 2 }}>
-                      {/* Group header — collapsible */}
-                      <button
-                        onClick={() => setExpandedGroups(prev => ({ ...prev, [section.group]: !isOpen }))}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          width: '100%',
-                          padding: '8px 16px 5px',
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          fontFamily: 'Manrope, sans-serif',
-                        }}
-                      >
-                        <span style={{
-                          fontSize: 10,
-                          fontWeight: 700,
-                          color: 'rgba(255,255,255,0.55)',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.1em',
-                        }}>
-                          {section.group}
-                        </span>
-                        {isOpen
-                          ? <ChevronUp size={12} color="rgba(255,255,255,0.45)" />
-                          : <ChevronDown size={12} color="rgba(255,255,255,0.45)" />
-                        }
-                      </button>
+                    <button onClick={() => { navigateToTab('admin-dashboard'); setAdminSidebarOpen(false); }} aria-current={active ? 'page' : undefined} className={`adm-nav-btn${active ? ' adm-nav-active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', height: 40, padding: '0 10px', border: 'none', borderRadius: 6, background: active ? 'rgba(255,255,255,.14)' : 'transparent', color: active ? '#fff' : '#d5e2db', fontSize: 14, fontWeight: 600, cursor: 'pointer', textAlign: 'left', fontFamily: 'Manrope, sans-serif', marginBottom: 2 }}>
+                      <span style={{ color: active ? '#fff' : '#9fbcae', flexShrink: 0 }}><DashboardIcon /></span>Dashboard
+                    </button>
+                  );
+                })()}
 
-                      {/* Items */}
-                      {isOpen && section.items.map((item) => {
-                        const active = currentTab === item.id;
-                        return (
-                          <button
-                            key={item.id}
-                            onClick={() => { navigateToTab(item.id); setAdminSidebarOpen(false); }}
-                            style={{
-                              display: 'block',
-                              width: '100%',
-                              padding: '8px 16px',
-                              border: 'none',
-                              background: active ? 'rgba(255,255,255,0.18)' : 'transparent',
-                              cursor: 'pointer',
-                              fontFamily: 'Manrope, sans-serif',
-                              fontSize: 13,
-                              fontWeight: active ? 700 : 400,
-                              color: active ? '#fff' : 'rgba(255,255,255,0.78)',
-                              textAlign: 'left',
-                              borderRadius: 0,
-                              transition: 'background 0.1s',
-                            }}
-                            onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
-                            onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
-                          >
-                            {item.label}
-                          </button>
-                        );
-                      })}
-                    </div>
+                {/* People */}
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#7f9e90', padding: '14px 10px 4px' }}>People</div>
+                {[
+                  { id: 'admin-students' as NavTab, label: 'Students', icon: <StudentsIcon /> },
+                  { id: 'admin-recruiters' as NavTab, label: 'Recruiters', icon: <RecruitersIcon />, badge: adminPendingCount > 0 ? `${adminPendingCount} to approve` : null },
+                ].map(item => {
+                  const active = currentTab === item.id;
+                  return (
+                    <button key={item.id} onClick={() => { navigateToTab(item.id); setAdminSidebarOpen(false); }} aria-current={active ? 'page' : undefined} className={`adm-nav-btn${active ? ' adm-nav-active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', height: 40, padding: '0 10px', border: 'none', borderRadius: 6, background: active ? 'rgba(255,255,255,.14)' : 'transparent', color: active ? '#fff' : '#d5e2db', fontSize: 14, fontWeight: 600, cursor: 'pointer', textAlign: 'left', fontFamily: 'Manrope, sans-serif', marginBottom: 2 }}>
+                      <span style={{ color: active ? '#fff' : '#9fbcae', flexShrink: 0 }}>{item.icon}</span>
+                      {item.label}
+                      {item.badge && <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: '#163d2e', background: '#f5a623', borderRadius: 10, padding: '1px 7px', whiteSpace: 'nowrap' }}>{item.badge}</span>}
+                    </button>
+                  );
+                })}
+
+                {/* Listings */}
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#7f9e90', padding: '14px 10px 4px' }}>Listings</div>
+                {[
+                  { id: 'admin-jobs' as NavTab, label: 'Job postings', icon: <JobPostsIcon /> },
+                  { id: 'admin-companies' as NavTab, label: 'Companies', icon: <CompaniesIcon /> },
+                ].map(item => {
+                  const active = currentTab === item.id;
+                  return (
+                    <button key={item.id} onClick={() => { navigateToTab(item.id); setAdminSidebarOpen(false); }} aria-current={active ? 'page' : undefined} className={`adm-nav-btn${active ? ' adm-nav-active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', height: 40, padding: '0 10px', border: 'none', borderRadius: 6, background: active ? 'rgba(255,255,255,.14)' : 'transparent', color: active ? '#fff' : '#d5e2db', fontSize: 14, fontWeight: 600, cursor: 'pointer', textAlign: 'left', fontFamily: 'Manrope, sans-serif', marginBottom: 2 }}>
+                      <span style={{ color: active ? '#fff' : '#9fbcae', flexShrink: 0 }}>{item.icon}</span>{item.label}
+                    </button>
+                  );
+                })}
+
+                {/* Placement */}
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#7f9e90', padding: '14px 10px 4px' }}>Placement</div>
+                {(() => {
+                  const active = currentTab === 'crm';
+                  return (
+                    <button onClick={() => { navigateToTab('crm'); setAdminSidebarOpen(false); }} aria-current={active ? 'page' : undefined} className={`adm-nav-btn${active ? ' adm-nav-active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', height: 40, padding: '0 10px', border: 'none', borderRadius: 6, background: active ? 'rgba(255,255,255,.14)' : 'transparent', color: active ? '#fff' : '#d5e2db', fontSize: 14, fontWeight: 600, cursor: 'pointer', textAlign: 'left', fontFamily: 'Manrope, sans-serif', marginBottom: 2 }}>
+                      <span style={{ color: active ? '#fff' : '#9fbcae', flexShrink: 0 }}><PlacementCrmIcon /></span>Placement CRM
+                    </button>
+                  );
+                })()}
+
+                {/* System */}
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#7f9e90', padding: '14px 10px 4px' }}>System</div>
+                {[
+                  { id: 'scraper' as NavTab, label: 'Job scraper', icon: <ScraperIcon /> },
+                  { id: 'synced-jobs' as NavTab, label: 'Synced jobs', icon: <SyncedJobsIcon /> },
+                ].map(item => {
+                  const active = currentTab === item.id;
+                  return (
+                    <button key={item.id} onClick={() => { navigateToTab(item.id); setAdminSidebarOpen(false); }} aria-current={active ? 'page' : undefined} className={`adm-nav-btn${active ? ' adm-nav-active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', height: 40, padding: '0 10px', border: 'none', borderRadius: 6, background: active ? 'rgba(255,255,255,.14)' : 'transparent', color: active ? '#fff' : '#d5e2db', fontSize: 14, fontWeight: 600, cursor: 'pointer', textAlign: 'left', fontFamily: 'Manrope, sans-serif', marginBottom: 2 }}>
+                      <span style={{ color: active ? '#fff' : '#9fbcae', flexShrink: 0 }}>{item.icon}</span>{item.label}
+                    </button>
                   );
                 })}
               </nav>
 
               {/* Footer */}
-              <div style={{ padding: '14px 16px', borderTop: '1px solid rgba(255,255,255,0.12)' }}>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{auth.name}</div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{auth.email}</div>
+              <div style={{ marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,.12)', paddingTop: 8 }}>
+                {(() => {
+                  const active = currentTab === 'admin-profile';
+                  return (
+                    <button onClick={() => { navigateToTab('admin-profile'); setAdminSidebarOpen(false); }} aria-current={active ? 'page' : undefined} className={`adm-nav-btn${active ? ' adm-nav-active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', height: 40, padding: '0 10px', border: 'none', borderRadius: 6, background: active ? 'rgba(255,255,255,.14)' : 'transparent', color: active ? '#fff' : '#d5e2db', fontSize: 14, fontWeight: 600, cursor: 'pointer', textAlign: 'left', fontFamily: 'Manrope, sans-serif', marginBottom: 6 }}>
+                      <span style={{ color: active ? '#fff' : '#9fbcae', flexShrink: 0 }}><ProfileIcon /></span>My profile
+                    </button>
+                  );
+                })()}
+                <div style={{ padding: '0 10px 4px' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#e4ede8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{auth.name}</div>
+                  <div style={{ fontSize: 12, color: '#8fae9f', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{auth.email}</div>
+                </div>
               </div>
             </aside>
 
@@ -1459,11 +1489,16 @@ export default function App() {
                     : 'Dashboard'
                   }
                   onNavigate={navigateToTab}
+                  onPendingCountChange={setAdminPendingCount}
                 />
               )}
             </div>
 
             <style>{`
+              .adm-nav-btn:hover { background: rgba(255,255,255,.07) !important; color: #fff !important; }
+              .adm-nav-btn:hover span { color: #fff !important; }
+              .adm-nav-btn:focus-visible { outline: 2px solid #f5a623; outline-offset: 2px; }
+              .adm-nav-active { background: rgba(255,255,255,.14) !important; }
               @media (max-width: 768px) {
                 .admin-sidebar {
                   position: fixed !important;

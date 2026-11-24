@@ -149,6 +149,8 @@ export interface JobApplication {
   studentCourse: string;
   appliedDate: string;
   status: ApplicationStage;
+  kind: 'internal' | 'external';
+  applyUrl?: string;
   aiMatchScore: number;
   matchGrade: 'Excellent' | 'Strong' | 'Moderate' | 'Low';
   matchAnalysis?: {

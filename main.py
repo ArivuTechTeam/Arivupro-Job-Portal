@@ -358,10 +358,13 @@ async def get_jobs(
 
 @app.get("/api/jobs/{job_id}")
 async def get_job(job_id: str):
-    result = supabase.table("jobs").select("*").eq("id", job_id).single().execute()
+    try:
+        result = supabase.table("jobs").select("*").eq("id", job_id).limit(1).execute()
+    except Exception:
+        raise HTTPException(status_code=404, detail="Job not found")
     if not result.data:
         raise HTTPException(status_code=404, detail="Job not found")
-    return result.data
+    return result.data[0]
 
 
 @app.post("/api/jobs", status_code=201)
@@ -412,16 +415,88 @@ async def get_applications(_admin: dict = Depends(require_admin)):
 
 @app.get("/api/applications/mine")
 async def get_my_applications(student: dict = Depends(require_student)):
-    """Return all applications submitted by the authenticated student."""
-    result = (
+    """Return all applications (internal + external) for the authenticated student, newest first."""
+    uid = student["user_id"]
+
+    internal_res = (
         supabase.table("student_leads")
         .select("*")
-        .eq("user_id", student["user_id"])
+        .eq("user_id", uid)
         .order("created_at", desc=True)
         .execute()
     )
-    data = result.data or []
-    return {"total": len(data), "applications": data}
+    internal = [
+        {**row, "kind": "internal"}
+        for row in (internal_res.data or [])
+    ]
+
+    try:
+        external_res = (
+            supabase.table("student_external_applications")
+            .select("*")
+            .eq("user_id", uid)
+            .order("opened_at", desc=True)
+            .execute()
+        )
+        external = [
+            {
+                **row,
+                "kind": "external",
+                "created_at": row.get("opened_at"),
+                "job_title": row.get("job_title"),
+                "company": row.get("company"),
+                "apply_url": row.get("apply_url"),
+            }
+            for row in (external_res.data or [])
+        ]
+    except Exception:
+        # Migration 011 not yet applied — external table doesn't exist yet
+        external = []
+
+    merged = sorted(
+        internal + external,
+        key=lambda r: r.get("created_at") or "",
+        reverse=True,
+    )
+    return {"total": len(merged), "applications": merged}
+
+
+class ExternalApplicationPost(BaseModel):
+    external_job_id: str
+
+
+@app.post("/api/applications/external", status_code=201)
+async def submit_external_application(body: ExternalApplicationPost, student: dict = Depends(require_student)):
+    """Record that a student opened an external job's apply URL."""
+    job_res = (
+        supabase.table("external_jobs")
+        .select("id, title, company, location, apply_url")
+        .eq("id", body.external_job_id)
+        .limit(1)
+        .execute()
+    )
+    if not job_res.data:
+        raise HTTPException(status_code=404, detail="External job not found")
+    job = job_res.data[0]
+
+    record = {
+        "user_id": student["user_id"],
+        "external_job_id": body.external_job_id,
+        "job_title": job.get("title"),
+        "company": job.get("company"),
+        "location": job.get("location"),
+        "apply_url": job.get("apply_url") or "",
+    }
+
+    try:
+        result = (
+            supabase.table("student_external_applications")
+            .upsert(record, on_conflict="user_id,external_job_id")
+            .execute()
+        )
+        return {"message": "External application recorded", "application": result.data[0] if result.data else record}
+    except Exception:
+        raise HTTPException(status_code=503, detail="External applications table not yet created. Run migration 011 in Supabase dashboard.")
 
 
 @app.post("/api/applications", status_code=201)
@@ -1696,10 +1771,13 @@ async def get_external_jobs(
 
 @app.get("/api/external-jobs/{job_id}")
 async def get_external_job(job_id: str):
-    result = supabase.table("external_jobs").select("*").eq("id", job_id).single().execute()
+    try:
+        result = supabase.table("external_jobs").select("*").eq("id", job_id).limit(1).execute()
+    except Exception:
+        raise HTTPException(status_code=404, detail="External job not found")
     if not result.data:
         raise HTTPException(status_code=404, detail="External job not found")
-    return result.data
+    return result.data[0]
 
 # ---------------------------------------------------------------------------
 # ARIVUPRO BATCH DATES — live from arivupro.com scrape

@@ -1,7 +1,6 @@
-import React from 'react';
-import { RefreshCw, FileText, Calendar, User, CheckCircle2, Clock } from 'lucide-react';
-import { AmbientCanvas } from './AmbientCanvas.tsx';
+import React, { useState, useMemo } from 'react';
 import { JobApplication, StudentProfile } from '../types/index.ts';
+import { siteName } from '../lib/siteName.ts';
 
 interface ApplicationTrackerProps {
   applications: JobApplication[];
@@ -10,427 +9,153 @@ interface ApplicationTrackerProps {
   onSelectApplication: (app: JobApplication) => void;
 }
 
-const STAGES = [
-  'Applied',
-  'Recruiter Screen',
-  'Technical Round',
-  'Partner Interview',
-  'Offer Released',
-  'Placed',
-];
-
-function getStageIndex(stage: string): number {
-  return STAGES.indexOf(stage);
+function relativeDate(dateStr: string) {
+  if (!dateStr) return '';
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+  if (diff === 0) return 'today';
+  if (diff === 1) return 'yesterday';
+  if (diff < 7) return `${diff} days ago`;
+  if (diff < 30) return `${Math.floor(diff / 7)}w ago`;
+  return `${Math.floor(diff / 30)}mo ago`;
 }
 
-function getStageColor(stage: string): string {
-  if (stage === 'Placed') return '#1a7a4a';
-  if (stage === 'Offer Released') return '#059669';
-  if (stage === 'Declined') return '#dc2626';
-  if (stage === 'Technical Round' || stage === 'Partner Interview') return '#7c3aed';
-  if (stage === 'Recruiter Screen') return '#1d4ed8';
-  return '#6b7280';
+function initials(company: string) {
+  return company.replace(/[^A-Za-z ]/g, '').split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-}
+const ICON_OK = (
+  <svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }}>
+    <circle cx="10" cy="10" r="9" fill="#1a7a4a" />
+    <path d="M6 10.3l2.6 2.6L14 7.6" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const ICON_EXT = (
+  <svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }}>
+    <path d="M11 3h6v6M17 3l-8 8M14 11v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" fill="none" stroke="#5f6b65" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 
 export const ApplicationTracker: React.FC<ApplicationTrackerProps> = ({
   applications,
-  student,
   onRefresh,
   onSelectApplication,
 }) => {
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<'newest' | 'oldest'>('newest');
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    const list = q
+      ? applications.filter(a =>
+          a.jobTitle.toLowerCase().includes(q) || a.company.toLowerCase().includes(q)
+        )
+      : applications;
+    return [...list].sort((a, b) => {
+      const ta = new Date(a.appliedDate).getTime();
+      const tb = new Date(b.appliedDate).getTime();
+      return sort === 'newest' ? tb - ta : ta - tb;
+    });
+  }, [applications, search, sort]);
+
   return (
-    <div style={{ maxWidth: 1180, margin: '0 auto', padding: '32px 20px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: 24, fontFamily: 'Manrope, sans-serif' }} className="at-root">
+
       {/* Header */}
-      <div
-        className="ap-fade-up ap-d0"
-        style={{
-          background: 'linear-gradient(135deg, #0f2419 0%, #1a7a4a 100%)',
-          borderRadius: 14,
-          padding: '28px 28px 24px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 16,
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        <AmbientCanvas density="low" style={{ opacity: 0.25 }} />
-        <div style={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#fede6d', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
-              ArivuPro Placement Directorate · Real-Time Tracking
-            </div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: '#fff', marginBottom: 6, letterSpacing: '-0.02em' }}>
-              My Applications
-            </h2>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>
-              <span style={{ fontWeight: 700, color: '#fff' }}>{student.name}</span>
-              <span>·</span>
-              <span style={{ fontWeight: 700, color: '#fede6d', fontFamily: 'monospace' }}>{student.arivuproStudentId}</span>
-              <span>·</span>
-              <span>{student.enrollmentCohort}</span>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', zIndex: 1 }}>
-            <div
-              style={{
-                padding: '10px 16px',
-                borderRadius: 10,
-                background: 'rgba(255,255,255,0.1)',
-                border: '1px solid rgba(255,255,255,0.15)',
-              }}
-            >
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', marginBottom: 2 }}>CRM Connection</div>
-              <div
-                style={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: '#86efac',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                <span className="ap-dot-live" style={{ background: '#4ade80' }} />
-                Live Syncing
-              </div>
-            </div>
-            <button
-              onClick={onRefresh}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-                background: 'rgba(255,255,255,0.1)',
-                border: '1px solid rgba(255,255,255,0.15)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-              }}
-              title="Refresh from CRM"
-            >
-              <RefreshCw size={16} />
-            </button>
-          </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, marginBottom: 20 }} className="at-head">
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 4px', color: '#14201a' }}>My applications</h1>
+          <p style={{ color: '#5f6b65', margin: 0, fontSize: 14 }}>{applications.length} job{applications.length !== 1 ? 's' : ''}</p>
         </div>
-
-        {/* Summary stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }} className="tracker-stats">
-          {[
-            { label: 'Total Applied', value: applications.length },
-            { label: 'In Progress', value: applications.filter((a) => !['Placed', 'Declined'].includes(a.status)).length },
-            { label: 'Interviews', value: applications.filter((a) => ['Technical Round', 'Partner Interview'].includes(a.status)).length },
-            { label: 'Offers', value: applications.filter((a) => ['Offer Released', 'Placed'].includes(a.status)).length },
-          ].map((s) => (
-            <div
-              key={s.label}
-              style={{
-                padding: '12px 14px',
-                borderRadius: 10,
-                background: 'rgba(255,255,255,0.08)',
-                border: '1px solid rgba(255,255,255,0.12)',
-              }}
-            >
-              <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', letterSpacing: '-0.03em' }}>{s.value}</div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 2, fontWeight: 600 }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
+        <button
+          onClick={onRefresh}
+          style={{ height: 38, padding: '0 14px', borderRadius: 6, fontWeight: 700, fontSize: 13, cursor: 'pointer', border: '1px solid #dfe3e0', background: '#fff', color: '#33403a', fontFamily: 'Manrope, sans-serif', display: 'flex', alignItems: 'center', gap: 6 }}
+          title="Refresh"
+        >
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M17 10a7 7 0 1 1-1.5-4.4" stroke="#33403a" strokeWidth="1.8" strokeLinecap="round" />
+            <path d="M17 4.5V9h-4.5" stroke="#33403a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Refresh
+        </button>
       </div>
 
-      {/* Applications list */}
-      {applications.length === 0 ? (
-        <div
-          style={{
-            textAlign: 'center',
-            padding: '56px 20px',
-            border: '2px dashed #e5e7eb',
-            borderRadius: 14,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 12,
-          }}
+      {/* Toolbar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 16 }} className="at-toolbar">
+        <input
+          className="at-search"
+          type="search"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search by job or company"
+          aria-label="Search applications"
+          style={{ height: 38, border: '1px solid #dfe3e0', borderRadius: 6, padding: '0 12px', fontSize: 14, fontFamily: 'Manrope, sans-serif', background: '#fff', width: 280 }}
+        />
+        <select
+          value={sort}
+          onChange={e => setSort(e.target.value as 'newest' | 'oldest')}
+          aria-label="Sort"
+          style={{ height: 38, border: '1px solid #dfe3e0', borderRadius: 6, padding: '0 10px', fontSize: 13, fontWeight: 600, fontFamily: 'Manrope, sans-serif', background: '#fff', color: '#33403a', cursor: 'pointer' }}
         >
-          <FileText size={36} color="#d1d5db" />
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#0f2419' }}>No applications yet</div>
-          <p style={{ fontSize: 13, color: '#9ca3af', maxWidth: 320 }}>
-            Browse jobs and apply with your ArivuPro profile to track your placement journey here.
-          </p>
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+        </select>
+      </div>
+
+      {/* Cards */}
+      {filtered.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '56px 20px', border: '2px dashed #dfe3e0', borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" stroke="#d1d5db" strokeWidth="1.5" />
+            <path d="M14 2v6h6M9 13h6M9 17h4" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#14201a' }}>
+            {search ? 'No matching applications' : "You haven't applied to any jobs yet."}
+          </div>
+          {!search && (
+            <p style={{ fontSize: 13, color: '#9ca3af', maxWidth: 320, margin: 0 }}>
+              Browse jobs and apply with your ArivuPro profile to track everything here.
+            </p>
+          )}
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {applications.map((app, i) => {
-            const stageIdx = getStageIndex(app.status);
-            const stageColor = getStageColor(app.status);
-
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }} className="at-cards">
+          {filtered.map((app) => {
+            const isExt = app.kind === 'external';
             return (
-              <div
+              <article
                 key={app.id}
-                className={`ap-card ap-fade-up ap-d${Math.min(i, 7)}`}
-                style={{ padding: '20px 22px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14 }}
+                style={{ background: '#fff', border: '1px solid #dfe3e0', borderRadius: 8, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}
               >
-                {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
+                {/* Top */}
+                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 6, background: '#e7ece9', color: '#3d4a43', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {initials(app.company)}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, color: '#14201a', fontSize: 14, lineHeight: 1.3 }}>{app.jobTitle}</div>
+                    <div style={{ fontSize: 13, color: '#5f6b65', marginTop: 2 }}>{app.company}{app.location ? ` · ${app.location}` : ''}</div>
+                  </div>
+                </div>
+
+                {/* Message */}
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', borderRadius: 6, padding: '10px 12px', fontSize: 13, lineHeight: 1.45, background: isExt ? '#f4f6f5' : '#eef7f1', color: isExt ? '#33403a' : '#14432b' }}>
+                  {isExt ? ICON_EXT : ICON_OK}
                   <div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: '#0f2419', marginBottom: 4, letterSpacing: '-0.01em' }}>
-                      {app.jobTitle}
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 13, color: '#6b7280' }}>
-                      <span style={{ fontWeight: 600, color: '#374151' }}>{app.company}</span>
-                      <span>·</span>
-                      <span>{app.location}</span>
-                      <span>·</span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Clock size={12} />
-                        Applied {formatDate(app.appliedDate)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
-                    {/* Match score */}
-                    <div
-                      style={{
-                        padding: '6px 12px',
-                        borderRadius: 8,
-                        background: '#f0faf4',
-                        border: '1px solid #d7f4ea',
-                        textAlign: 'center',
-                      }}
-                    >
-                      <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 600 }}>AI Match</div>
-                      <div style={{ fontSize: 14, fontWeight: 800, color: '#1a7a4a', fontFamily: 'monospace' }}>
-                        {app.aiMatchScore}%
-                      </div>
-                    </div>
-
-                    {/* CRM badge */}
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 10, color: '#9ca3af' }}>CRM Lead</div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', fontFamily: 'monospace' }}>
-                        {app.crmLeadId}
-                      </div>
-                    </div>
+                    {isExt
+                      ? <><b style={{ fontWeight: 700 }}>Opened on {siteName(app.applyUrl || '')}.</b> Complete your application there.</>
+                      : <><b style={{ fontWeight: 700 }}>Application sent successfully.</b> {app.company} has your profile and resume.</>}
                   </div>
                 </div>
 
-                {/* Stage current status pill */}
-                <div style={{ marginBottom: 12 }}>
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 5,
-                      padding: '5px 12px',
-                      borderRadius: 999,
-                      fontSize: 12,
-                      fontWeight: 700,
-                      background: stageColor + '12',
-                      color: stageColor,
-                      border: `1px solid ${stageColor}30`,
-                    }}
-                  >
-                    {app.status === 'Placed' || app.status === 'Offer Released' ? (
-                      <CheckCircle2 size={12} />
-                    ) : (
-                      <span
-                        style={{
-                          width: 7,
-                          height: 7,
-                          borderRadius: '50%',
-                          background: stageColor,
-                          display: 'inline-block',
-                        }}
-                        className="animate-pulse-dot"
-                      />
-                    )}
-                    {app.status}
-                  </span>
-                  {/* Human-readable status message */}
-                  {app.status === 'Declined' && (
-                    <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 12, color: '#dc2626', fontWeight: 600 }}>
-                      Not shortlisted this time. Every rejection is redirection — keep going, your opportunity is closer than you think! 💪
-                    </div>
-                  )}
-                  {app.status === 'Offer Released' && (
-                    <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 10, background: '#f0fdf4', border: '1px solid #bbf7d0', fontSize: 12, color: '#16a34a', fontWeight: 600 }}>
-                      🎉 Congratulations! The recruiter has accepted your profile. Expect a call from them soon!
-                    </div>
-                  )}
-                  {app.status === 'Recruiter Screen' && (
-                    <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 10, background: '#eff6ff', border: '1px solid #bfdbfe', fontSize: 12, color: '#1d4ed8', fontWeight: 600 }}>
-                      Your profile is being reviewed by the recruiter. Stay tuned!
-                    </div>
-                  )}
+                {/* Footer */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: '#7a857f' }}>
+                  <span>Applied {relativeDate(app.appliedDate)}</span>
+                  {isExt && app.applyUrl
+                    ? <a href={app.applyUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#1a7a4a', fontWeight: 700, fontSize: 12, textDecoration: 'none' }}>Open again ↗</a>
+                    : <button onClick={() => onSelectApplication(app)} style={{ color: '#1a7a4a', fontWeight: 700, fontSize: 12, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'Manrope, sans-serif' }}>View job</button>}
                 </div>
-
-                {/* Stage stepper */}
-                <div style={{ marginBottom: 14 }}>
-                  {/* Desktop */}
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: `repeat(${STAGES.length}, 1fr)`,
-                      gap: 4,
-                    }}
-                    className="stage-stepper-desktop"
-                  >
-                    {STAGES.map((stage, idx) => {
-                      const isCompleted = idx < stageIdx;
-                      const isCurrent = idx === stageIdx;
-                      return (
-                        <div key={stage} style={{ textAlign: 'center' }}>
-                          <div
-                            style={{
-                              height: 4,
-                              borderRadius: 999,
-                              marginBottom: 5,
-                              background: isCompleted
-                                ? '#1a7a4a'
-                                : isCurrent
-                                ? stageColor
-                                : '#e5e7eb',
-                              boxShadow: isCurrent ? `0 0 0 2px ${stageColor}30` : 'none',
-                              transition: 'background 0.2s ease',
-                            }}
-                          />
-                          <div
-                            style={{
-                              fontSize: 9,
-                              fontWeight: isCurrent ? 800 : 500,
-                              color: isCurrent ? '#0f2419' : isCompleted ? '#1a7a4a' : '#9ca3af',
-                              lineHeight: 1.3,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                            }}
-                            title={stage}
-                          >
-                            {stage}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Mobile linear bar */}
-                  <div
-                    className="stage-stepper-mobile"
-                    style={{
-                      display: 'none',
-                      height: 6,
-                      background: '#e5e7eb',
-                      borderRadius: 999,
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <div
-                      style={{
-                        height: '100%',
-                        width: `${Math.max(10, ((stageIdx + 1) / STAGES.length) * 100)}%`,
-                        background: stageColor,
-                        borderRadius: 999,
-                        transition: 'width 0.4s ease',
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Interview date */}
-                {app.interviewDate && (
-                  <div
-                    style={{
-                      padding: '12px 14px',
-                      borderRadius: 10,
-                      background: '#eff6ff',
-                      border: '1px solid #bfdbfe',
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: 10,
-                      marginBottom: 10,
-                    }}
-                  >
-                    <Calendar size={16} color="#1d4ed8" style={{ flexShrink: 0, marginTop: 1 }} />
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#1e40af' }}>
-                        Interview Scheduled: {app.interviewDate}
-                      </div>
-                      {app.interviewNotes && (
-                        <div style={{ fontSize: 12, color: '#3b82f6', marginTop: 2 }}>
-                          {app.interviewNotes}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Counselor + timeline */}
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    paddingTop: 12,
-                    borderTop: '1px solid #f3f4f6',
-                    gap: 12,
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6b7280' }}>
-                    <User size={13} />
-                    <span>Counselor:</span>
-                    <span style={{ fontWeight: 600, color: '#374151' }}>{app.assignedCounselor}</span>
-                  </div>
-
-                  <button
-                    onClick={() => onSelectApplication(app)}
-                    className="btn-ghost"
-                    style={{ fontSize: 12, padding: '5px 10px' }}
-                  >
-                    View Job Details
-                  </button>
-                </div>
-
-                {/* Timeline */}
-                {app.timeline && app.timeline.length > 0 && (
-                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f3f4f6' }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Stage Timeline
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                      {app.timeline.map((entry, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12 }}>
-                          <div
-                            style={{
-                              width: 6,
-                              height: 6,
-                              borderRadius: '50%',
-                              background: '#d1d5db',
-                              marginTop: 5,
-                              flexShrink: 0,
-                            }}
-                          />
-                          <span style={{ color: '#9ca3af', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
-                            {entry.timestamp}
-                          </span>
-                          <span style={{ fontWeight: 700, color: '#374151' }}>{entry.stage}</span>
-                          <span style={{ color: '#9ca3af' }}>·</span>
-                          <span style={{ color: '#6b7280' }}>{entry.note}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+              </article>
             );
           })}
         </div>
@@ -438,9 +163,11 @@ export const ApplicationTracker: React.FC<ApplicationTrackerProps> = ({
 
       <style>{`
         @media (max-width: 640px) {
-          .tracker-stats { grid-template-columns: 1fr 1fr !important; }
-          .stage-stepper-desktop { display: none !important; }
-          .stage-stepper-mobile { display: block !important; }
+          .at-root { padding: 16px 16px 90px !important; }
+          .at-head { flex-direction: column !important; align-items: stretch !important; }
+          .at-toolbar { flex-direction: column !important; align-items: stretch !important; }
+          .at-search { width: 100% !important; }
+          .at-cards { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </div>

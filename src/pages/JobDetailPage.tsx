@@ -126,10 +126,26 @@ export default function JobDetailPage() {
   const handleApply = () => {
     if (!job) return;
     if (job.sourceUrl) {
+      // Open the external site immediately (must be synchronous to avoid popup blockers)
       window.open(job.sourceUrl, '_blank', 'noopener,noreferrer');
+      // Track the click asynchronously — fire and forget
+      (async () => {
+        try {
+          const { supabase: sb } = await import('../lib/supabase/client');
+          const { data: { session } } = await sb.auth.getSession();
+          if (!session?.access_token) return;
+          const res = await fetch('/api/applications/external', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+            body: JSON.stringify({ external_job_id: job.id }),
+          });
+          if (res.ok) window.dispatchEvent(new Event('arivupro:external-applied'));
+        } catch {
+          // non-fatal — the user is already on the external site
+        }
+      })();
     } else {
-      // Recruiter job — pass intent to App.tsx via search param (history.state
-      // gets overwritten by the app's own pushState before it can be read)
+      // Recruiter job — pass intent to App.tsx via search param
       navigate('/jobs?apply=' + job.id);
     }
   };

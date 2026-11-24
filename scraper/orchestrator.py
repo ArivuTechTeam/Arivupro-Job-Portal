@@ -181,7 +181,11 @@ async def upsert_job(supabase: Client, job: NormalizedJob) -> str:
     }
 
     if existing.data:
-        # Update — refresh key fields (don't re-check URL on updates, too slow)
+        # Re-check URL liveness on updates so dead links get deactivated automatically
+        if not await _url_is_live(job.apply_url):
+            supabase.table('external_jobs').update({'is_active': False}).eq('source', job.source).eq('external_id', job.external_id).execute()
+            logger.info(f'[{job.source}] dead URL on re-scrape, deactivated: {job.apply_url}')
+            return 'dead'
         supabase.table('external_jobs').update({
             'title': job.title,
             'company': job.company,

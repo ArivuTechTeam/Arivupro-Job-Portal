@@ -1,7 +1,7 @@
 import os
 import uuid
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 from contextlib import asynccontextmanager
 
@@ -1618,15 +1618,32 @@ FREE_SOURCES = [
     'greenhouse', 'lever', 'jsearch', 'jobspy',
 ]
 
+def expire_old_jobs(days: int = 45) -> int:
+    """Set is_active=false for external_jobs whose posted_at is older than `days` days."""
+    cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+    res = (
+        supabase.table("external_jobs")
+        .update({"is_active": False})
+        .eq("is_active", True)
+        .lt("posted_at", cutoff)
+        .execute()
+    )
+    count = len(res.data or [])
+    if count:
+        logger.info(f"[expire] deactivated {count} jobs older than {days} days")
+    return count
+
+
 @app.get("/api/cron/sync")
 async def cron_sync(secret: str = Query(default="")):
-    """Called by Railway cron daily. Syncs all free sources."""
+    """Called by Railway cron daily. Syncs all free sources then expires old jobs."""
     ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "")
     if not ADMIN_SECRET or secret != ADMIN_SECRET:
         raise HTTPException(status_code=401, detail="Unauthorized")
     import asyncio
+    expired = expire_old_jobs(45)
     asyncio.create_task(run_all_sources(supabase, FREE_SOURCES))
-    return {"message": "Daily cron sync triggered", "sources": FREE_SOURCES}
+    return {"message": "Daily cron sync triggered", "sources": FREE_SOURCES, "expired": expired}
 
 
 @app.get("/api/scrape/dry-run")
@@ -1675,16 +1692,18 @@ async def run_sync_now(body: ScrapeRequest, _admin: dict = Depends(require_admin
 #        -H "x-cron-secret: <your-secret>"
 # ---------------------------------------------------------------------------
 @app.post("/api/cron/sync")
-async def cron_sync(x_cron_secret: Optional[str] = Header(default=None)):
+async def cron_sync_post(x_cron_secret: Optional[str] = Header(default=None)):
     if CRON_SECRET and x_cron_secret != CRON_SECRET:
         raise HTTPException(status_code=401, detail="Invalid cron secret")
-    logger.info("[cron] External cron ping received — starting full sync")
+    logger.info("[cron] External cron ping received — expiring old jobs then syncing")
+    expired = expire_old_jobs(45)
     results = await run_all_sources(supabase)
     total_new = sum(r.created for r in results)
     total_fetched = sum(r.fetched for r in results)
     errors = [{"source": r.source, "error": r.error} for r in results if r.error]
     return {
         "triggered_at": datetime.utcnow().isoformat(),
+        "expired": expired,
         "total_fetched": total_fetched,
         "total_new": total_new,
         "sources_run": len(results),
@@ -1830,6 +1849,40 @@ async def purge_dead_links(
         logger.info(f"[purge-dead-links] deactivated {len(dead_ids)} jobs")
 
     return {"checked": len(rows.data or []), "deactivated": len(dead_ids), "dead_ids": dead_ids}
+
+
+@app.post("/api/admin/expire-old-jobs")
+async def admin_expire_old_jobs(
+    days: int = Query(default=45, ge=7, le=180),
+    _admin=Depends(require_admin),
+):
+    """Mark is_active=false for jobs older than `days` days (default 45)."""
+    expired = expire_old_jobs(days)
+    return {"expired": expired, "older_than_days": days}
+
+
+@app.delete("/api/admin/delete-inactive-jobs")
+async def delete_inactive_jobs(_admin=Depends(require_admin)):
+    """Hard-delete all is_active=false external_jobs (no student applications attached)."""
+    # Only delete rows that have no student_external_applications referencing them
+    inactive = supabase.table("external_jobs").select("id").eq("is_active", False).execute()
+    inactive_ids = [r["id"] for r in (inactive.data or [])]
+    if not inactive_ids:
+        return {"deleted": 0}
+
+    # Exclude any that students have applied to (preserve their history)
+    try:
+        applied = supabase.table("student_external_applications").select("external_job_id").in_("external_job_id", inactive_ids).execute()
+        applied_ids = {r["external_job_id"] for r in (applied.data or [])}
+    except Exception:
+        applied_ids = set()
+
+    safe_to_delete = [i for i in inactive_ids if i not in applied_ids]
+    if safe_to_delete:
+        supabase.table("external_jobs").delete().in_("id", safe_to_delete).execute()
+        logger.info(f"[delete-inactive] hard-deleted {len(safe_to_delete)} jobs")
+
+    return {"deleted": len(safe_to_delete), "preserved_applied": len(applied_ids)}
 
 
 @app.post("/api/cron/sync-batches")

@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { JobListing, JobApplication } from '../types/index.ts';
 import { adminFetch } from '../lib/supabase/auth.ts';
-import { AmbientCanvas } from './AmbientCanvas.tsx';
 
 interface AdminDashboardProps {
   jobs: JobListing[];
   applications: JobApplication[];
   activeTab?: AdminTab;
   onNavigate?: (tab: 'admin-recruiters' | 'admin-dashboard' | 'admin-students' | 'admin-jobs' | 'admin-companies') => void;
+  onPendingCountChange?: (n: number) => void;
 }
 
 type AdminTab = 'Dashboard' | 'All Students' | 'All Jobs' | 'Companies' | 'Recruiters';
@@ -22,13 +22,6 @@ const PIPELINE_STAGE_KEYS = [
   { key: 'placed',           label: 'Placed' },
 ];
 
-const SALARY_BENCHMARKS = [
-  { qualification: 'CA Final', fresher: '7–9 LPA', top: '18 LPA', big4: '62%' },
-  { qualification: 'CMA Final', fresher: '5–7 LPA', top: '14 LPA', big4: '28%' },
-  { qualification: 'CS Final', fresher: '4–6 LPA', top: '12 LPA', big4: '18%' },
-  { qualification: 'ACCA', fresher: '5–8 LPA', top: '16 LPA', big4: '44%' },
-  { qualification: 'CFA L2+', fresher: '8–12 LPA', top: '24 LPA', big4: '31%' },
-];
 
 // ── Badge Helpers ──────────────────────────────────────────────────────────
 
@@ -525,7 +518,7 @@ function DetailItem({ label, value }: { label: string; value: string }) {
 
 // ── Main Component ──────────────────────────────────────────────────────────
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applications, activeTab: propTab, onNavigate }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applications, activeTab: propTab, onNavigate, onPendingCountChange }) => {
   const activeTab: AdminTab = propTab ?? 'Dashboard';
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [studentSearch, setStudentSearch] = useState('');
@@ -539,7 +532,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
   const [liveStats, setLiveStats] = useState<{
     active_jobs?: number;
     total_applications?: number;
-    total_placed?: number;
+    placed?: number;
     active_interviews?: number;
     applications_by_stage?: Record<string, number>;
     offer_released?: number;
@@ -550,11 +543,55 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
   const [jobSearch, setJobSearch] = useState('');
   const [jobStatusFilter, setJobStatusFilter] = useState('');
   const [updatingJobId, setUpdatingJobId] = useState<string | null>(null);
+  const [cleanupBusy, setCleanupBusy] = useState(false);
 
   const showToast = useCallback((msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 2500);
   }, []);
+
+  const handlePurgeDeadLinks = useCallback(async () => {
+    if (cleanupBusy) return;
+    setCleanupBusy(true);
+    try {
+      const res = await adminFetch('/api/admin/purge-dead-links?limit=500', { method: 'POST' });
+      const data = await res.json();
+      showToast(`Checked ${data.checked} links — deactivated ${data.deactivated} dead jobs`);
+    } catch {
+      showToast('Purge failed — check console');
+    } finally {
+      setCleanupBusy(false);
+    }
+  }, [cleanupBusy, showToast]);
+
+  const handleExpireOld = useCallback(async () => {
+    if (cleanupBusy) return;
+    setCleanupBusy(true);
+    try {
+      const res = await adminFetch('/api/admin/expire-old-jobs?days=45', { method: 'POST' });
+      const data = await res.json();
+      showToast(`Expired ${data.expired} jobs older than 45 days`);
+    } catch {
+      showToast('Expire failed — check console');
+    } finally {
+      setCleanupBusy(false);
+    }
+  }, [cleanupBusy, showToast]);
+
+  const handleDeleteInactive = useCallback(async () => {
+    if (cleanupBusy) return;
+    if (!window.confirm('Permanently delete all inactive jobs with no applications? This cannot be undone.')) return;
+    setCleanupBusy(true);
+    try {
+      const res = await adminFetch('/api/admin/delete-inactive-jobs', { method: 'DELETE' });
+      const data = await res.json();
+      showToast(`Deleted ${data.deleted} inactive jobs (preserved ${data.preserved_applied} with applications)`);
+    } catch {
+      showToast('Delete failed — check console');
+    } finally {
+      setCleanupBusy(false);
+    }
+  }, [cleanupBusy, showToast]);
 
   // Fetch live stats for Dashboard tab
   useEffect(() => {
@@ -591,12 +628,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
     }
   }, [activeTab, jobStatusFilter, jobSearch]);
 
-  // Fetch pending count on mount for badge
+  // Fetch pending recruiters on mount — powers both the badge and the dashboard panel
   useEffect(() => {
     adminFetch('/api/recruiters/pending')
       .then(r => r.json())
       .then(d => {
         const all = d.recruiters || [];
+        setLiveRecruiters(all);
         setPendingRecruiterCount(all.filter((r: any) => r.approval_status === 'pending').length);
       })
       .catch(() => {});
@@ -618,6 +656,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
     }
   }, [activeTab]);
 
+  // Notify parent when pending count changes (drives sidebar badge)
+  useEffect(() => {
+    onPendingCountChange?.(pendingRecruiterCount);
+  }, [pendingRecruiterCount, onPendingCountChange]);
+
   const handleRecruiterAction = useCallback(async (recruiterId: string, action: 'approve' | 'reject') => {
     setApprovingId(recruiterId);
     try {
@@ -630,6 +673,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
         setLiveRecruiters(prev => prev.map(r =>
           r.id === recruiterId ? { ...r, approval_status: action === 'approve' ? 'approved' : 'rejected' } : r
         ));
+        setPendingRecruiterCount(c => Math.max(0, c - 1));
         showToast(action === 'approve' ? 'Recruiter approved — email sent' : 'Recruiter rejected');
       } else {
         showToast('Action failed — check console');
@@ -699,149 +743,125 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
 
   return (
     <div style={{ ...styles.wrapper, position: 'relative' }}>
-      <AmbientCanvas density="low" style={{ opacity: 0.35 }} />
       {/* ── Tab Content ── */}
-      <div style={{ ...styles.pageContent, position: 'relative', zIndex: 1 }}>
+      <div style={styles.pageContent}>
 
         {/* TAB 1: DASHBOARD */}
         {activeTab === 'Dashboard' && (
           <>
-            <div className="ap-fade-left ap-d0" style={styles.pageHeader}>
-              <h1 style={styles.pageTitle}>Admin Dashboard</h1>
-              <p style={styles.pageSubtitle}>
-                ArivuPro Placement Operations — Live Overview
-              </p>
-            </div>
-
-            {/* Stat Cards */}
-            <div style={styles.grid4}>
-              {/* Total Jobs */}
-              <div className="ap-card ap-scale-in ap-d1" style={{ ...styles.statCard, borderLeft: '4px solid #f59e0b' }}>
-                <div style={styles.statLabel}>Total Jobs (Live)</div>
-                <div style={styles.statNum}>{liveStats?.active_jobs ?? '—'}</div>
-                <div style={styles.statSub}>Active jobs on portal</div>
-              </div>
-
-              {/* Total Placed */}
-              <div className="ap-card ap-scale-in ap-d2" style={{ ...styles.statCard, borderLeft: '4px solid #1a7a4a' }}>
-                <div style={styles.statLabel}>Total Placed</div>
-                <div style={styles.statNum}>{liveStats?.total_placed ?? '—'}</div>
-                <div style={styles.statSub}>Confirmed placements</div>
-              </div>
-
-              {/* Active Interviews */}
-              <div className="ap-card ap-scale-in ap-d3" style={{ ...styles.statCard, borderLeft: '4px solid #3b82f6' }}>
-                <div style={styles.statLabel}>Active Interviews</div>
-                <div style={styles.statNum}>{liveStats?.active_interviews ?? '—'}</div>
-                <div style={styles.statSub}>In interview stage</div>
-              </div>
-
-              {/* Student Applicants */}
-              <div className="ap-card ap-scale-in ap-d4" style={{ ...styles.statCard, borderLeft: '4px solid #7c3aed' }}>
-                <div style={styles.statLabel}>Student Applicants</div>
-                <div style={styles.statNum}>{liveStats?.total_applications ?? '—'}</div>
-                <div style={styles.statSub}>Total applications submitted</div>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, gap: 16, flexWrap: 'wrap' as const }}>
+              <div>
+                <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f2419', margin: 0, letterSpacing: '-0.01em' }}>Dashboard</h1>
+                <p style={{ fontSize: 13, color: '#6b7280', marginTop: 4, fontWeight: 500 }}>ArivuPro placement operations</p>
               </div>
             </div>
 
-            {/* Pending Recruiters Alert */}
+            {/* Pending Recruiters Notice */}
             {pendingRecruiterCount > 0 && (
-              <div style={{ background: '#fff8e1', border: '1.5px solid #ffe082', borderRadius: 12, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 8, background: '#f3f4f6', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: '#0f2419' }}>
-                      {pendingRecruiterCount} Recruiter{pendingRecruiterCount > 1 ? 's' : ''} Awaiting Approval
-                    </div>
-                    <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>New registrations pending your review</div>
-                  </div>
+              <div style={{ background: '#fff7e6', border: '1px solid #f3d9a4', borderRadius: 10, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' as const, marginBottom: 20 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#7c4a00' }}>
+                  {pendingRecruiterCount} recruiter{pendingRecruiterCount > 1 ? 's' : ''} awaiting approval
+                  <span style={{ fontSize: 12, color: '#a0601a', fontWeight: 500, marginLeft: 8 }}>New registrations pending your review</span>
                 </div>
                 <button
                   onClick={() => onNavigate?.('admin-recruiters')}
-                  style={{ background: '#f57f17', color: '#fff', padding: '8px 20px', borderRadius: 8, fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer', fontFamily: 'Manrope, sans-serif' }}
+                  style={{ background: '#f57f17', color: '#fff', padding: '7px 18px', borderRadius: 7, fontWeight: 700, fontSize: 12, border: 'none', cursor: 'pointer', fontFamily: 'Manrope, sans-serif', whiteSpace: 'nowrap' as const }}
                 >
                   Review Now
                 </button>
               </div>
             )}
 
-            {/* Live Alerts */}
-            <div style={styles.card}>
-              <div style={styles.cardTitle}>
-                <span>Live Alerts</span>
-                <span style={styles.pillSmall}>last 2 hours</span>
-              </div>
-              {liveRecruiters.filter((r: any) => r.approval_status === 'pending').slice(0, 5).map((r: any) => (
-                <div key={r.id} style={styles.alertRow}>
-                  <div style={{ width: 28, height: 28, borderRadius: 6, background: '#f3f4f6', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
-                  </div>
-                  <span style={styles.alertText}>New recruiter signup: <strong>{r.company_name}</strong> ({r.full_name}) — pending verification</span>
-                  <span style={styles.alertTime}>{r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN') : ''}</span>
+            {/* Stat Strip */}
+            <div style={{ background: '#fff', border: '1px solid #dfe3e0', borderRadius: 8, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 24 }}>
+              {[
+                { label: 'Active jobs', value: liveStats?.active_jobs ?? '—', sub: 'Live on portal' },
+                { label: 'Applications', value: liveStats?.total_applications ?? '—', sub: 'Total submitted' },
+                { label: 'In interviews', value: liveStats?.active_interviews ?? '—', sub: 'Interview stages' },
+                { label: 'Placed', value: liveStats?.placed ?? '—', sub: 'Confirmed' },
+              ].map((cell, i) => (
+                <div key={cell.label} style={{ padding: '18px 20px', borderLeft: i > 0 ? '1px solid #dfe3e0' : undefined }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: 6 }}>{cell.label}</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: '#1a7a4a', lineHeight: 1, marginBottom: 4 }}>{cell.value}</div>
+                  <div style={{ fontSize: 11, color: '#9ca3af' }}>{cell.sub}</div>
                 </div>
               ))}
-              {liveRecruiters.filter((r: any) => r.approval_status === 'pending').length === 0 && (
-                <div style={{ color: '#9ca3af', fontSize: 13, padding: '12px 0', textAlign: 'center' }}>No pending alerts</div>
-              )}
             </div>
 
-            {/* Placement Pipeline */}
-            <div style={styles.card}>
-              <div style={styles.cardTitle}>Placement Pipeline</div>
-              {PIPELINE_STAGE_KEYS.map((s) => {
-                const count = stageCounts[s.key] ?? 0;
-                return (
-                  <div key={s.key} style={styles.pipelineRow}>
-                    <div style={styles.pipelineLabel}>{s.label}</div>
-                    <div style={styles.pipelineCount}>{count}</div>
-                    <div style={styles.pipelineBarTrack}>
-                      <div
-                        style={{
-                          height: 8,
-                          borderRadius: 4,
-                          background: '#1a7a4a',
-                          width: `${Math.round((count / maxPipelineCount) * 100)}%`,
-                          transition: 'width 0.4s ease',
-                        }}
-                      />
+            {/* Two-column layout */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+
+              {/* Placement Pipeline */}
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>Placement pipeline</div>
+                {PIPELINE_STAGE_KEYS.map((s) => {
+                  const count = stageCounts[s.key] ?? 0;
+                  return (
+                    <div key={s.key} style={styles.pipelineRow}>
+                      <div style={styles.pipelineLabel}>{s.label}</div>
+                      <div style={styles.pipelineCount}>{count}</div>
+                      <div style={styles.pipelineBarTrack}>
+                        <div
+                          style={{
+                            height: 8,
+                            borderRadius: 4,
+                            background: '#1a7a4a',
+                            width: `${Math.round((count / maxPipelineCount) * 100)}%`,
+                          }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
 
-            {/* Salary Benchmarks Table */}
-            <div style={styles.card}>
-              <div style={styles.cardTitle}>Course-wise Salary Benchmarks</div>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={styles.table}>
-                  <thead>
-                    <tr>
-                      <th style={{ ...styles.th, ...styles.thFirst }}>Qualification</th>
-                      <th style={styles.th}>Fresher Avg LPA</th>
-                      <th style={styles.th}>Top Offer LPA</th>
-                      <th style={{ ...styles.th, ...styles.thLast }}>Big 4 Share</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {SALARY_BENCHMARKS.map((row, i) => (
-                      <tr key={row.qualification}>
-                        <td style={i % 2 === 0 ? styles.td : styles.tdAlt}>
-                          <span style={{ fontWeight: 700, color: '#0f2419' }}>
-                            {row.qualification}
-                          </span>
-                        </td>
-                        <td style={i % 2 === 0 ? styles.td : styles.tdAlt}>{row.fresher}</td>
-                        <td style={i % 2 === 0 ? styles.td : styles.tdAlt}>{row.top}</td>
-                        <td style={i % 2 === 0 ? styles.td : styles.tdAlt}>
-                          <span style={{ fontWeight: 700, color: '#1a7a4a' }}>{row.big4}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              {/* Recruiters Awaiting Approval */}
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>
+                  Recruiters awaiting approval
+                  {pendingRecruiterCount > 0 && (
+                    <span style={{ marginLeft: 8, background: '#fef3c7', color: '#92400e', fontSize: 11, fontWeight: 700, borderRadius: 4, padding: '2px 8px' }}>
+                      {pendingRecruiterCount}
+                    </span>
+                  )}
+                </div>
+                {liveRecruiters.filter((r: any) => r.approval_status === 'pending').length === 0 ? (
+                  <div style={{ color: '#9ca3af', fontSize: 13, padding: '12px 0', textAlign: 'center' as const }}>No pending approvals</div>
+                ) : (
+                  liveRecruiters.filter((r: any) => r.approval_status === 'pending').slice(0, 5).map((r: any) => (
+                    <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderBottom: '1px solid #f3f4f6' }}>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#0f2419' }}>{r.company_name}</div>
+                        <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{r.full_name} · {r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN') : ''}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                        <button
+                          style={styles.btnSmallSolid}
+                          disabled={approvingId === r.id}
+                          onClick={() => handleRecruiterAction(r.id, 'approve')}
+                        >
+                          {approvingId === r.id ? '…' : 'Approve'}
+                        </button>
+                        <button
+                          style={styles.btnSmallRed}
+                          disabled={approvingId === r.id}
+                          onClick={() => handleRecruiterAction(r.id, 'reject')}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+                {liveRecruiters.filter((r: any) => r.approval_status === 'pending').length > 5 && (
+                  <button
+                    style={{ ...styles.btnSmallOutline, marginTop: 10, width: '100%', justifyContent: 'center' }}
+                    onClick={() => onNavigate?.('admin-recruiters')}
+                  >
+                    View all →
+                  </button>
+                )}
               </div>
             </div>
           </>
@@ -983,13 +1003,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ jobs, applicatio
                 <h1 style={styles.pageTitle}>All Jobs</h1>
                 <p style={styles.pageSubtitle}>Manage every listing in the portal</p>
               </div>
-              <button
-                className="btn-primary"
-                style={{ padding: '9px 20px', fontSize: 13 }}
-                onClick={() => showToast('Coming soon')}
-              >
-                + New Job
-              </button>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  style={{ padding: '8px 14px', fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', color: '#374151', cursor: cleanupBusy ? 'not-allowed' : 'pointer', opacity: cleanupBusy ? 0.6 : 1 }}
+                  onClick={handlePurgeDeadLinks}
+                  disabled={cleanupBusy}
+                  title="HEAD-check up to 500 active external jobs and deactivate dead links"
+                >
+                  {cleanupBusy ? '…' : '🔗 Purge dead links'}
+                </button>
+                <button
+                  style={{ padding: '8px 14px', fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', color: '#374151', cursor: cleanupBusy ? 'not-allowed' : 'pointer', opacity: cleanupBusy ? 0.6 : 1 }}
+                  onClick={handleExpireOld}
+                  disabled={cleanupBusy}
+                  title="Deactivate all external jobs older than 45 days"
+                >
+                  {cleanupBusy ? '…' : '📅 Expire 45d+ jobs'}
+                </button>
+                <button
+                  style={{ padding: '8px 14px', fontSize: 12, borderRadius: 6, border: '1px solid #fca5a5', background: '#fff', color: '#dc2626', cursor: cleanupBusy ? 'not-allowed' : 'pointer', opacity: cleanupBusy ? 0.6 : 1 }}
+                  onClick={handleDeleteInactive}
+                  disabled={cleanupBusy}
+                  title="Permanently delete all inactive jobs with no student applications"
+                >
+                  {cleanupBusy ? '…' : '🗑 Delete inactive'}
+                </button>
+              </div>
             </div>
 
             {/* Filter Bar */}

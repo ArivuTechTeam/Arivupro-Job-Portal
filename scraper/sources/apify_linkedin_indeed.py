@@ -1,10 +1,11 @@
 """
-Apify — LinkedIn + Indeed Jobs Scraper
-Actor: cheap_scraper/linkedin-job-scraper (LinkedIn) + valig/indeed-jobs-scraper (Indeed)
-Single module that runs both actors concurrently and merges results.
-Pricing: LinkedIn ~$0.35–0.70/1,000 (57,991 users, 99.9% success) · Indeed ~$0.07–0.10/1,000 (42,076 users, 100% success).
-Free tier: included on Apify free plan.
-Why: Deepest LinkedIn/Indeed coverage — JobSpy has rate-limit issues at scale.
+Apify — LinkedIn Jobs Scraper (LinkedIn only)
+Actor: cheap_scraper/linkedin-job-scraper
+Indeed coverage is provided by the free JobSpy source; the valig/indeed-jobs-scraper actor
+has been removed to cut Apify costs (2026-11-25).
+Pricing: LinkedIn ~$0.35–0.70/1,000 (57,991 users, 99.9% success).
+Runs every 2 weeks (skip guard in orchestrator). Max 25 items per search.
+Why: Deepest LinkedIn coverage for MNC/Big4/GCC roles — JobSpy has rate-limit issues at scale.
 """
 import os
 import re
@@ -20,33 +21,24 @@ from scraper.parse_utils import extract_stipend, logo_url_from_company
 logger = logging.getLogger(__name__)
 
 LINKEDIN_ACTOR_ID = os.getenv("APIFY_LINKEDIN_ACTOR_ID", "cheap_scraper/linkedin-job-scraper")
-INDEED_ACTOR_ID = os.getenv("APIFY_INDEED_ACTOR_ID", "valig/indeed-jobs-scraper")
+# INDEED_ACTOR_ID removed — Indeed coverage now provided by free JobSpy source.
 APIFY_BASE = "https://api.apify.com/v2"
 
-# Shared query list — used for both LinkedIn and Indeed
+# 8 LinkedIn-only queries: MNC / Big4 / GCC / international roles.
+# These are intentionally different from apify_naukri queries (which cover Indian-board roles).
+# Old list (20 queries): audit associate, accounts executive, financial analyst, tax associate,
+#   internal audit, FP&A, cost accountant, company secretary, ACCA, CFA, US CPA, credit analyst,
+#   compliance officer, equity research, shared services, Big4 audit, CA articleship, CMA training,
+#   finance internship, management trainee.
 SEARCH_QUERIES = [
-    # ── Full-time roles ────────────────────────────────────────────────────
-    {"query": "audit associate fresher",                "courses": ["CA"]},
-    {"query": "accounts executive fresher",             "courses": ["CA", "B.Com"]},
-    {"query": "financial analyst fresher",              "courses": ["CA", "CFA"]},
-    {"query": "tax associate fresher",                  "courses": ["CA"]},
-    {"query": "internal audit associate fresher",       "courses": ["CA"]},
-    {"query": "FP&A analyst fresher",                   "courses": ["CA", "CMA India"]},
-    {"query": "cost accountant fresher",                "courses": ["CMA India"]},
-    {"query": "company secretary fresher",              "courses": ["CS"]},
-    {"query": "ACCA fresher audit",                     "courses": ["ACCA"]},
-    {"query": "CFA level 1 fresher",                    "courses": ["CFA"]},
-    {"query": "US CPA fresher GCC India",               "courses": ["CPA US"]},
-    {"query": "credit analyst fresher",                 "courses": ["CA", "CFA"]},
-    {"query": "compliance officer fresher",             "courses": ["CS", "CA"]},
-    {"query": "equity research analyst fresher",        "courses": ["CFA"]},
-    {"query": "shared services finance fresher",        "courses": ["CA", "CMA India", "B.Com"]},
-    {"query": "audit associate Big 4 India",            "courses": ["CA"]},
-    # ── Articleship / internship / trainee ────────────────────────────────
-    {"query": "CA articleship vacancy India",           "courses": ["CA"]},
-    {"query": "CMA industrial training India",          "courses": ["CMA India"]},
-    {"query": "finance internship India",               "courses": ["CA", "CMA India", "ACCA", "B.Com"]},
-    {"query": "management trainee finance India",       "courses": ["CA", "CMA India"]},
+    {"query": "Big 4 audit associate India",                "courses": ["CA", "ACCA"]},
+    {"query": "GCC finance analyst fresher India",          "courses": ["CA", "CMA India", "ACCA"]},
+    {"query": "MNC financial reporting analyst India",      "courses": ["CA", "ACCA"]},
+    {"query": "ACCA finance analyst multinational India",   "courses": ["ACCA"]},
+    {"query": "CFA analyst investment banking India",       "courses": ["CFA"]},
+    {"query": "US CPA accounting GCC India",                "courses": ["CPA US"]},
+    {"query": "US CMA management accountant MNC India",     "courses": ["US CMA"]},
+    {"query": "transfer pricing analyst fresher India",     "courses": ["CA", "CPA US"]},
 ]
 
 SENIOR_RE = re.compile(
@@ -128,12 +120,15 @@ async def _run_actor(api_token: str, actor_id: str, payload: dict, timeout_secs:
 
 
 async def _fetch_linkedin(api_token: str, q: dict, max_results: int) -> tuple[dict, list[dict], str]:
+    # TODO: verify publishedAt ("r604800") and experienceLevel (["Entry level"]) against
+    # https://apify.com/cheap_scraper/linkedin-job-scraper/input-schema before first paid run
     payload = {
         "keywords": q["query"],
         "location": "India",
         "maxItems": max_results,
         "includeDescription": True,
-        "experienceLevel": "ENTRY_LEVEL",
+        "experienceLevel": ["Entry level"],
+        "publishedAt": "r604800",
     }
     try:
         items = await _run_actor(api_token, LINKEDIN_ACTOR_ID, payload)
@@ -141,21 +136,6 @@ async def _fetch_linkedin(api_token: str, q: dict, max_results: int) -> tuple[di
     except Exception as e:
         logger.warning(f"[apify_li_indeed] LinkedIn query '{q['query']}' failed: {e}")
         return q, [], "linkedin"
-
-
-async def _fetch_indeed(api_token: str, q: dict, max_results: int) -> tuple[dict, list[dict], str]:
-    payload = {
-        "keyword": q["query"],
-        "location": "India",
-        "maxItems": max_results,
-        "includeDescription": True,
-    }
-    try:
-        items = await _run_actor(api_token, INDEED_ACTOR_ID, payload)
-        return q, items, "indeed"
-    except Exception as e:
-        logger.warning(f"[apify_li_indeed] Indeed query '{q['query']}' failed: {e}")
-        return q, [], "indeed"
 
 
 def _normalize(item: dict, q: dict, platform: str) -> NormalizedJob | None:
@@ -217,21 +197,12 @@ async def fetch() -> list[NormalizedJob]:
         async with sem:
             return await _fetch_linkedin(api_token, q, max_results)
 
-    async def _bounded_indeed(q):
-        async with sem:
-            return await _fetch_indeed(api_token, q, max_results)
-
-    li_results, indeed_results = await asyncio.gather(
-        asyncio.gather(*[_bounded_li(q) for q in SEARCH_QUERIES]),
-        asyncio.gather(*[_bounded_indeed(q) for q in SEARCH_QUERIES]),
-    )
-
-    all_raw = list(li_results) + list(indeed_results)
+    li_results = await asyncio.gather(*[_bounded_li(q) for q in SEARCH_QUERIES])
 
     seen: set[str] = set()
     jobs: list[NormalizedJob] = []
 
-    for q, items, platform in all_raw:
+    for q, items, platform in li_results:
         for item in items:
             job = _normalize(item, q, platform)
             if not job:
@@ -239,12 +210,11 @@ async def fetch() -> list[NormalizedJob]:
             if job.external_id in seen:
                 continue
             seen.add(job.external_id)
-            # course detection (async, run after dedup)
             jobs.append(job)
 
     # AI course detection
     for job in jobs:
         job.courses = await detect_courses(job.title, job.description or '') or job.courses
 
-    logger.info(f"[apify_li_indeed] Total fetched: {len(jobs)} jobs")
+    logger.info(f"[apify_li_indeed] Total fetched: {len(jobs)} jobs (LinkedIn only)")
     return jobs

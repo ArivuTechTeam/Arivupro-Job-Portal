@@ -33,51 +33,30 @@ SEARCH_KEYWORDS = [
     "accounts executive", "finance analyst", "financial reporting",
 ]
 
-# Target employer career pages — Big 4 + major CA/finance employers in India
-# ATS type: workday, greenhouse, lever, ashby, workable, icims
+# Target employer career pages (10 companies, monthly run).
+# Accenture and Genpact removed — now covered by the free Workday scraper (workday.py).
+# PwC removed — pwc.in/careers is a marketing page; SAP SuccessFactors underneath (not supported).
+# URLs changed from marketing pages to real ATS-system addresses where known.
+# IMPORTANT: addresses marked UNVERIFIED have not been tested with a live actor run.
+# User must approve a test run (maxJobsPerCompany: 5) before activating this source.
 TARGET_EMPLOYERS = [
-    # Big 4
-    {"name": "Deloitte India",         "url": "https://jobs.deloitte.com",         "ats": "workday"},
-    {"name": "EY India",               "url": "https://careers.ey.com",            "ats": "workday"},
-    {"name": "KPMG India",             "url": "https://kpmg.com/in/en/careers",    "ats": "workday"},
-    {"name": "PwC India",              "url": "https://pwc.in/careers",            "ats": "workday"},
-    # Mid-tier
-    {"name": "Grant Thornton India",   "url": "https://careers.grantthornton.in",  "ats": "greenhouse"},
-    {"name": "BDO India",              "url": "https://bdo.in/careers",            "ats": "workday"},
-    {"name": "RSM India",              "url": "https://rsm.in/careers",            "ats": "lever"},
-    {"name": "Mazars India",           "url": "https://mazars.in/careers",         "ats": "greenhouse"},
-    # Banks / BFSI
-    {"name": "HSBC India",             "url": "https://mycareer.hsbc.com/en_GB/ext/",             "ats": "workday"},
-    {"name": "Axis Bank",              "url": "https://careers.axisbank.com",      "ats": "workday"},
-    {"name": "ICICI Bank",             "url": "https://careers.icicibank.com",     "ats": "workday"},
-    # GCCs / MNCs
-    {"name": "Goldman Sachs India",    "url": "https://www.goldmansachs.com/careers", "ats": "workday"},
-    {"name": "JP Morgan India",        "url": "https://careers.jpmorgan.com",      "ats": "workday"},
-    {"name": "Barclays India",         "url": "https://home.barclays/careers",     "ats": "workday"},
-    {"name": "Morgan Stanley India",   "url": "https://careers.morganstanley.com", "ats": "workday"},
-    # Indian IT / GCCs
-    {"name": "Accenture India",          "url": "https://www.accenture.com/in-en/careers", "ats": "workday"},
-    {"name": "Infosys BPM",              "url": "https://www.infosys.com/careers/",        "ats": "workday"},
-    {"name": "Wipro",                    "url": "https://careers.wipro.com",               "ats": "workday"},
-    # BPO / Finance outsourcing
-    {"name": "Genpact",                  "url": "https://www.genpact.com/careers",         "ats": "workday"},
-    {"name": "EXL Service",              "url": "https://www.exlservice.com/careers",      "ats": "workday"},
-    {"name": "WNS Global Services",      "url": "https://www.wns.com/careers",             "ats": "workday"},
-    # Banks
-    {"name": "Kotak Mahindra Bank",      "url": "https://careers.kotak.com",              "ats": "workday"},
-    {"name": "Deutsche Bank India",      "url": "https://careers.db.com",                 "ats": "workday"},
-    {"name": "Standard Chartered India", "url": "https://www.sc.com/en/careers",          "ats": "workday"},
-    # Fintech / Startups
-    {"name": "Zerodha",                  "url": "https://zerodha.com/careers",             "ats": "greenhouse"},
-    {"name": "Groww",                    "url": "https://jobs.lever.co/groww",             "ats": "lever"},
-    {"name": "Razorpay",                 "url": "https://jobs.lever.co/razorpay",          "ats": "lever"},
-    {"name": "PhonePe",                  "url": "https://jobs.lever.co/phonepe",           "ats": "lever"},
-    # Additional high-value employers
-    {"name": "Citi India",               "url": "https://jobs.citi.com",                   "ats": "workday"},
-    {"name": "ICICI Prudential",         "url": "https://www.iciciprulife.com/careers",    "ats": "workday"},
-    {"name": "Bajaj Finserv",            "url": "https://www.bajajfinserv.in/careers",     "ats": "workday"},
-    {"name": "Cognizant",                "url": "https://careers.cognizant.com",           "ats": "workday"},
-    {"name": "Capgemini India",          "url": "https://www.capgemini.com/in-en/careers", "ats": "workday"},
+    # Big 4 India — UNVERIFIED addresses; test before activating
+    # Deloitte India uses southasiacareers.deloitte.com (marketing, underlying ATS unknown)
+    {"name": "Deloitte India",         "url": "https://southasiacareers.deloitte.com/"},  # UNVERIFIED
+    # EY India uses SAP SuccessFactors (may not be supported by actor); test first
+    {"name": "EY India",               "url": "https://careers.ey.com/ey/jobs"},          # UNVERIFIED
+    # KPMG India removed — uses Oracle Recruiting Cloud (no public API, all Workday variants return 422).
+    # Big 4 KPMG India jobs covered via Naukri (apify_naukri.py SEARCH_QUERIES).
+    # Mid-tier (Greenhouse / Lever — well-supported by actor)
+    {"name": "Grant Thornton India",   "url": "https://jobs.lever.co/grantthorntonin"},   # UNVERIFIED
+    {"name": "RSM India",              "url": "https://jobs.lever.co/rsm"},               # UNVERIFIED
+    # Banks / GCCs — Lever / Greenhouse addresses (well-supported)
+    {"name": "Groww",                  "url": "https://jobs.lever.co/groww"},
+    {"name": "Razorpay",               "url": "https://jobs.lever.co/razorpay"},
+    {"name": "PhonePe",                "url": "https://jobs.lever.co/phonepe"},
+    # Banks using iCIMS / Workday — UNVERIFIED
+    {"name": "Deutsche Bank India",    "url": "https://careers.db.com"},                  # UNVERIFIED
+    {"name": "Kotak Mahindra Bank",    "url": "https://careers.kotak.com"},               # UNVERIFIED
 ]
 
 SENIOR_RE = re.compile(
@@ -154,7 +133,7 @@ async def _fetch_employer(api_token: str, employer: dict) -> tuple[dict, list[di
         "queries": [employer["url"]],
         "keywords": SEARCH_KEYWORDS,
         "locations": ["India"],
-        "maxJobsPerCompany": int(os.getenv("APIFY_CAREER_MAX_PER_EMPLOYER", "50")),
+        "maxJobsPerCompany": int(os.getenv("APIFY_CAREER_MAX_PER_EMPLOYER", "25")),
         "includeDescription": True,
     }
     try:
@@ -240,7 +219,7 @@ async def fetch() -> list[NormalizedJob]:
                 is_remote=bool(item.get("isRemote") or item.get("remote")),
                 posted_at=_parse_date(item.get("postedAt") or item.get("datePosted")),
                 logo_url=logo_url_from_company(employer["name"], employer.get("url", "")),
-                raw_data=f'{{"employer":"{employer["name"][:40]}","ats":"{employer["ats"]}"}}'
+                raw_data=f'{{"employer":"{employer["name"][:40]}"}}'
             ))
 
     logger.info(f"[apify_career] Total fetched: {len(jobs)} jobs from {len(targets)} employers")

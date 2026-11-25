@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase/client.ts';
-import { AmbientCanvas } from './AmbientCanvas.tsx';
 import {
-  LayoutDashboard, Briefcase, Users, PlusCircle,
   ChevronDown, Download, Eye, CheckCircle2, ArrowLeft,
-  FileText, Phone, Mail, GraduationCap, User,
+  FileText, Phone, Mail, GraduationCap,
 } from 'lucide-react';
+import { DashboardIcon, JobPostsIcon, ApplicantsIcon, ProfileIcon } from './icons/RecruiterNavIcons.tsx';
 
 interface RecruiterDashboardProps {
   recruiterName: string;
@@ -454,14 +453,17 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
   const jobApplicants = viewingJobId ? normalizedApplicants.filter((a: any) => a.jobId === viewingJobId) : normalizedApplicants;
   const viewingJob = jobs.find((j: any) => j.id === viewingJobId);
 
-  // Sidebar nav items
-  const NAV = [
-    { id: 'dashboard' as RecruiterPage, icon: <LayoutDashboard size={16} />, label: 'Dashboard' },
-    { id: 'jobs'      as RecruiterPage, icon: <Briefcase size={16} />,       label: 'My Job Posts' },
-    { id: 'applicants'as RecruiterPage, icon: <Users size={16} />,           label: 'Applicants' },
-    { id: 'post'      as RecruiterPage, icon: <PlusCircle size={16} />,      label: 'Post a Job' },
-    { id: 'profile'   as RecruiterPage, icon: <User size={16} />,            label: 'My Profile' },
-  ];
+  // Counts for sidebar badges
+  const activeJobCount = jobs.filter((j: any) => j.status === 'active').length;
+  const newApplicantCount = normalizedApplicants.filter((ap: any) => getStage(ap.id, ap.stage) === 'Applied').length;
+  const interviewCount = normalizedApplicants.filter((ap: any) => {
+    const s = getStage(ap.id, ap.stage);
+    return s === 'Technical Round' || s === 'Partner Interview';
+  }).length;
+  const offersCount = normalizedApplicants.filter((ap: any) => getStage(ap.id, ap.stage) === 'Offer Released').length;
+
+  // Company initials: prefer company name, fall back to recruiter name, then email
+  const companyInitials = (companyName || recruiterName || recruiterEmail || 'RX').slice(0, 2).toUpperCase();
 
   const navTo = (p: RecruiterPage) => {
     setPage(p);
@@ -472,7 +474,7 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
   };
 
   return (
-    <div style={{ display: 'flex', minHeight: 'calc(100vh - 112px)', background: '#f7f7f7' }}>
+    <div style={{ display: 'flex', minHeight: 'calc(100vh - 112px)', background: '#f3f4f2', alignItems: 'stretch', position: 'relative' }}>
 
       {/* Toast */}
       {toast && (
@@ -481,11 +483,11 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
         </div>
       )}
 
-      {/* Mobile hamburger button */}
+      {/* Mobile hamburger — inline in the page, not fixed */}
       <button
         className="rec-hamburger"
         onClick={() => setSidebarOpen(o => !o)}
-        style={{ display: 'none', position: 'fixed', top: 70, left: 12, zIndex: 400, width: 38, height: 38, borderRadius: 8, background: '#1a7a4a', border: 'none', cursor: 'pointer', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 10px rgba(26,122,74,0.35)' }}
+        style={{ display: 'none', position: 'absolute', top: 12, left: 12, zIndex: 400, width: 38, height: 38, borderRadius: 8, background: '#163d2e', border: 'none', cursor: 'pointer', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 10px rgba(22,61,46,0.35)' }}
         aria-label="Toggle menu"
       >
         <span style={{ color: '#fff', fontSize: 18, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -570,116 +572,153 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
       )}
 
       {/* ── SIDEBAR ─────────────────────────────────────────────── */}
-      <aside className={`ap-fade-left ap-d0 rec-sidebar${sidebarOpen ? ' rec-sidebar-open' : ''}`} style={{ width: 220, background: '#fff', borderRight: '1px solid #e5e7eb', flexShrink: 0, padding: '24px 0', display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <aside className={`rec-sidebar${sidebarOpen ? ' rec-sidebar-open' : ''}`} style={{ width: 232, background: '#163d2e', flexShrink: 0, padding: '16px 12px', display: 'flex', flexDirection: 'column' }}>
+
         {/* Company chip */}
-        <div style={{ padding: '0 16px 20px', borderBottom: '1px solid #f3f4f6', marginBottom: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 8, background: '#1a7a4a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 13, flexShrink: 0 }}>
-              {(companyName || '??').slice(0, 2).toUpperCase()}
-            </div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#0f2419', lineHeight: 1.2 }}>{companyName}</div>
-              <span className="badge badge-green" style={{ fontSize: '0.55rem', marginTop: 2 }}>Verified</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 6px 16px' }}>
+          <div style={{ width: 34, height: 34, borderRadius: 6, background: '#fff', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+            {logoPreview
+              ? <img src={logoPreview} alt="logo" style={{ width: 34, height: 34, objectFit: 'contain', borderRadius: 6 }} />
+              : <span style={{ color: '#163d2e', fontWeight: 700, fontSize: 13 }}>{companyInitials}</span>
+            }
+          </div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14, color: '#fff', lineHeight: 1.2 }}>{companyName || recruiterName}</div>
+            <div style={{ fontSize: 12, color: '#a9c4b6', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+              <svg width="12" height="12" viewBox="0 0 20 20" aria-hidden="true">
+                <path fill="#7fd1a4" d="M10 1.5l2.2 1.6 2.7-.1.8 2.6 2.2 1.6-.9 2.6.9 2.6-2.2 1.6-.8 2.6-2.7-.1L10 18.5l-2.2-1.6-2.7.1-.8-2.6-2.2-1.6.9-2.6-.9-2.6 2.2-1.6.8-2.6 2.7.1z"/>
+                <path d="M6.8 10.2l2.1 2.1 4.3-4.4" fill="none" stroke="#163d2e" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Verified employer
             </div>
           </div>
         </div>
 
-        {/* Section label */}
-        <div style={{ padding: '0 16px 6px', fontSize: 10, fontWeight: 800, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Manage</div>
+        {/* Post a job CTA */}
+        <button
+          onClick={() => navTo('post')}
+          className="rec-post-btn"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', height: 40, border: 'none', borderRadius: 6, background: '#fff', color: '#163d2e', fontWeight: 700, fontSize: 14, cursor: 'pointer', marginBottom: 14, fontFamily: 'Manrope, sans-serif', boxShadow: page === 'post' ? 'inset 0 0 0 2px #f5a623' : 'none' }}
+        >
+          <svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M10 4v12M4 10h12" stroke="#163d2e" strokeWidth="2.2" strokeLinecap="round"/>
+          </svg>
+          Post a job
+        </button>
 
-        {NAV.map(n => {
-          const active = page === n.id;
-          return (
-            <button
-              key={n.id}
-              onClick={() => navTo(n.id)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                margin: '1px 10px', padding: '10px 12px', borderRadius: 8,
-                border: 'none', cursor: 'pointer', textAlign: 'left',
-                fontFamily: 'Manrope, sans-serif', fontSize: 13, fontWeight: active ? 700 : 600,
-                background: active ? '#f0faf4' : 'transparent',
-                color: active ? '#1a7a4a' : '#6b7280',
-                transition: 'all 0.15s',
-              }}
-              onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = '#f9fafb'; }}
-              onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
-            >
-              <span style={{ color: active ? '#1a7a4a' : '#9ca3af' }}>{n.icon}</span>
-              {n.label}
-            </button>
-          );
-        })}
+        {/* Nav items */}
+        <button onClick={() => navTo('dashboard')} aria-current={page === 'dashboard' ? 'page' : undefined} className={`rec-nav-btn${page === 'dashboard' ? ' rec-nav-active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', height: 42, padding: '0 10px', border: 'none', borderRadius: 6, background: page === 'dashboard' ? 'rgba(255,255,255,.14)' : 'transparent', color: page === 'dashboard' ? '#fff' : '#d5e2db', fontSize: 14, fontWeight: 600, cursor: 'pointer', textAlign: 'left', fontFamily: 'Manrope, sans-serif' }}>
+          <span style={{ color: page === 'dashboard' ? '#fff' : '#9fbcae', flexShrink: 0 }}><DashboardIcon /></span>
+          Dashboard
+        </button>
+
+        <button onClick={() => navTo('jobs')} aria-current={page === 'jobs' ? 'page' : undefined} className={`rec-nav-btn${page === 'jobs' ? ' rec-nav-active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', height: 42, padding: '0 10px', border: 'none', borderRadius: 6, background: page === 'jobs' ? 'rgba(255,255,255,.14)' : 'transparent', color: page === 'jobs' ? '#fff' : '#d5e2db', fontSize: 14, fontWeight: 600, cursor: 'pointer', textAlign: 'left', fontFamily: 'Manrope, sans-serif' }}>
+          <span style={{ color: page === 'jobs' ? '#fff' : '#9fbcae', flexShrink: 0 }}><JobPostsIcon /></span>
+          Job posts
+          {activeJobCount > 0 && <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 700, color: '#a9c4b6' }}>{activeJobCount}</span>}
+        </button>
+
+        <button onClick={() => navTo('applicants')} aria-current={page === 'applicants' ? 'page' : undefined} className={`rec-nav-btn${page === 'applicants' ? ' rec-nav-active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', height: 42, padding: '0 10px', border: 'none', borderRadius: 6, background: page === 'applicants' ? 'rgba(255,255,255,.14)' : 'transparent', color: page === 'applicants' ? '#fff' : '#d5e2db', fontSize: 14, fontWeight: 600, cursor: 'pointer', textAlign: 'left', fontFamily: 'Manrope, sans-serif' }}>
+          <span style={{ color: page === 'applicants' ? '#fff' : '#9fbcae', flexShrink: 0 }}><ApplicantsIcon /></span>
+          Applicants
+          {newApplicantCount > 0 && <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: '#163d2e', background: '#f5a623', borderRadius: 10, padding: '1px 7px' }}>{newApplicantCount} new</span>}
+        </button>
+
+        <hr style={{ height: 1, background: 'rgba(255,255,255,.12)', border: 'none', margin: '10px 4px' }} />
+
+        <button onClick={() => navTo('profile')} aria-current={page === 'profile' ? 'page' : undefined} className={`rec-nav-btn${page === 'profile' ? ' rec-nav-active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', height: 42, padding: '0 10px', border: 'none', borderRadius: 6, background: page === 'profile' ? 'rgba(255,255,255,.14)' : 'transparent', color: page === 'profile' ? '#fff' : '#d5e2db', fontSize: 14, fontWeight: 600, cursor: 'pointer', textAlign: 'left', fontFamily: 'Manrope, sans-serif' }}>
+          <span style={{ color: page === 'profile' ? '#fff' : '#9fbcae', flexShrink: 0 }}><ProfileIcon /></span>
+          My profile
+        </button>
+
+        {/* Footer */}
+        <div style={{ marginTop: 'auto', padding: '12px 6px 0', fontSize: 12, color: '#8fae9f', lineHeight: 1.5 }}>
+          Need help hiring?<br />
+          <a href="mailto:help@arivupro.com" style={{ color: '#d5e2db' }}>help@arivupro.com</a>
+        </div>
       </aside>
 
       {/* ── MAIN CONTENT ─────────────────────────────────────────── */}
-      <main className="rec-main" style={{ flex: 1, padding: '32px 32px', overflowY: 'auto', minWidth: 0, position: 'relative' }}>
-        <AmbientCanvas density="low" style={{ opacity: 0.4 }} />
+      <main className="rec-main" style={{ flex: 1, padding: '32px 32px', minWidth: 0, position: 'relative' }}>
 
         {/* DASHBOARD */}
         {page === 'dashboard' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            <div className="ap-fade-left ap-d0">
-              <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0f2419', margin: '0 0 4px' }}>Recruiter Dashboard</h1>
-              <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>{companyName} — Campus Recruitment</p>
+            {/* Header */}
+            <div className="rec-dash-header" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+              <div>
+                <h1 style={{ fontSize: 22, fontWeight: 700, color: '#14201a', margin: '0 0 4px' }}>Dashboard</h1>
+                <p style={{ fontSize: 14, color: '#5f6b65', margin: 0 }}>{companyName || recruiterName} · Campus recruitment</p>
+              </div>
+              <button onClick={() => navTo('jobs')} style={{ height: 36, padding: '0 14px', border: '1px solid #1a7a4a', borderRadius: 6, background: '#fff', color: '#1a7a4a', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'Manrope, sans-serif' }}>
+                View all job posts
+              </button>
             </div>
 
-            {/* Stat cards — FIX 1: rd-stats-grid collapses to 2-col on mobile */}
-            <div className="rd-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
+            {/* Stat strip — one panel, 4 cells */}
+            <div className="rd-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', background: '#fff', border: '1px solid #dfe3e0', borderRadius: 8 }}>
               {[
-                { label: 'Active Job Posts',   value: jobs.filter((j: any) => j.status === 'Active').length, sub: 'Currently active', color: '#b45309', border: '#fde68a', delay: 'ap-d1' },
-                { label: 'Total Applicants',   value: normalizedApplicants.length, sub: 'All time',          color: '#1a7a4a', border: '#d7f4ea', delay: 'ap-d2' },
-                { label: 'In Interview Stage', value: 0, sub: 'Scheduled this week',               color: '#1d4ed8', border: '#dbeafe', delay: 'ap-d3' },
-                { label: 'Offers Extended',    value: 0, sub: 'Awaiting acceptance',               color: '#7c3aed', border: '#ede9fe', delay: 'ap-d4' },
-              ].map(s => (
-                <div key={s.label} className={`ap-card ap-scale-in ${s.delay}`} style={{ background: '#fff', border: `1px solid ${s.border}`, borderLeft: `4px solid ${s.color}`, borderRadius: 12, padding: '20px 20px 16px' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>{s.label}</div>
-                  <div style={{ fontSize: 34, fontWeight: 900, color: s.color, letterSpacing: '-0.03em', lineHeight: 1 }}>{s.value}</div>
-                  <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 6 }}>{s.sub}</div>
+                { label: 'Active job posts',   value: activeJobCount },
+                { label: 'Total applicants',   value: normalizedApplicants.length },
+                { label: 'In interview rounds', value: interviewCount },
+                { label: 'Offers released',    value: offersCount },
+              ].map((s, i) => (
+                <div key={s.label} style={{ padding: '16px 20px', borderLeft: i === 0 ? 'none' : '1px solid #e8ebe9' }}>
+                  <b style={{ display: 'block', fontSize: 24, fontWeight: 700, color: '#14201a', lineHeight: 1.1 }}>{s.value}</b>
+                  <span style={{ fontSize: 13, color: '#5f6b65' }}>{s.label}</span>
                 </div>
               ))}
             </div>
 
             {/* Recent applicants */}
-            <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, overflow: 'hidden' }}>
-              <div style={{ padding: '16px 20px', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontSize: 15, fontWeight: 800, color: '#0f2419' }}>Recent Applicants</div>
-                <button className="btn-ghost" style={{ fontSize: 12 }} onClick={() => setPage('applicants')}>View all</button>
+            <div style={{ background: '#fff', border: '1px solid #dfe3e0', borderRadius: 8, overflow: 'hidden' }}>
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid #e8ebe9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#14201a' }}>Recent applicants</div>
+                <button className="btn-ghost" style={{ fontSize: 13, color: '#1a7a4a', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} onClick={() => setPage('applicants')}>View all</button>
               </div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <table className="rec-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ background: '#f9fafb' }}>
-                    {['Candidate', 'Course', 'Match', 'Stage', 'Applied', 'Action'].map(h => (
-                      <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
-                    ))}
+                  <tr style={{ background: '#fafbfa' }}>
+                    <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#5f6b65', borderBottom: '1px solid #e8ebe9' }}>Candidate</th>
+                    <th className="rec-table-col-hide" style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#5f6b65', borderBottom: '1px solid #e8ebe9' }}>Course</th>
+                    <th className="rec-table-col-hide" style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#5f6b65', borderBottom: '1px solid #e8ebe9' }}>Applied for</th>
+                    <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#5f6b65', borderBottom: '1px solid #e8ebe9' }}>Stage</th>
+                    <th className="rec-table-col-hide" style={{ padding: '10px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#5f6b65', borderBottom: '1px solid #e8ebe9' }}>Applied</th>
+                    <th style={{ padding: '10px 20px', borderBottom: '1px solid #e8ebe9' }}></th>
                   </tr>
                 </thead>
                 <tbody>
                   {normalizedApplicants.length === 0 && (
                     <tr><td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>No applicants yet. Post a job to start receiving applications.</td></tr>
                   )}
-                  {normalizedApplicants.slice(0, 3).map((ap: any, i: number) => {
-                    const mb = matchBadge(ap.match);
+                  {normalizedApplicants.slice(0, 5).map((ap: any) => {
+                    const stage = getStage(ap.id, ap.stage);
+                    const jobTitle = jobs.find((j: any) => j.id === ap.jobId)?.title || '—';
+                    const initials = (ap.name || '?').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
                     return (
-                      <tr key={ap.id} style={{ borderTop: '1px solid #f3f4f6', background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
-                        <td style={{ padding: '12px 16px' }}>
-                          <div style={{ fontWeight: 700, color: '#0f2419' }}>{ap.name}</div>
-                          <div style={{ fontSize: 11, color: '#9ca3af' }}>{ap.email}</div>
+                      <tr key={ap.id} style={{ borderBottom: '1px solid #eef0ee' }}>
+                        <td style={{ padding: '12px 20px', verticalAlign: 'middle' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#e7ece9', color: '#3d4a43', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{initials}</div>
+                            <div>
+                              <div style={{ fontWeight: 700, color: '#14201a', fontSize: 13 }}>{ap.name}</div>
+                              <div style={{ fontSize: 12, color: '#7a857f' }}>{ap.email}</div>
+                            </div>
+                          </div>
                         </td>
-                        <td style={{ padding: '12px 16px', fontWeight: 600, color: '#374151' }}>{ap.course}</td>
-                        <td style={{ padding: '12px 16px' }}><span className={mb.cls}>{ap.match}% {mb.label}</span></td>
-                        <td style={{ padding: '12px 16px' }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 6, background: stageColor(getStage(ap.id, ap.stage)) + '18', color: stageColor(getStage(ap.id, ap.stage)) }}>
-                            {getStage(ap.id, ap.stage)}
+                        <td className="rec-table-col-hide" style={{ padding: '12px 20px', fontWeight: 600, color: '#374151', fontSize: 13 }}>{ap.course}</td>
+                        <td className="rec-table-col-hide" style={{ padding: '12px 20px', fontSize: 13, color: '#374151' }}>{jobTitle}</td>
+                        <td style={{ padding: '12px 20px' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                            <span style={{ width: 7, height: 7, borderRadius: '50%', background: stageColor(stage), display: 'inline-block', flexShrink: 0 }} />
+                            {stage}
                           </span>
                         </td>
-                        <td style={{ padding: '12px 16px', color: '#9ca3af', fontSize: 12 }}>{ap.applied}</td>
-                        <td style={{ padding: '12px 16px' }}>
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            <button className="btn-ghost" style={{ fontSize: 11, padding: '5px 10px' }} onClick={() => { setViewingApplicant(ap); setPage('applicants'); }}>
-                              <Eye size={11} /> View
-                            </button>
-                          </div>
+                        <td className="rec-table-col-hide" style={{ padding: '12px 20px', color: '#7a857f', fontSize: 13 }}>{ap.applied}</td>
+                        <td style={{ padding: '12px 20px' }}>
+                          <button style={{ color: '#1a7a4a', fontWeight: 700, fontSize: 13, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} onClick={() => { setViewingApplicant(ap); setPage('applicants'); }}>
+                            View
+                          </button>
                         </td>
                       </tr>
                     );
@@ -1272,10 +1311,16 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
       </main>
 
       <style>{`
+        .rec-nav-btn:hover { background: rgba(255,255,255,.07) !important; color: #fff !important; }
+        .rec-nav-btn:hover span { color: #fff !important; }
+        .rec-nav-btn:focus-visible { outline: 2px solid #f5a623; outline-offset: 2px; }
+        .rec-nav-active { background: rgba(255,255,255,.14) !important; }
+        .rec-post-btn:hover { background: #eef4f0 !important; }
+        .rec-post-btn:focus-visible { outline: 2px solid #f5a623; outline-offset: 2px; }
         @media (max-width: 768px) {
           .rec-hamburger { display: flex !important; }
           .rec-overlay { display: block !important; }
-          .rec-main { padding: 24px 16px 24px 16px !important; }
+          .rec-main { padding: 16px 14px 24px 14px !important; }
           .rec-sidebar {
             position: fixed !important;
             top: 0 !important;
@@ -1292,6 +1337,10 @@ export const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ recruite
           }
           .rd-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
           .rd-applicant-grid { grid-template-columns: 1fr !important; }
+          .rec-dash-header { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; padding-top: 52px !important; }
+          .rec-dash-header button { align-self: stretch !important; }
+          .rec-table-col-hide { display: none !important; }
+          .rec-table td, .rec-table th { padding: 10px 10px !important; }
         }
         @media (max-width: 640px) {
           .rd-form-row { grid-template-columns: 1fr !important; }

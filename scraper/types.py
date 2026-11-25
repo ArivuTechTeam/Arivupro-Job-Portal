@@ -24,7 +24,8 @@ SOURCE_NAMES = [
     "apify_career_sites",      # Big 4 + banks direct ATS — ONLY Workday source ($1.50/1k)
     "greenhouse",              # Greenhouse public API — Big 4, banks, GCCs (free)
     "lever",                   # Lever public API — fintech, startups, consulting (free)
-    "workday",                 # Workday CXS API via Playwright — Big 4, enterprise (free)
+    "workday",                 # Workday CXS API — Accenture, Genpact (free, no browser required)
+    "smartrecruiters",         # SmartRecruiters public API — WNS Global Services (free)
 ]
 
 @dataclass

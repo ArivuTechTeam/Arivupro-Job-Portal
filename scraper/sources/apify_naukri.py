@@ -22,49 +22,34 @@ logger = logging.getLogger(__name__)
 ACTOR_ID = os.getenv("APIFY_NAUKRI_ACTOR_ID", "blackfalcondata/naukri-jobs-feed")
 APIFY_BASE = "https://api.apify.com/v2"
 
+# 12 focused queries for Indian roles only.
+# Old list (34 queries): CA articleship, audit associate, accounts executive, tax associate,
+#   GST executive, internal audit, statutory audit, financial analyst, FP&A analyst, credit analyst,
+#   CMA industrial training, cost accountant, management accountant, company secretary,
+#   CS executive articleship, compliance officer, ACCA fresher audit, CFA level 1, US CPA GCC,
+#   equity research, banking operations, risk analyst NBFC, KYC AML, P2P O2C R2R, shared services,
+#   finance internship, management trainee, B.Com accounts, Deloitte/EY/KPMG/PwC/Big4 articleship.
+# New list (12 queries): Indian fresher core + four niche courses (EA, CIA, FRM, US CMA).
 SEARCH_QUERIES = [
-    # ── Finance / CA / audit ──────────────────────────────────────────────
+    # ── Indian fresher core ───────────────────────────────────────────────
     {"query": "CA articleship",                     "courses": ["CA"]},
-    {"query": "audit associate 0-1 years",          "courses": ["CA"]},
-    {"query": "accounts executive fresher",         "courses": ["CA", "B.Com"]},
-    {"query": "tax associate fresher",              "courses": ["CA"]},
-    {"query": "GST executive fresher",              "courses": ["CA"]},
-    {"query": "internal audit fresher",             "courses": ["CA"]},
-    {"query": "statutory audit CA firm",            "courses": ["CA"]},
-    {"query": "financial analyst fresher",          "courses": ["CA", "CFA"]},
-    {"query": "FP&A analyst fresher",               "courses": ["CA", "CMA India"]},
-    {"query": "credit analyst fresher",             "courses": ["CA", "CFA"]},
-    # ── CMA / cost ────────────────────────────────────────────────────────
-    {"query": "CMA industrial training",            "courses": ["CMA India"]},
-    {"query": "cost accountant fresher",            "courses": ["CMA India"]},
-    {"query": "management accountant fresher",      "courses": ["CMA India", "US CMA"]},
-    # ── CS / compliance ───────────────────────────────────────────────────
-    {"query": "company secretary fresher",          "courses": ["CS"]},
-    {"query": "CS executive articleship",           "courses": ["CS"]},
-    {"query": "compliance officer fresher",         "courses": ["CS", "CA"]},
-    # ── International ─────────────────────────────────────────────────────
-    {"query": "ACCA fresher audit",                 "courses": ["ACCA"]},
-    {"query": "CFA level 1 fresher analyst",        "courses": ["CFA"]},
-    {"query": "US CPA fresher GCC",                 "courses": ["CPA US"]},
-    {"query": "equity research analyst fresher",    "courses": ["CFA"]},
-    # ── Banking / BFSI ────────────────────────────────────────────────────
-    {"query": "banking operations fresher",         "courses": ["CA", "B.Com"]},
-    {"query": "risk analyst fresher NBFC",          "courses": ["CA", "CFA"]},
-    {"query": "KYC AML analyst fresher",            "courses": ["CA", "B.Com"]},
-    # ── GCC / shared services ─────────────────────────────────────────────
-    {"query": "P2P O2C R2R analyst fresher",        "courses": ["CA", "CMA India", "B.Com"]},
-    {"query": "shared services finance fresher",    "courses": ["CA", "CMA India", "B.Com"]},
-    # ── Internship / trainee ──────────────────────────────────────────────
-    {"query": "finance internship fresher",         "courses": ["CA", "CMA India", "ACCA", "B.Com"]},
-    {"query": "management trainee finance",         "courses": ["CA", "CMA India"]},
-    {"query": "B.Com accounts executive fresher",   "courses": ["B.Com"]},
-    # ── Big 4 specific ───────────────────────────────────────────────────
-    {"query": "Deloitte audit associate fresher",   "courses": ["CA", "ACCA"]},
-    {"query": "EY audit associate fresher India",   "courses": ["CA", "ACCA"]},
-    {"query": "KPMG articleship India",             "courses": ["CA"]},
-    {"query": "PwC audit associate fresher India",  "courses": ["CA", "ACCA"]},
-    {"query": "Big 4 articleship vacancy India",    "courses": ["CA"]},
-    {"query": "Big 4 audit fresher India",          "courses": ["CA", "ACCA"]},
+    {"query": "CMA industrial training India",      "courses": ["CMA India"]},
+    {"query": "audit assistant fresher India",      "courses": ["CA"]},
+    {"query": "tax GST associate fresher India",    "courses": ["CA"]},
+    {"query": "accounts executive B.Com fresher",   "courses": ["CA", "B.Com"]},
+    {"query": "company secretary CS executive articleship", "courses": ["CS"]},
+    {"query": "internal audit associate fresher India",     "courses": ["CA"]},
+    {"query": "finance internship fresher India",   "courses": ["CA", "CMA India", "ACCA", "B.Com"]},
+    # ── Niche international / ArivuPro courses ────────────────────────────
+    {"query": "Enrolled Agent US tax fresher India",  "courses": ["EA"]},
+    {"query": "internal auditor CIA fresher India",   "courses": ["CIA"]},
+    {"query": "risk analyst FRM fresher India",       "courses": ["FRM"]},
+    {"query": "US CMA management accountant fresher India", "courses": ["US CMA"]},
+    # ── Big 4 India (articleship / audit associate) ───────────────────────
+    {"query": "Deloitte audit associate articleship fresher India", "courses": ["CA", "ACCA"]},
+    {"query": "EY audit associate articleship fresher India",       "courses": ["CA", "ACCA"]},
+    {"query": "KPMG articleship fresher India",                     "courses": ["CA"]},
+    {"query": "PwC audit associate fresher India",                  "courses": ["CA", "ACCA"]},
 ]
 
 SENIOR_RE = re.compile(
@@ -141,12 +126,17 @@ async def _run_actor(api_token: str, payload: dict, timeout_secs: int = 120) -> 
 
 
 async def _fetch_query(api_token: str, q: dict, max_results: int) -> tuple[dict, list[dict]]:
+    # TODO: verify freshness, incremental, skipReposts field names against
+    # https://apify.com/blackfalcondata/naukri-jobs-feed/input-schema before first paid run
     payload = {
         "keyword": q["query"],
         "location": "India",
         "experience": "0-2",
         "maxResults": max_results,
         "includeDescription": True,
+        "freshness": 7,
+        "incremental": True,
+        "skipReposts": True,
     }
     try:
         items = await _run_actor(api_token, payload)
@@ -161,7 +151,7 @@ async def fetch() -> list[NormalizedJob]:
     if not api_token or api_token == "your-apify-api-token":
         raise RuntimeError("APIFY_API_TOKEN not set")
 
-    max_results = int(os.getenv("APIFY_NAUKRI_MAX_RESULTS", "40"))
+    max_results = int(os.getenv("APIFY_NAUKRI_MAX_RESULTS", "15"))
     sem = asyncio.Semaphore(int(os.getenv("APIFY_CONCURRENCY", "5")))
 
     async def _bounded(q: dict) -> tuple[dict, list[dict]]:

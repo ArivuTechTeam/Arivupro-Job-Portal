@@ -1615,7 +1615,7 @@ async def scrape_trigger(body: ScrapeRequest, authorization: Optional[str] = Hea
 FREE_SOURCES = [
     'buddingca', 'caclubindia', 'icai_eirc', 'icai_nirc', 'icai_sirc',
     'icai_wirc', 'icai_kochi', 'icai_pune', 'icai_bangalore', 'icmai',
-    'greenhouse', 'lever', 'jsearch', 'jobspy',
+    'greenhouse', 'lever', 'jsearch', 'jobspy', 'workday', 'smartrecruiters',
 ]
 
 def expire_old_jobs(days: int = 45) -> int:
@@ -1651,7 +1651,8 @@ async def scrape_dry_run(source: str, _admin: dict = Depends(require_admin)):
     """Fetch jobs from a source WITHOUT saving to DB. Pure diagnostic."""
     from scraper.orchestrator import SOURCE_FETCHERS
     # Only free sources — block paid APIs that cost money
-    PAID_SOURCES = {"jsearch", "jobspy", "apify_multi_board", "apify_google_jobs", "apify_career_sites"}
+    PAID_SOURCES = {"jsearch", "jobspy", "apify_multi_board", "apify_google_jobs",
+                    "apify_career_sites", "apify_naukri", "apify_linkedin_indeed"}
     if source not in SOURCE_NAMES:
         raise HTTPException(status_code=400, detail=f"Unknown source '{source}'. Valid: {SOURCE_NAMES}")
     if source in PAID_SOURCES:

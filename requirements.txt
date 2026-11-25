@@ -11,4 +11,3 @@ apscheduler==3.10.4
 python-jobspy==1.1.80
 pandas>=2.0.0
 google-generativeai>=0.8.0
-playwright>=1.40.0

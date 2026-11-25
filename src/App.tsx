@@ -77,11 +77,15 @@ function loadAuth(): AuthState {
 }
 
 function loadTab(): NavTab {
-  // Map URL path to initial tab on first load / hard refresh
+  // Map URL path to initial tab on first load / hard refresh.
+  // Role-specific paths only resolve to their dashboard when the stored role matches;
+  // a guest hitting /jobseeker or /recruiter falls back to 'jobs' so the main area
+  // is never blank (the mount effect then opens the right login prompt).
   const path = window.location.pathname;
-  if (path === '/jobseeker')   return 'dashboard';
-  if (path === '/recruiter')   return 'recruiter-jobs';
-  if (path === '/admin')       return 'admin-dashboard';
+  const role = loadAuth().role;
+  if (path === '/jobseeker')   return role === 'student'   ? 'dashboard'      : 'jobs';
+  if (path === '/recruiter')   return role === 'recruiter' ? 'recruiter-jobs'  : 'jobs';
+  if (path === '/admin')       return role === 'admin'     ? 'admin-dashboard' : 'jobs';
   if (path === '/jobs')        return 'jobs';
   if (path === '/internships') return 'internships';
   if (path === '/articleship') return 'articleship';
@@ -181,6 +185,34 @@ export default function App() {
     window.addEventListener('arivupro:external-applied', handler);
     return () => window.removeEventListener('arivupro:external-applied', handler);
   // loadStudentData is stable (defined outside effect); supabase is module-level
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // On mount: if a guest hits a role-specific URL, open the matching login prompt.
+  // If a logged-in user hits the wrong role's URL, redirect them to their own home.
+  // Captured once so the effect never re-runs (the URL is a one-time entry signal).
+  useEffect(() => {
+    const path = window.location.pathname;
+    const role = auth.role;
+
+    if (role === 'guest') {
+      if (path === '/jobseeker') {
+        setAuthModal({ open: true, mode: 'login', role: 'student' });
+      } else if (path === '/recruiter') {
+        setShowRecruiterPortal(true);
+      }
+      // /admin is already handled by showAdminLogin state initialiser
+    } else {
+      // Logged-in user on the wrong role's URL → redirect to their own home
+      const ownPath = role === 'student' ? '/jobseeker' : role === 'recruiter' ? '/recruiter' : '/admin';
+      if (
+        (path === '/jobseeker' && role !== 'student') ||
+        (path === '/recruiter' && role !== 'recruiter') ||
+        (path === '/admin'     && role !== 'admin')
+      ) {
+        window.history.replaceState({ __arivuproApp: true, role, tab: currentTab, depth: 0 } satisfies AppHistoryState, '', ownPath);
+      }
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -445,6 +477,17 @@ export default function App() {
   };
 
   const handleSignIn = (mode: 'login' | 'signup' = 'login') => setAuthModal({ open: true, mode, role: 'student' as const });
+
+  // Called when a guest dismisses the login modal or recruiter portal without signing in.
+  // If they arrived via a role URL (/jobseeker, /recruiter), fall back to jobs tab + URL '/'.
+  const handleGuestModalClose = () => {
+    setAuthModal(null);
+    setShowRecruiterPortal(false);
+    if (auth.role === 'guest' && ['/jobseeker', '/recruiter'].includes(window.location.pathname)) {
+      setCurrentTab('jobs');
+      window.history.replaceState({ __arivuproApp: true, role: 'guest', tab: 'jobs', depth: 0 } satisfies AppHistoryState, '', '/');
+    }
+  };
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -902,7 +945,7 @@ export default function App() {
           position: 'fixed', inset: 0, zIndex: 200,
           background: 'rgba(10,24,16,0.75)', backdropFilter: 'blur(6px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
-        }} onClick={() => setShowRecruiterPortal(false)}>
+        }} onClick={handleGuestModalClose}>
           <div onClick={e => e.stopPropagation()} style={{
             background: '#fff', borderRadius: 16, width: '100%', maxWidth: 460,
             boxShadow: '0 32px 80px rgba(10,24,16,0.28)',
@@ -1559,7 +1602,7 @@ export default function App() {
         <AuthModal
           mode={authModal.mode}
           role={authModal.role}
-          onClose={() => setAuthModal(null)}
+          onClose={handleGuestModalClose}
           onSuccess={handleAuthSuccess}
           onSwitchMode={(m) => setAuthModal({ ...authModal, mode: m })}
           onSwitchRole={(r) => setAuthModal({ ...authModal, role: r })}

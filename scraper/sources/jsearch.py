@@ -1,4 +1,4 @@
-"""JSearch (OpenWebNinja) API scraper — free tier 200 req/month."""
+"""JSearch (OpenWebNinja) API scraper — free tier 100 req/month. 20 queries × 4.3 weekly runs ≈ 87 req/month."""
 import os
 import re
 import httpx
@@ -9,56 +9,34 @@ from scraper.parse_utils import logo_url_from_company
 
 JSEARCH_BASE = "https://api.openwebninja.com/jsearch"
 
+# 20 queries — 20 × 4.3 weekly runs ≈ 87 requests/month, within the free-tier 100-request limit.
+# Old list had 43 queries (~172 req/month) which exhausted the free tier mid-month.
+# Kept: niche ArivuPro courses (EA, CIA, FRM, CFP), articleship/internship, and highest-value full-time roles.
+# Dropped: generic duplicates (IMA CMA = US CMA, BBA finance = B.Com finance, treasury, banking ops, etc.)
 SEARCH_QUERIES = [
-    # ── Full-time jobs 0–2 yrs (80%) ─────────────────────────────────────────
-    "audit associate 0 experience India",
+    # ── Full-time roles ───────────────────────────────────────────────────────
+    "audit associate fresher India",
     "accounts executive fresher India",
     "financial analyst fresher India",
-    "tax associate fresher India",
-    "GST executive fresher India",
+    "tax GST associate fresher India",
     "internal audit associate fresher India",
-    "statutory audit associate fresher India",
     "FP&A analyst fresher India",
-    "equity research analyst fresher India",
-    "credit analyst fresher India",
-    "fund accountant fresher India",
-    "accounts payable fresher India",
-    "finance executive fresher India",
     "cost accountant fresher India",
     "ACCA fresher jobs India",
-    "US CPA fresher jobs India",
     "CFA level 1 fresher jobs India",
-    "B.Com finance jobs fresher India",
-    "BBA finance jobs fresher India",
-    "company secretary fresher jobs India",
-    "compliance officer fresher India",
-    "treasury analyst fresher India",
-    "risk analyst fresher India",
-    "financial reporting analyst fresher India",
-    "Big 4 audit associate fresher India",
-    "US CMA management accountant fresher India",
-    "IMA certified management accountant fresher India",
-    "B.Com accounts executive fresher India",
-    "banking operations associate fresher India",
-    "P2P O2C analyst fresher GCC India",
-    "shared services finance fresher India",
-    "management trainee consulting Big 4 India",
-
-    # ── Articleship + Internship + Trainee (20%) ──────────────────────────────
+    "US CPA fresher GCC India",
+    "credit analyst fresher India",
+    "company secretary fresher India",
+    # ── Articleship / internship / trainee ────────────────────────────────────
     "CA articleship vacancy India",
     "CMA industrial training India",
     "CS executive articleship India",
     "finance internship fresher India",
-    "audit internship fresher India",
     "management trainee finance India",
-    "finance graduate trainee India",
-
-    # ── EA / CIA / FRM / CFP (ArivuPro courses with zero prior coverage) ──────
-    # 4 queries added 2026-11-23; total now 43 → ~172 calls/month on weekly schedule
+    # ── EA / CIA / FRM / CFP (ArivuPro niche courses) ─────────────────────────
     "Enrolled Agent US tax fresher India",
     "internal auditor CIA fresher India",
     "risk analyst FRM fresher India",
-    "financial planner CFP fresher India",
 ]
 
 SENIOR_RE = re.compile(

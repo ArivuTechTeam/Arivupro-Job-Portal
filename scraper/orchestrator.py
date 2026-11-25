@@ -10,8 +10,19 @@ import time
 from typing import Optional
 from supabase import Client
 
+from datetime import datetime, timezone
 from scraper.types import NormalizedJob, SyncResult, SOURCE_NAMES
 from scraper.dedup import build_fingerprint, is_over_experience_cap
+
+# Paid Apify sources — subject to monthly cap and per-source skip guards
+PAID_SOURCES = {'apify_naukri', 'apify_linkedin_indeed', 'apify_career_sites'}
+
+# Skip-guard windows: how many days must pass before the source is allowed to run again.
+# Naukri runs every week (no skip guard). LinkedIn runs every 2 weeks. Career sites run monthly.
+_PAID_SOURCE_MIN_INTERVAL_DAYS: dict[str, int] = {
+    'apify_linkedin_indeed': 13,
+    'apify_career_sites': 28,
+}
 
 # ── Relevance filters ──────────────────────────────────────────────────────
 _FINANCE_KEYWORDS = {
@@ -92,6 +103,7 @@ from scraper.sources.apify_career_sites import fetch as fetch_apify_career_sites
 from scraper.sources.greenhouse import fetch as fetch_greenhouse
 from scraper.sources.lever import fetch as fetch_lever
 from scraper.sources.workday import fetch as fetch_workday
+from scraper.sources.smartrecruiters import fetch as fetch_smartrecruiters
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +134,7 @@ SOURCE_FETCHERS: dict = {
     'greenhouse':               fetch_greenhouse,
     'lever':                    fetch_lever,
     'workday':                  fetch_workday,
+    'smartrecruiters':          fetch_smartrecruiters,
 }
 
 
@@ -218,6 +231,41 @@ async def run_source_sync(supabase: Client, source: str) -> SyncResult:
     run_id = sync_run.data[0]['id'] if sync_run.data else None
 
     try:
+        # ── Paid-source guards (monthly cap + per-source interval) ────────────
+        if source in PAID_SOURCES:
+            # 1) Monthly paid-jobs cap: count only paid-source jobs created since the 1st of this month
+            monthly_cap = int(os.getenv('MONTHLY_NEW_JOBS_CAP', '2500'))
+            now_utc = datetime.now(timezone.utc)
+            month_start = now_utc.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
+            cap_res = supabase.table('external_jobs').select('id', count='exact').in_('source', list(PAID_SOURCES)).gte('created_at', month_start).execute()
+            monthly_count = cap_res.count or 0
+            if monthly_count >= monthly_cap:
+                reason = f'skipped: monthly new-jobs cap reached ({monthly_count}/{monthly_cap})'
+                logger.info(f'[{source}] {reason}')
+                if run_id:
+                    supabase.table('sync_runs').update({'status': 'skipped', 'error_msg': reason[:500]}).eq('id', run_id).execute()
+                result.skipped = monthly_count
+                return result
+
+            # 2) Per-source interval guard (LinkedIn: 13 days, career sites: 28 days)
+            min_days = _PAID_SOURCE_MIN_INTERVAL_DAYS.get(source)
+            if min_days is not None:
+                last_run = supabase.table('sync_runs').select('started_at').eq('source', source).eq('status', 'ok').order('started_at', desc=True).limit(1).execute()
+                if last_run.data:
+                    last_dt_raw = last_run.data[0].get('started_at')
+                    try:
+                        last_dt = datetime.fromisoformat(str(last_dt_raw).replace('Z', '+00:00')).replace(tzinfo=timezone.utc)
+                        days_since = (now_utc - last_dt).days
+                        if days_since < min_days:
+                            reason = f'skipped: {min_days}-day interval not reached ({days_since} days since last ok run)'
+                            logger.info(f'[{source}] {reason}')
+                            if run_id:
+                                supabase.table('sync_runs').update({'status': 'skipped', 'error_msg': reason[:500]}).eq('id', run_id).execute()
+                            return result
+                    except Exception as e:
+                        logger.warning(f'[{source}] could not parse last_run started_at: {e}')
+        # ─────────────────────────────────────────────────────────────────────
+
         fetcher = SOURCE_FETCHERS.get(source)
         if not fetcher:
             raise ValueError(f'No fetcher for source: {source}')
@@ -289,8 +337,9 @@ async def run_all_sources(supabase: Client, sources: Optional[list[str]] = None,
     parsed = [s.strip() for s in env_enabled.split(',') if s.strip()]
     # Never fall back to SOURCE_NAMES (which includes paid Apify sources) when the env var is unset.
     # If SYNC_SOURCES_ENABLED is empty/missing, run only the free sources by default.
-    FREE_SOURCES = ['caclubindia', 'buddingca', 'icai_eirc', 'icai_sirc', 'icai_wirc',
-                    'icai_kochi', 'icai_pune', 'icai_bangalore', 'icmai', 'jobspy', 'greenhouse', 'lever']
+    FREE_SOURCES = ['caclubindia', 'buddingca', 'icai_eirc', 'icai_nirc', 'icai_sirc', 'icai_wirc',
+                    'icai_kochi', 'icai_pune', 'icai_bangalore', 'icmai', 'greenhouse', 'lever',
+                    'workday', 'smartrecruiters']
     default = parsed if parsed else FREE_SOURCES
     if include_weekly:
         env_weekly = os.getenv('SYNC_SOURCES_WEEKLY', '')
